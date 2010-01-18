@@ -1555,7 +1555,7 @@ static void sbr_hf_assemble(float y[2][64][40][2], float x_high[64][40][2],
     }
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        if (h_SL && l != l_a[0] && l != l_a[1]) {
+        if (h_SL && l != -(l_a[0] != ch_data->bs_num_env[0]) && l != l_a[1]) {
             for (i = sbr->t_env[ch][l] << 1; i < sbr->t_env[ch][l + 1] << 1; i++) {
                 for (m = 0; m < sbr->m; m++) {
                     const int idx1 = i + h_SL;
@@ -1580,7 +1580,7 @@ static void sbr_hf_assemble(float y[2][64][40][2], float x_high[64][40][2],
     }
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        if (l != l_a[0] && l != l_a[1]) {
+        if (l != -(l_a[0] != ch_data->bs_num_env[0]) && l != l_a[1]) {
             for (i = sbr->t_env[ch][l] << 1; i < sbr->t_env[ch][l + 1] << 1; i++) {
                 for (m = 0; m < sbr->m; m++) {
                     if (sbr->s_m_boost[l][m])
