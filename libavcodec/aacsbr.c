@@ -109,11 +109,57 @@ av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
     ff_fft_init(&sbr->fft, 6, 1);
 }
 
+/// Limiter Frequency Band Table (14496-3 sp04 p198)
+static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
+{
+    int k;
+    if (sbr->bs_limiter_bands > 0) {
+        static const float lim_bands_per_octave[3] = {1.2, 2, 3};
+        int16_t patch_borders[5];
+
+        patch_borders[0] = sbr->k[4];
+        for (k=1; k <= sbr->num_patches; k++)
+            patch_borders[k] = patch_borders[k-1] + sbr->patch_num_subbands[k-1];
+
+        memcpy( sbr->f_tablelim,                  sbr->f_tablelow,
+               (sbr->n[0]        + 1) * sizeof(sbr->f_tablelow[0]));
+        memcpy(&sbr->f_tablelim[sbr->n[0] + 1], &patch_borders[1],
+               (sbr->num_patches - 1) * sizeof(patch_borders[0]));
+
+        qsort(sbr->f_tablelim, sbr->num_patches + sbr->n[0],
+              sizeof(sbr->f_tablelim[0]),
+              qsort_comparison_function_int16);
+
+        k = 1;
+        sbr->n_lim = sbr->n[0] + sbr->num_patches - 1;
+        while (k <= sbr->n_lim) {
+            // if ( nOctaves * limBands >= 0.49) ...
+            if (log2(sbr->f_tablelim[k] / (float)sbr->f_tablelim[k-1]) *
+                lim_bands_per_octave[sbr->bs_limiter_bands - 1] >= 0.49) {
+                k++;
+                continue;
+            }
+            if (sbr->f_tablelim[k] == sbr->f_tablelim[k-1] ||
+                !in_table(patch_borders, sbr->num_patches, sizeof(patch_borders[0]), &sbr->f_tablelim[k]))
+                remove_table_element(sbr->f_tablelim, &sbr->n_lim, sizeof(sbr->f_tablelim[0]), k);
+            else if (!in_table(patch_borders, sbr->num_patches, sizeof(patch_borders[0]), &sbr->f_tablelim[k-1]))
+                remove_table_element(sbr->f_tablelim, &sbr->n_lim, sizeof(sbr->f_tablelim[0]), k-1);
+            else
+                k++;
+        };
+    } else {
+        sbr->f_tablelim[0] = sbr->f_tablelow[0];
+        sbr->f_tablelim[1] = sbr->f_tablelow[sbr->n[0]];
+        sbr->n_lim = 1;
+    }
+}
+
 static unsigned int sbr_header(SpectralBandReplication *sbr, GetBitContext *gb)
 {
     unsigned int cnt = get_bits_count(gb);
     uint8_t bs_header_extra_1;
     uint8_t bs_header_extra_2;
+    int old_bs_limiter_bands = sbr->bs_limiter_bands;
 
     sbr->start = 1;
 
@@ -154,6 +200,10 @@ static unsigned int sbr_header(SpectralBandReplication *sbr, GetBitContext *gb)
         sbr->bs_limiter_gains  = 2;
         sbr->bs_interpol_freq  = 1;
         sbr->bs_smoothing_mode = 1;
+    }
+
+    if (sbr->bs_limiter_bands != old_bs_limiter_bands && !sbr->reset) {
+        sbr_make_f_tablelim(sbr);
     }
 
     return get_bits_count(gb) - cnt;
@@ -509,46 +559,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
     if (sbr_hf_calc_npatches(ac, sbr) < 0)
         return -1;
 
-    // Limiter Frequency Band Table (14496-3 sp04 p198)
-    if (sbr->bs_limiter_bands > 0) {
-        static const float lim_bands_per_octave[3] = {1.2, 2, 3};
-        int16_t patch_borders[5];
-
-        patch_borders[0] = sbr->k[4];
-        for (k=1; k <= sbr->num_patches; k++)
-            patch_borders[k] = patch_borders[k-1] + sbr->patch_num_subbands[k-1];
-
-        memcpy( sbr->f_tablelim,                  sbr->f_tablelow,
-               (sbr->n[0]        + 1) * sizeof(sbr->f_tablelow[0]));
-        memcpy(&sbr->f_tablelim[sbr->n[0] + 1], &patch_borders[1],
-               (sbr->num_patches - 1) * sizeof(patch_borders[0]));
-
-        qsort(sbr->f_tablelim, sbr->num_patches + sbr->n[0],
-              sizeof(sbr->f_tablelim[0]),
-              qsort_comparison_function_int16);
-
-        k = 1;
-        sbr->n_lim = sbr->n[0] + sbr->num_patches - 1;
-        while (k <= sbr->n_lim) {
-            // if ( nOctaves * limBands >= 0.49) ...
-            if (log2(sbr->f_tablelim[k] / (float)sbr->f_tablelim[k-1]) *
-                lim_bands_per_octave[sbr->bs_limiter_bands - 1] >= 0.49) {
-                k++;
-                continue;
-            }
-            if (sbr->f_tablelim[k] == sbr->f_tablelim[k-1] ||
-                !in_table(patch_borders, sbr->num_patches, sizeof(patch_borders[0]), &sbr->f_tablelim[k]))
-                remove_table_element(sbr->f_tablelim, &sbr->n_lim, sizeof(sbr->f_tablelim[0]), k);
-            else if (!in_table(patch_borders, sbr->num_patches, sizeof(patch_borders[0]), &sbr->f_tablelim[k-1]))
-                remove_table_element(sbr->f_tablelim, &sbr->n_lim, sizeof(sbr->f_tablelim[0]), k-1);
-            else
-                k++;
-        };
-    } else {
-        sbr->f_tablelim[0] = sbr->f_tablelow[0];
-        sbr->f_tablelim[1] = sbr->f_tablelow[sbr->n[0]];
-        sbr->n_lim = 1;
-    }
+    sbr_make_f_tablelim(sbr);
 
     sbr->data[0].f_indexnoise = 0;
     sbr->data[1].f_indexnoise = 0;
