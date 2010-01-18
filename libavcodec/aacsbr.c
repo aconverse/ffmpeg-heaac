@@ -1147,7 +1147,7 @@ static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],
                                        alpha1[k][0] * phi[1][1][1];
 
             alpha0[k][0] = -temp_real / phi[1][0][0];
-            alpha0[k][0] = -temp_im   / phi[1][0][0];
+            alpha0[k][1] = -temp_im   / phi[1][0][0];
         }
 
         if (alpha1[k][0] * alpha1[k][0] + alpha1[k][1] * alpha1[k][1] >= 16.0f ||
