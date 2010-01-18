@@ -40,6 +40,8 @@
 #endif
 
 #undef exit
+#undef printf
+#undef fprintf
 
 const char program_name[] = "FFplay";
 const int program_birth_year = 2003;
@@ -1720,6 +1722,8 @@ static int stream_component_open(VideoState *is, int stream_index)
     enc->skip_loop_filter= skip_loop_filter;
     enc->error_recognition= error_recognition;
     enc->error_concealment= error_concealment;
+    if (thread_count > 1)
+        avcodec_thread_init(enc, thread_count);
 
     set_context_opts(enc, avcodec_opts[enc->codec_type], 0);
 
@@ -1744,9 +1748,6 @@ static int stream_component_open(VideoState *is, int stream_index)
         is->audio_src_fmt= SAMPLE_FMT_S16;
     }
 
-    if(thread_count>1)
-        avcodec_thread_init(enc, thread_count);
-    enc->thread_count= thread_count;
     ic->streams[stream_index]->discard = AVDISCARD_DEFAULT;
     switch(enc->codec_type) {
     case CODEC_TYPE_AUDIO:
@@ -2488,11 +2489,16 @@ static const OptionDef options[] = {
     { NULL, },
 };
 
+static void show_usage(void)
+{
+    printf("Simple media player\n");
+    printf("usage: ffplay [options] input_file\n");
+    printf("\n");
+}
+
 static void show_help(void)
 {
-    printf("usage: ffplay [options] input_file\n"
-           "Simple media player\n");
-    printf("\n");
+    show_usage();
     show_help_options(options, "Main options:\n",
                       OPT_EXPERT, 0);
     show_help_options(options, "\nAdvanced options:\n",
@@ -2539,7 +2545,9 @@ int main(int argc, char **argv)
     parse_options(argc, argv, options, opt_input_file);
 
     if (!input_filename) {
+        show_usage();
         fprintf(stderr, "An input file must be specified\n");
+        fprintf(stderr, "Use -h to get full help or, even better, run 'man ffplay'\n");
         exit(1);
     }
 

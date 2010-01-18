@@ -35,6 +35,8 @@
  * and Edouard Gomez <ed.gomez@free.fr>.
  */
 
+#define _XOPEN_SOURCE 600
+
 #include "config.h"
 #include "libavformat/avformat.h"
 #include <time.h>
@@ -85,7 +87,7 @@ x11grab_read_header(AVFormatContext *s1, AVFormatParameters *ap)
     struct x11_grab *x11grab = s1->priv_data;
     Display *dpy;
     AVStream *st = NULL;
-    int input_pixfmt;
+    enum PixelFormat input_pixfmt;
     XImage *image;
     int x_off = 0;
     int y_off = 0;
