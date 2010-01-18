@@ -1695,10 +1695,10 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* i
         sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch], ch);
         sbr_hf_additional_levels(sbr, &sbr->data[ch]);
         sbr_gain_calc(ac, sbr, &sbr->data[ch], l_a);
-        sbr_hf_assemble(sbr->Y, sbr->X_high, sbr, &sbr->data[ch], ch, l_a);
+        sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch], ch, l_a);
     }
 
     /* synthesis */
-    sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->Y, ch);
+    sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->data[ch].Y, ch);
     sbr_qmf_synthesis(&ac->dsp, out, sbr->X, sbr->data[ch].synthesis_filterbank_samples, 0);
 }
