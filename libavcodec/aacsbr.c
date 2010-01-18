@@ -1028,22 +1028,23 @@ static void sbr_env_noise_floors(SpectralBandReplication *sbr, SBRData *ch_data,
 }
 
 // Dequantisation and stereo decoding (14496-3 sp04 p203)
-static void sbr_dequant(SpectralBandReplication *sbr, int id_aac, int ch)
+static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
 {
     int k, l;
-    float alpha = sbr->data[ch].bs_amp_res ? 1.0f : 0.5f;
+    int ch;
 
     if (id_aac == TYPE_CPE && sbr->bs_coupling) {
-        float pan_offset = sbr->data[ch].bs_amp_res ? 12.0f : 24.0f;
-        for (l = 1; l <= sbr->data[ch].bs_num_env[1]; l++) {
-            for (k = 0; k < sbr->n[sbr->data[ch].bs_freq_res[l]]; k++) {
+        float alpha = sbr->data[0].bs_amp_res ? 1.0f : 0.5f;
+        float pan_offset = sbr->data[0].bs_amp_res ? 12.0f : 24.0f;
+        for (l = 1; l <= sbr->data[0].bs_num_env[1]; l++) {
+            for (k = 0; k < sbr->n[sbr->data[0].bs_freq_res[l]]; k++) {
                 float temp1 = exp2f(sbr->env_facs[0][l][k] * alpha + 7.0f);
                 float temp2 = (pan_offset - sbr->env_facs[1][l][k]) * alpha;
                 sbr->env_facs[0][l][k] = temp1 / (1.0f + exp2f( temp2));
                 sbr->env_facs[1][l][k] = temp1 / (1.0f + exp2f(-temp2));
             }
         }
-        for (l = 1; l <= sbr->data[ch].bs_num_noise; l++) {
+        for (l = 1; l <= sbr->data[0].bs_num_noise; l++) {
             for (k = 0; k < sbr->n_q; k++) {
                 float temp1 = exp2f(NOISE_FLOOR_OFFSET - sbr->noise_facs[0][l][k] + 1);
                 float temp2 = 12 - sbr->noise_facs[1][l][k];
@@ -1052,12 +1053,15 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac, int ch)
             }
         }
     } else { // SCE or one non-coupled CPE
+        for (ch = 0; ch < (id_aac == TYPE_CPE ? 2 : 1); ch++) {
+            float alpha = sbr->data[ch].bs_amp_res ? 1.0f : 0.5f;
         for (l = 1; l <= sbr->data[ch].bs_num_env[1]; l++)
             for (k = 0; k < sbr->n[sbr->data[ch].bs_freq_res[l]]; k++)
                 sbr->env_facs[ch][l][k] = exp2f(alpha * sbr->env_facs[ch][l][k] + 6.0f);
         for (l = 1; l <= sbr->data[ch].bs_num_noise; l++)
             for (k = 0; k < sbr->n_q; k++)
                 sbr->noise_facs[ch][l][k] = exp2f(NOISE_FLOOR_OFFSET - sbr->noise_facs[ch][l][k]);
+        }
     }
 }
 
@@ -1667,7 +1671,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int id_aac, int 
     if (sbr->start) {
         sbr_time_freq_grid(ac, sbr, &sbr->data[ch], ch);
         sbr_env_noise_floors(sbr, &sbr->data[ch], ch);
-        sbr_dequant(sbr, id_aac, ch);
+        sbr_dequant(sbr, id_aac);
     }
 
     /* decode channel */
