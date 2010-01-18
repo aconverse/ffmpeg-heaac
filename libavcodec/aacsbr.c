@@ -1321,7 +1321,7 @@ static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
     int i, l, m;
 
     // The following is used for
-    l_a[0] = l_a[1]; // update previous frame's l_a value
+    l_a[0] = -(l_a[1] != ch_data->bs_num_env[0]); // l_APrev
     l_a[1] = -1;
     if ((ch_data->bs_frame_class & 1) && ch_data->bs_pointer) { // FIXVAR or VARVAR and bs_pointer != 0
         l_a[1] = ch_data->bs_num_env[1] + 1 - ch_data->bs_pointer;
@@ -1447,7 +1447,7 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
     const float limgain[4] = { 0.70795, 1.0, 1.41254, 10000000000 };
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        int delta = !((l == l_a[1]) || (l == -(l_a[0] != ch_data->bs_num_env[0])));
+        int delta = !((l == l_a[1]) || (l == l_a[0]));
         for (m = 0; m < sbr->m; m++) {
             if (!sbr->s_mapped[l][m]) {
                 sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] /
@@ -1486,7 +1486,7 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
     }
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        int delta = !((l == l_a[1]) || (l == -(l_a[0] != ch_data->bs_num_env[0])));
+        int delta = !((l == l_a[1]) || (l == l_a[0]));
         for (k = 0; k < sbr->n_lim; k++) {
             float sum[2] = { 0.0f, 0.0f };
             for (i = sbr->f_tablelim[k] - sbr->k[3]; i < sbr->f_tablelim[k + 1] - sbr->k[3]; i++) {
@@ -1555,7 +1555,7 @@ static void sbr_hf_assemble(float y[2][64][40][2], float x_high[64][40][2],
     }
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        if (h_SL && l != -(l_a[0] != ch_data->bs_num_env[0]) && l != l_a[1]) {
+        if (h_SL && l != l_a[0] && l != l_a[1]) {
             for (i = sbr->t_env[ch][l] << 1; i < sbr->t_env[ch][l + 1] << 1; i++) {
                 for (m = 0; m < sbr->m; m++) {
                     const int idx1 = i + h_SL;
@@ -1580,7 +1580,7 @@ static void sbr_hf_assemble(float y[2][64][40][2], float x_high[64][40][2],
     }
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        if (l != -(l_a[0] != ch_data->bs_num_env[0]) && l != l_a[1]) {
+        if (l != l_a[0] && l != l_a[1]) {
             for (i = sbr->t_env[ch][l] << 1; i < sbr->t_env[ch][l + 1] << 1; i++) {
                 for (m = 0; m < sbr->m; m++) {
                     if (sbr->s_m_boost[l][m])
