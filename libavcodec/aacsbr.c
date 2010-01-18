@@ -1612,13 +1612,13 @@ static void sbr_hf_assemble(float y[2][64][40][2], float x_high[64][40][2],
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = sbr->t_env[ch][l] << 1; i < sbr->t_env[ch][l + 1] << 1; i++) {
-            sbr->f_indexsine[ch] = (sbr->f_indexsine[ch] + 1) & 3;
             for (m = 0; m < sbr->m; m++) {
                 y[0][m + sbr->k[3]][i + ENVELOPE_ADJUSTMENT_OFFSET][0] =
                     w_temp[i][m][0] + sbr->s_m_boost[l][m] * phi[0][sbr->f_indexsine[ch]];
                 y[0][m + sbr->k[3]][i + ENVELOPE_ADJUSTMENT_OFFSET][1] =
                     w_temp[i][m][1] + sbr->s_m_boost[l][m] * phi[1][sbr->f_indexsine[ch]] * (1 - 2*((m + sbr->k[3]) & 1));
             }
+            sbr->f_indexsine[ch] = (sbr->f_indexsine[ch] + 1) & 3;
         }
     }
 
