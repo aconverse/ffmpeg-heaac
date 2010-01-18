@@ -1230,15 +1230,15 @@ static void sbr_chirp(SpectralBandReplication *sbr, SBRData *ch_data)
             break;
         }
 
-        if (new_bw < sbr->bw_array[1][i]) {
-            temp_bw = 0.75f    * new_bw + 0.25f    * sbr->bw_array[1][i];
+        if (new_bw < ch_data->bw_array[1][i]) {
+            temp_bw = 0.75f    * new_bw + 0.25f    * ch_data->bw_array[1][i];
         } else
-            temp_bw = 0.90625f * new_bw + 0.09375f * sbr->bw_array[1][i];
-        sbr->bw_array[0][i] = temp_bw < 0.015625f ? 0.0f : temp_bw;
+            temp_bw = 0.90625f * new_bw + 0.09375f * ch_data->bw_array[1][i];
+        ch_data->bw_array[0][i] = temp_bw < 0.015625f ? 0.0f : temp_bw;
     }
 
     // update previous bw_array values
-    memcpy(sbr->bw_array[1], sbr->bw_array[0], 5 * sizeof(float));
+    memcpy(ch_data->bw_array[1], ch_data->bw_array[0], 5 * sizeof(float));
 }
 
 static inline int find_freq_subband(uint16_t *table, int nel, int needle)
@@ -1688,7 +1688,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* i
         sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->X_low, sbr->k[0]);
         sbr_chirp(sbr, &sbr->data[ch]);
         sbr_hf_gen(ac, sbr, sbr->X_high, sbr->X_low, sbr->alpha0, sbr->alpha1,
-                   sbr->bw_array, sbr->t_env[ch], sbr->data[ch].bs_num_env[1]);
+                   sbr->data[ch].bw_array, sbr->t_env[ch], sbr->data[ch].bs_num_env[1]);
 
     // hf_adj
         sbr_mapping(ac, sbr, &sbr->data[ch], ch, l_a);
