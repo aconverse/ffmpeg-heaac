@@ -462,9 +462,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
 
     memcpy(sbr->f_tablehigh, &sbr->f_master[sbr->spectrum_params[1].bs_xover_band],
            (sbr->n[1] + 1) * sizeof(sbr->f_master[0]));
-    sbr->mold = sbr->m;
     sbr->m    = sbr->f_tablehigh[sbr->n[1]] - sbr->f_tablehigh[0];
-    sbr->k[4] = sbr->k[3];
     sbr->k[3] = sbr->f_tablehigh[0];
 
     // Requirements (14496-3 sp04 p205)
@@ -891,6 +889,10 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
         skip_bits(gb, 10); // bs_sbr_crc_bits; FIXME - implement CRC check
         num_sbr_bits += 10;
     }
+
+    //Save some state from the previous frame.
+    sbr->k[4] = sbr->k[3];
+    sbr->mold = sbr->m;
 
     num_sbr_bits++;
     if (get_bits1(gb)) // bs_header_flag
