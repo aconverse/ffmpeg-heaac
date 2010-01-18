@@ -1682,8 +1682,8 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* i
     int* l_a = sbr->data[ch].l_a;
 
     /* decode channel */
-    sbr_qmf_analysis(in, sbr->data[ch].analysis_filterbank_samples, sbr->W);
-    sbr_lf_gen(ac, sbr, sbr->X_low, sbr->W);
+    sbr_qmf_analysis(in, sbr->data[ch].analysis_filterbank_samples, sbr->data[ch].W);
+    sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
     if (sbr->start) {
         sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->X_low, sbr->k[0]);
         sbr_chirp(sbr, &sbr->data[ch]);
