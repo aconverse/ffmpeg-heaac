@@ -625,6 +625,18 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
     return 0;
 }
 
+static void sbr_grid_copy(SBRData *dst, const SBRData *src) {
+    memcpy(dst->bs_freq_res,   src->bs_freq_res,   sizeof(dst->bs_freq_res));
+    memcpy(dst->bs_num_env,    src->bs_num_env,    sizeof(dst->bs_num_env));
+    memcpy(dst->bs_var_bord,   src->bs_var_bord,   sizeof(dst->bs_var_bord));
+    memcpy(dst->bs_rel_bord,   src->bs_rel_bord,   sizeof(dst->bs_rel_bord));
+    memcpy(dst->bs_num_rel,    src->bs_num_rel,    sizeof(dst->bs_rel_bord));
+    memcpy(dst->bs_num_env,    src->bs_num_env,    sizeof(dst->bs_num_env));
+    dst->bs_amp_res   = src->bs_amp_res;
+    dst->bs_num_noise = src->bs_num_noise;
+    dst->bs_pointer   = src->bs_pointer;
+}
+
 static void sbr_dtdf(SpectralBandReplication *sbr, GetBitContext *gb,
                      SBRData *ch_data)
 {
@@ -784,7 +796,7 @@ static void sbr_channel_pair_element(AACContext *ac,
 
     if ((sbr->bs_coupling = get_bits1(gb))) {
         sbr_grid(ac, sbr, gb, &sbr->data[0]);
-        memcpy(&sbr->data[1], &sbr->data[0], sizeof(sbr->data[1]));
+        sbr_grid_copy(&sbr->data[1], &sbr->data[0]);
         sbr_dtdf(sbr, gb, &sbr->data[0]);
         sbr_dtdf(sbr, gb, &sbr->data[1]);
         sbr_invf(sbr, gb, &sbr->data[0]);
