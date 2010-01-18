@@ -1575,7 +1575,7 @@ static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
         {  0,  1,  0, -1}, // imaginary
     };
     float g_filt[42][48], q_filt[42][48], w_temp[42][48][2];
-    float (*g_temp)[48] = sbr->g_temp, (*q_temp)[48] = sbr->q_temp;
+    float (*g_temp)[48] = ch_data->g_temp, (*q_temp)[48] = ch_data->q_temp;
     memcpy(Y[1], Y[0], sizeof(Y[0]));
 
     if (sbr->reset) {

@@ -106,6 +106,8 @@ typedef struct {
     int                l_a[2];
     float              bw_array[2][5];
     float              W[2][32][32][2];
+    float              g_temp[42][48];
+    float              q_temp[42][48];
 } SBRData;
 
 /**
@@ -168,8 +170,6 @@ typedef struct {
     float              q_m_lim[7][48];
     float              q_m_limboost[7][48];
     float              s_m_boost[7][48];
-    float              g_temp[42][48];
-    float              q_temp[42][48];
     uint16_t           f_indexnoise[2];
     uint8_t            f_indexsine[2];
 } SpectralBandReplication;
