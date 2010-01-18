@@ -510,7 +510,6 @@ static av_cold int aac_decode_init(AVCodecContext *avccontext)
     avccontext->sample_fmt = SAMPLE_FMT_S16;
     avccontext->frame_size = 1024;
 
-    // main AAC VLC table initialization
     AAC_INIT_VLC_STATIC( 0, 144);
     AAC_INIT_VLC_STATIC( 1, 114);
     AAC_INIT_VLC_STATIC( 2, 188);
