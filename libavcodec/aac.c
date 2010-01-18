@@ -62,7 +62,7 @@
  * N                    MIDI
  * N                    Harmonic and Individual Lines plus Noise
  * N                    Text-To-Speech Interface
- * N (in progress)      Spectral Band Replication
+ * N (code in SoC repo) Spectral Band Replication
  * Y (not in this code) Layer-1
  * Y (not in this code) Layer-2
  * Y (not in this code) Layer-3
@@ -85,6 +85,9 @@
 #include "aac.h"
 #include "aactab.h"
 #include "aacdectab.h"
+#include "aacsbr.h"
+#include "aacsbr_internal.h"
+#include "aacsbrdata.h"
 #include "mpeg4audio.h"
 #include "aac_parser.h"
 
@@ -507,6 +510,7 @@ static av_cold int aac_decode_init(AVCodecContext *avccontext)
     avccontext->sample_fmt = SAMPLE_FMT_S16;
     avccontext->frame_size = 1024;
 
+    // main AAC VLC table initialization
     AAC_INIT_VLC_STATIC( 0, 144);
     AAC_INIT_VLC_STATIC( 1, 114);
     AAC_INIT_VLC_STATIC( 2, 188);
@@ -518,6 +522,8 @@ static av_cold int aac_decode_init(AVCodecContext *avccontext)
     AAC_INIT_VLC_STATIC( 8, 262);
     AAC_INIT_VLC_STATIC( 9, 248);
     AAC_INIT_VLC_STATIC(10, 384);
+
+    ff_aac_sbr_init();
 
     dsputil_init(&ac->dsp, avccontext);
 
@@ -1314,23 +1320,6 @@ static int decode_cce(AACContext *ac, GetBitContext *gb, ChannelElement *che)
 }
 
 /**
- * Decode Spectral Band Replication extension data; reference: table 4.55.
- *
- * @param   crc flag indicating the presence of CRC checksum
- * @param   cnt length of TYPE_FIL syntactic element in bytes
- *
- * @return  Returns number of bytes consumed from the TYPE_FIL element.
- */
-static int decode_sbr_extension(AACContext *ac, GetBitContext *gb,
-                                int crc, int cnt)
-{
-    // TODO : sbr_extension implementation
-    av_log_missing_feature(ac->avccontext, "SBR", 0);
-    skip_bits_long(gb, 8 * cnt - 4); // -4 due to reading extension type
-    return cnt;
-}
-
-/**
  * Parse whether channels are to be excluded from Dynamic Range Compression; reference: table 4.53.
  *
  * @return  Returns number of bytes consumed.
@@ -1410,7 +1399,8 @@ static int decode_dynamic_range(DynamicRangeControl *che_drc,
  *
  * @return Returns number of bytes consumed
  */
-static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt)
+static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
+                                    int id, int tag)
 {
     int crc_flag = 0;
     int res = cnt;
@@ -1418,7 +1408,7 @@ static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt)
     case EXT_SBR_DATA_CRC:
         crc_flag++;
     case EXT_SBR_DATA:
-        res = decode_sbr_extension(ac, gb, crc_flag, cnt);
+        res = ff_decode_sbr_extension(ac, &ac->che[id][tag]->sbr, gb, crc_flag, cnt, id);
         break;
     case EXT_DYNAMIC_RANGE:
         res = decode_dynamic_range(&ac->che_drc, gb, cnt);
@@ -1711,8 +1701,8 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
     AACContext *ac = avccontext->priv_data;
     ChannelElement *che = NULL;
     GetBitContext gb;
-    enum RawDataBlockType elem_type;
-    int err, elem_id, data_size_tmp;
+    enum RawDataBlockType elem_type, elem_type_prev = 0;
+    int err, elem_id, elem_id_prev = 0, data_size_tmp;
 
     init_get_bits(&gb, buf, buf_size * 8);
 
@@ -1776,7 +1766,7 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
             if (elem_id == 15)
                 elem_id += get_bits(&gb, 8) - 1;
             while (elem_id > 0)
-                elem_id -= decode_extension_payload(ac, &gb, elem_id);
+                elem_id -= decode_extension_payload(ac, &gb, elem_id, elem_type_prev, elem_id_prev);
             err = 0; /* FIXME */
             break;
 
@@ -1784,6 +1774,9 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
             err = -1; /* should not happen, but keeps compiler happy */
             break;
         }
+
+        elem_type_prev = elem_type;
+        elem_id_prev   = elem_id;
 
         if (err)
             return err;

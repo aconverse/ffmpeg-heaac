@@ -33,6 +33,7 @@
 #include "avcodec.h"
 #include "dsputil.h"
 #include "mpeg4audio.h"
+#include "aacsbr.h"
 
 #include <stdint.h>
 
@@ -232,6 +233,7 @@ typedef struct {
     SingleChannelElement ch[2];
     // CCE specific
     ChannelCoupling coup;
+    SpectralBandReplication sbr;
 } ChannelElement;
 
 /**
