@@ -1085,28 +1085,28 @@ static void sbr_qmf_synthesis(float *out, float X[64][40][2],
     int k, l, n;
     float w[640];
     for (l = 0; l < 32; l++) {
-        memmove(&v[128 / div], v, (1280 - 128) / div * sizeof(float));
-        for (n = 0; n < 128 / div; n++) {
-            v[n] = X[0][l][0] * synthesis_cos[n*div][0] -
-                   X[0][l][1] * synthesis_sin[n*div][0];
-            for (k = 1; k < 64 / div; k++) {
-                v[n] += X[k][l][0] * synthesis_cos[n*div][k] -
-                        X[k][l][1] * synthesis_sin[n*div][k];
+        memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
+        for (n = 0; n < 128 >> div; n++) {
+            v[n] = X[0][l][0] * synthesis_cos[n<<div][0] -
+                   X[0][l][1] * synthesis_sin[n<<div][0];
+            for (k = 1; k < 64 >> div; k++) {
+                v[n] += X[k][l][0] * synthesis_cos[n<<div][k] -
+                        X[k][l][1] * synthesis_sin[n<<div][k];
             }
-            v[n] /= 64.0f / div;
+            v[n] /= 64 >> div;
         }
         for (n = 0; n <= 4; n++) {
-            int temp1 = 128 / div * n, temp2 = temp1 << 1;
-            for (k = 0; k < 64 / div; k++) {
+            int temp1 = (128 >> div) * n, temp2 = temp1 << 1;
+            for (k = 0; k < 64 >> div; k++) {
                 w[temp1 + k]            = v[temp2 + k]             * sbr_qmf_window[temp1 + k];
-                w[temp1 + k + 64 / div] = v[temp2 + k + 192 / div] * sbr_qmf_window[temp1 + k + 64 / div];
+                w[temp1 + k + (64 >> div)] = v[temp2 + k + (192 >> div)] * sbr_qmf_window[temp1 + k + (64 >> div)];
             }
         }
-        for (k = 0; k < 64 / div; k++) {
-            out[k] = w[k]             + w[64  / div + k] + w[128 / div + k] + w[192 / div + k] + w[256 / div + k]
-                   + w[320 / div + k] + w[384 / div + k] + w[448 / div + k] + w[512 / div + k] + w[576 / div + k];
+        for (k = 0; k < 64 >> div; k++) {
+            out[k] = w[k]                + w[(64  >> div) + k] + w[(128 >> div) + k] + w[(192 >> div) + k] + w[(256 >> div) + k]
+                   + w[(320 >> div) + k] + w[(384 >> div) + k] + w[(448 >> div) + k] + w[(512 >> div) + k] + w[(576 >> div) + k];
         }
-        out += 64 / div;
+        out += 64 >> div;
     }
 }
 
@@ -1680,5 +1680,5 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int id_aac, int 
 
     /* synthesis */
     sbr_x_gen(sbr, sbr->X, sbr->x_low, sbr->y, ch);
-    sbr_qmf_synthesis(out, sbr->X, sbr->data[ch].synthesis_filterbank_samples, 1);
+    sbr_qmf_synthesis(out, sbr->X, sbr->data[ch].synthesis_filterbank_samples, 0);
 }
