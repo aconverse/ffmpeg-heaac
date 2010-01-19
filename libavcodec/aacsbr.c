@@ -35,9 +35,14 @@
 static VLC vlc_sbr[10];
 static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
+static float analysis_cos[32][64];
+static float analysis_sin[32][64];
+static float synthesis_cos[128][64];
+static float synthesis_sin[128][64];
 
 av_cold void ff_aac_sbr_init(void)
 {
+    int n, k;
     static const struct {
         const void *sbr_codes, *sbr_bits;
         const unsigned int table_size, elem_size;
@@ -75,6 +80,28 @@ av_cold void ff_aac_sbr_init(void)
     SBR_INIT_VLC_STATIC(7, 544);
     SBR_INIT_VLC_STATIC(8, 592);
     SBR_INIT_VLC_STATIC(9, 512);
+
+
+    for (k = 0; k < 32; k++) {
+        float ana = -(k + 0.5f) * M_PI / 128.0f;
+        analysis_cos[k][0] = cosf(ana);
+        analysis_sin[k][0] = sinf(ana);
+        for (n = 1; n < 64; n++) {
+            ana = (n - 0.25f) * (k + 0.5f) * M_PI / 32.0f;
+            analysis_cos[k][n] = cosf(ana);
+            analysis_sin[k][n] = sinf(ana);
+        }
+    }
+    for (n = 0; n < 128; n++) {
+        float syn = (2.0f * n - 255.0f) * M_PI / 256.0f;
+        synthesis_cos[n][0] = cosf(syn);
+        synthesis_sin[n][0] = sinf(syn);
+        for (k = 1; k < 64; k++) {
+            syn = (k + 0.5f) * (2.0f * n - 255.0f) * M_PI / 128.0f;
+            synthesis_cos[n][k] = cosf(syn);
+            synthesis_sin[n][k] = sinf(syn);
+        }
+    }
 }
 
 av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
@@ -1038,14 +1065,12 @@ static void sbr_qmf_analysis(const float *in, float *x, float W[2][32][32][2])
             u[i] = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
         for (k = 0; k < 32; k++) {
             float temp1 = u[0] * 2.0f;
-            float temp2 = -(k + 0.5f) * M_PI / 128.0f;
-            W[0][k][l][0] = temp1 * cosf(temp2);
-            W[0][k][l][1] = temp1 * sinf(temp2);
+            W[0][k][l][0] = temp1 * analysis_cos[k][0];
+            W[0][k][l][1] = temp1 * analysis_sin[k][0];
             for (n = 1; n < 64; n++) {
                 temp1 = u[n] * 2.0f;
-                temp2 = (n - 0.25f) * (k + 0.5f) * M_PI / 32.0f;
-                W[0][k][l][0] += temp1 * cosf(temp2);
-                W[0][k][l][1] += temp1 * sinf(temp2);
+                W[0][k][l][0] += temp1 * analysis_cos[k][n];
+                W[0][k][l][1] += temp1 * analysis_sin[k][n];
             }
         }
         x += 32;
@@ -1062,11 +1087,11 @@ static void sbr_qmf_synthesis(float *out, float X[64][40][2],
     for (l = 0; l < 32; l++) {
         memmove(&v[128 / div], v, (1280 - 128) / div * sizeof(float));
         for (n = 0; n < 128 / div; n++) {
-            v[n] = X[0][l][0] * cosf((2.0f * n - 255.0f / div) * M_PI / (256.0f / div)) -
-                   X[0][l][1] * sinf((2.0f * n - 255.0f / div) * M_PI / (256.0f / div));
+            v[n] = X[0][l][0] * synthesis_cos[n*div][0] -
+                   X[0][l][1] * synthesis_sin[n*div][0];
             for (k = 1; k < 64 / div; k++) {
-                v[n] += X[k][l][0] * cosf((k + 0.5f) * (2.0f * n - 255.0f / div) * M_PI / (128.0f / div)) -
-                        X[k][l][1] * sinf((k + 0.5f) * (2.0f * n - 255.0f / div) * M_PI / (128.0f / div));
+                v[n] += X[k][l][0] * synthesis_cos[n*div][k] -
+                        X[k][l][1] * synthesis_sin[n*div][k];
             }
             v[n] /= 64.0f / div;
         }
