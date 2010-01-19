@@ -1087,7 +1087,6 @@ static void sbr_qmf_synthesis(float *out, float X[32][64][2],
                               float *v, const unsigned int div)
 {
     int k, l, n;
-    float w[640];
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
         for (n = 0; n < 128 >> div; n++) {
@@ -1099,16 +1098,17 @@ static void sbr_qmf_synthesis(float *out, float X[32][64][2],
             }
             v[n] /= 64 >> div;
         }
-        for (n = 0; n <= 4; n++) {
-            int temp1 = (128 >> div) * n, temp2 = temp1 << 1;
-            for (k = 0; k < 64 >> div; k++) {
-                w[temp1 + k]            = v[temp2 + k]             * sbr_qmf_window[temp1 + k];
-                w[temp1 + k + (64 >> div)] = v[temp2 + k + (192 >> div)] * sbr_qmf_window[temp1 + k + (64 >> div)];
-            }
-        }
         for (k = 0; k < 64 >> div; k++) {
-            out[k] = w[k]                + w[(64  >> div) + k] + w[(128 >> div) + k] + w[(192 >> div) + k] + w[(256 >> div) + k]
-                   + w[(320 >> div) + k] + w[(384 >> div) + k] + w[(448 >> div) + k] + w[(512 >> div) + k] + w[(576 >> div) + k];
+            out[k]  = v[k]                 * sbr_qmf_window[k];
+            out[k] += v[k + ( 192 >> div)] * sbr_qmf_window[k + ( 64 >> div)];
+            out[k] += v[k + ( 256 >> div)] * sbr_qmf_window[k + (128 >> div)];
+            out[k] += v[k + ( 448 >> div)] * sbr_qmf_window[k + (192 >> div)];
+            out[k] += v[k + ( 512 >> div)] * sbr_qmf_window[k + (256 >> div)];
+            out[k] += v[k + ( 704 >> div)] * sbr_qmf_window[k + (320 >> div)];
+            out[k] += v[k + ( 768 >> div)] * sbr_qmf_window[k + (384 >> div)];
+            out[k] += v[k + ( 960 >> div)] * sbr_qmf_window[k + (448 >> div)];
+            out[k] += v[k + (1024 >> div)] * sbr_qmf_window[k + (512 >> div)];
+            out[k] += v[k + (1216 >> div)] * sbr_qmf_window[k + (576 >> div)];
         }
         out += 64 >> div;
     }
