@@ -168,11 +168,6 @@ static int array_min_int16(int16_t *array, int nel)
     return min;
 }
 
-static int qsort_comparison_function_int(const void *a, const void *b)
-{
-    return *(const int *)a - *(const int *)b;
-}
-
 static int qsort_comparison_function_int16(const void *a, const void *b)
 {
     return *(const int16_t *)a - *(const int16_t *)b;
@@ -186,7 +181,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     unsigned int start_min, stop_min;
     int k;
     const uint8_t *sbr_offset_ptr;
-    int stop_dk[13];
+    int16_t stop_dk[13];
 
     if (sbr->sample_rate < 32000) {
         temp = 3000;
@@ -224,7 +219,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
             stop_dk[k] = lroundf(stop_min * powf(64.0f / (float)stop_min, (k + 1) / 13.0f))  -
                          lroundf(stop_min * powf(64.0f / (float)stop_min,  k      / 13.0f));
         }
-        qsort(stop_dk, 13, sizeof(stop_dk[0]), qsort_comparison_function_int);
+        qsort(stop_dk, 13, sizeof(stop_dk[0]), qsort_comparison_function_int16);
         for (k = 0; k < spectrum->bs_stop_freq; k++)
             sbr->k[2] += stop_dk[k];
     } else if (spectrum->bs_stop_freq == 14) {
