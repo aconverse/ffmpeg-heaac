@@ -173,6 +173,16 @@ static int qsort_comparison_function_int16(const void *a, const void *b)
     return *(const int16_t *)a - *(const int16_t *)b;
 }
 
+static void make_bands(int16_t* bands, float start, float stop, int num_bands)
+{
+    int k;
+
+    for (k = 0; k < num_bands; k++) {
+        bands[k] = lroundf(start * powf(stop / start, (k + 1) / (float)num_bands)) -
+                   lroundf(start * powf(stop / start,  k      / (float)num_bands));
+    }
+}
+
 // Master Frequency Band Table (14496-3 sp04 p194)
 static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
                              SpectrumParameters *spectrum)
@@ -215,10 +225,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
     if (spectrum->bs_stop_freq < 14) {
         sbr->k[2] = stop_min;
-        for (k = 0; k < 13; k++) {
-            stop_dk[k] = lroundf(stop_min * powf(64.0f / (float)stop_min, (k + 1) / 13.0f))  -
-                         lroundf(stop_min * powf(64.0f / (float)stop_min,  k      / 13.0f));
-        }
+        make_bands(stop_dk, stop_min, 64, 13);
         qsort(stop_dk, 13, sizeof(stop_dk[0]), qsort_comparison_function_int16);
         for (k = 0; k < spectrum->bs_stop_freq; k++)
             sbr->k[2] += stop_dk[k];
@@ -298,10 +305,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         vk0[0] = 0;
 
-        for (k = 0; k < num_bands_0; k++) {
-            vk0[k + 1] = lroundf(sbr->k[0] * powf(sbr->k[1] / (float)sbr->k[0], (k + 1) / (float)num_bands_0)) -
-                         lroundf(sbr->k[0] * powf(sbr->k[1] / (float)sbr->k[0],  k      / (float)num_bands_0));
-        }
+        make_bands(vk0+1, sbr->k[0], sbr->k[1], num_bands_0);
 
         qsort(vk0 + 1, num_bands_0, sizeof(vk0[1]), qsort_comparison_function_int16);
         vdk0_max = vk0[num_bands_0];
@@ -320,10 +324,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
             unsigned int num_bands_1 = lroundf(bands * logf(sbr->k[2] / (float)sbr->k[1]) /
                                               (2.0f * logf(2.0f) * warp)) << 1;
 
-            for (k = 0; k < num_bands_1; k++) {
-                vk1[k + 1] = lroundf(sbr->k[1] * powf(sbr->k[2] / (float)sbr->k[1], (k + 1) / (float)num_bands_1)) -
-                             lroundf(sbr->k[1] * powf(sbr->k[2] / (float)sbr->k[1],  k      / (float)num_bands_1));
-            }
+            make_bands(vk1+1, sbr->k[1], sbr->k[2], num_bands_1);
 
             vdk1_min = array_min_int16(vk1 + 1, num_bands_1);
 
