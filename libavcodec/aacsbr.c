@@ -173,14 +173,22 @@ static int qsort_comparison_function_int16(const void *a, const void *b)
     return *(const int16_t *)a - *(const int16_t *)b;
 }
 
-static void make_bands(int16_t* bands, float start, float stop, int num_bands)
+static void make_bands(int16_t* bands, int start, int stop, int num_bands)
 {
-    int k;
+    int k, previous, present;
+    float base, prod;
 
-    for (k = 0; k < num_bands; k++) {
-        bands[k] = lroundf(start * powf(stop / start, (k + 1) / (float)num_bands)) -
-                   lroundf(start * powf(stop / start,  k      / (float)num_bands));
+    base = powf((float)stop / start, 1.0f / num_bands);
+    prod = 1.0f;
+    previous = start;
+
+    for (k = 0; k < num_bands-1; k++) {
+        prod *= base;
+        present  = lroundf(start * prod);
+        bands[k] = present - previous;
+        previous = present;
     }
+    bands[num_bands-1] = stop - previous;
 }
 
 // Master Frequency Band Table (14496-3 sp04 p194)
