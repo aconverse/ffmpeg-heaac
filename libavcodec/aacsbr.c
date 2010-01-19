@@ -1020,27 +1020,27 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac, int ch)
         float pan_offset = sbr->data[ch].bs_amp_res ? 12.0f : 24.0f;
         for (l = 1; l <= sbr->data[ch].bs_num_env[1]; l++) {
             for (k = 0; k < sbr->n[sbr->data[ch].bs_freq_res[l]]; k++) {
-                float temp1 = powf(2.0f, sbr->env_facs[0][l][k] * alpha + 7.0f);
+                float temp1 = exp2f(sbr->env_facs[0][l][k] * alpha + 7.0f);
                 float temp2 = (pan_offset - sbr->env_facs[1][l][k]) * alpha;
-                sbr->env_facs[0][l][k] = temp1 / (1.0f + powf(2.0f,  temp2));
-                sbr->env_facs[1][l][k] = temp1 / (1.0f + powf(2.0f, -temp2));
+                sbr->env_facs[0][l][k] = temp1 / (1.0f + exp2f( temp2));
+                sbr->env_facs[1][l][k] = temp1 / (1.0f + exp2f(-temp2));
             }
         }
         for (l = 1; l <= sbr->data[ch].bs_num_noise; l++) {
             for (k = 0; k < sbr->n_q; k++) {
-                float temp1 = powf(2.0f, NOISE_FLOOR_OFFSET - sbr->noise_facs[0][l][k] + 1);
+                float temp1 = exp2f(NOISE_FLOOR_OFFSET - sbr->noise_facs[0][l][k] + 1);
                 float temp2 = 12 - sbr->noise_facs[1][l][k];
-                sbr->noise_facs[0][l][k] = temp1 / (1.0f + powf(2.0f,  temp2));
-                sbr->noise_facs[1][l][k] = temp1 / (1.0f + powf(2.0f, -temp2));
+                sbr->noise_facs[0][l][k] = temp1 / (1.0f + exp2f( temp2));
+                sbr->noise_facs[1][l][k] = temp1 / (1.0f + exp2f(-temp2));
             }
         }
     } else { // SCE or one non-coupled CPE
         for (l = 1; l <= sbr->data[ch].bs_num_env[1]; l++)
             for (k = 0; k < sbr->n[sbr->data[ch].bs_freq_res[l]]; k++)
-                sbr->env_facs[ch][l][k] = powf(2.0f, alpha * sbr->env_facs[ch][l][k] + 6.0f);
+                sbr->env_facs[ch][l][k] = exp2f(alpha * sbr->env_facs[ch][l][k] + 6.0f);
         for (l = 1; l <= sbr->data[ch].bs_num_noise; l++)
             for (k = 0; k < sbr->n_q; k++)
-                sbr->noise_facs[ch][l][k] = powf(2.0f, NOISE_FLOOR_OFFSET - sbr->noise_facs[ch][l][k]);
+                sbr->noise_facs[ch][l][k] = exp2f(NOISE_FLOOR_OFFSET - sbr->noise_facs[ch][l][k]);
     }
 }
 
