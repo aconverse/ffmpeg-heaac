@@ -101,8 +101,8 @@ typedef struct {
     int32_t            bs_data_noise[2][5];
     uint8_t            bs_add_harmonic[32];
     uint8_t            bs_amp_res;
-    float              synthesis_filterbank_samples[1280];
-    float              analysis_filterbank_samples [1312];
+    DECLARE_ALIGNED(16, float, synthesis_filterbank_samples[1280]);
+    DECLARE_ALIGNED(16, float, analysis_filterbank_samples [1312]);
     int                l_a[2];
 } SBRData;
 
@@ -149,7 +149,7 @@ typedef struct {
     float              X_low[32][40][2];
     float              X_high[64][40][2];
     float              Y[2][64][40][2];
-    float              X[32][64][2];
+    DECLARE_ALIGNED(16, float, X[32][64][2]);
     float              alpha0[64][2];
     float              alpha1[64][2];
     float              bw_array[2][5];

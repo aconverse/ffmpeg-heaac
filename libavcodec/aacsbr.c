@@ -35,9 +35,9 @@
 static VLC vlc_sbr[10];
 static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
-static float analysis_cos[32][64];
-static float analysis_sin[32][64];
-static float synthesis_cossin[128][64][2];
+static DECLARE_ALIGNED_16(float, analysis_cos[32][64]);
+static DECLARE_ALIGNED_16(float, analysis_sin[32][64]);
+static DECLARE_ALIGNED_16(float, synthesis_cossin[128][64][2]);
 
 av_cold void ff_aac_sbr_init(void)
 {
