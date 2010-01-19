@@ -38,6 +38,7 @@ static const int8_t vlc_sbr_lav[10] =
 static DECLARE_ALIGNED_16(float, analysis_cos[32][64]);
 static DECLARE_ALIGNED_16(float, analysis_sin[32][64]);
 static DECLARE_ALIGNED_16(float, synthesis_cossin[128][64][2]);
+static DECLARE_ALIGNED_16(float, zero64[64]);
 
 av_cold void ff_aac_sbr_init(void)
 {
@@ -101,6 +102,7 @@ av_cold void ff_aac_sbr_init(void)
             synthesis_cossin[n][k][1] = -sinf(syn);
         }
     }
+    memset(zero64, 0, sizeof(zero64));
 }
 
 av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
@@ -1082,33 +1084,26 @@ static void sbr_qmf_analysis(const float *in, float *x, float W[2][32][32][2])
 
 // Synthesis QMF Bank (14496-3 sp04 p206)
 // Downsampled Synthesis QMF Bank (14496-3 sp04 p206)
-static void sbr_qmf_synthesis(float *out, float X[32][64][2],
+static void sbr_qmf_synthesis(DSPContext * dsp, float *out, float X[32][64][2],
                               float *v, const unsigned int div)
 {
-    int k, l, n;
+    int l, n;
+    float vgain = 1.0f / (64 >> div);
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
         for (n = 0; n < 128 >> div; n++) {
-            v[n] = X[l][0][0] * synthesis_cossin[n<<div][0][0] +
-                   X[l][0][1] * synthesis_cossin[n<<div][0][1];
-            for (k = 1; k < 64 >> div; k++) {
-                v[n] += X[l][k][0] * synthesis_cossin[n<<div][k][0] +
-                        X[l][k][1] * synthesis_cossin[n<<div][k][1];
-            }
-            v[n] /= 64 >> div;
+            v[n] = vgain * dsp->scalarproduct_float(X[l][0], synthesis_cossin[n<<div][0], 128 >> div);
         }
-        for (k = 0; k < 64 >> div; k++) {
-            out[k]  = v[k]                 * sbr_qmf_window[k];
-            out[k] += v[k + ( 192 >> div)] * sbr_qmf_window[k + ( 64 >> div)];
-            out[k] += v[k + ( 256 >> div)] * sbr_qmf_window[k + (128 >> div)];
-            out[k] += v[k + ( 448 >> div)] * sbr_qmf_window[k + (192 >> div)];
-            out[k] += v[k + ( 512 >> div)] * sbr_qmf_window[k + (256 >> div)];
-            out[k] += v[k + ( 704 >> div)] * sbr_qmf_window[k + (320 >> div)];
-            out[k] += v[k + ( 768 >> div)] * sbr_qmf_window[k + (384 >> div)];
-            out[k] += v[k + ( 960 >> div)] * sbr_qmf_window[k + (448 >> div)];
-            out[k] += v[k + (1024 >> div)] * sbr_qmf_window[k + (512 >> div)];
-            out[k] += v[k + (1216 >> div)] * sbr_qmf_window[k + (576 >> div)];
-        }
+        dsp->vector_fmul_add(out, v                , sbr_qmf_window               , zero64, 64 >> div);
+        dsp->vector_fmul_add(out, v + ( 192 >> div), sbr_qmf_window + ( 64 >> div), out   , 64 >> div);
+        dsp->vector_fmul_add(out, v + ( 256 >> div), sbr_qmf_window + (128 >> div), out   , 64 >> div);
+        dsp->vector_fmul_add(out, v + ( 448 >> div), sbr_qmf_window + (192 >> div), out   , 64 >> div);
+        dsp->vector_fmul_add(out, v + ( 512 >> div), sbr_qmf_window + (256 >> div), out   , 64 >> div);
+        dsp->vector_fmul_add(out, v + ( 704 >> div), sbr_qmf_window + (320 >> div), out   , 64 >> div);
+        dsp->vector_fmul_add(out, v + ( 768 >> div), sbr_qmf_window + (384 >> div), out   , 64 >> div);
+        dsp->vector_fmul_add(out, v + ( 960 >> div), sbr_qmf_window + (448 >> div), out   , 64 >> div);
+        dsp->vector_fmul_add(out, v + (1024 >> div), sbr_qmf_window + (512 >> div), out   , 64 >> div);
+        dsp->vector_fmul_add(out, v + (1216 >> div), sbr_qmf_window + (576 >> div), out   , 64 >> div);
         out += 64 >> div;
     }
 }
@@ -1683,5 +1678,5 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int id_aac, int 
 
     /* synthesis */
     sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->Y, ch);
-    sbr_qmf_synthesis(out, sbr->X, sbr->data[ch].synthesis_filterbank_samples, 0);
+    sbr_qmf_synthesis(&ac->dsp, out, sbr->X, sbr->data[ch].synthesis_filterbank_samples, 0);
 }
