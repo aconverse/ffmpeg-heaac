@@ -37,8 +37,7 @@ static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
 static float analysis_cos[32][64];
 static float analysis_sin[32][64];
-static float synthesis_cos[128][64];
-static float synthesis_sin[128][64];
+static float synthesis_cossin[128][64][2];
 
 av_cold void ff_aac_sbr_init(void)
 {
@@ -94,12 +93,12 @@ av_cold void ff_aac_sbr_init(void)
     }
     for (n = 0; n < 128; n++) {
         float syn = (2.0f * n - 255.0f) * M_PI / 256.0f;
-        synthesis_cos[n][0] = cosf(syn);
-        synthesis_sin[n][0] = sinf(syn);
+        synthesis_cossin[n][0][0] =  cosf(syn);
+        synthesis_cossin[n][0][1] = -sinf(syn);
         for (k = 1; k < 64; k++) {
             syn = (k + 0.5f) * (2.0f * n - 255.0f) * M_PI / 128.0f;
-            synthesis_cos[n][k] = cosf(syn);
-            synthesis_sin[n][k] = sinf(syn);
+            synthesis_cossin[n][k][0] =  cosf(syn);
+            synthesis_cossin[n][k][1] = -sinf(syn);
         }
     }
 }
@@ -1090,11 +1089,11 @@ static void sbr_qmf_synthesis(float *out, float X[32][64][2],
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
         for (n = 0; n < 128 >> div; n++) {
-            v[n] = X[l][0][0] * synthesis_cos[n<<div][0] -
-                   X[l][0][1] * synthesis_sin[n<<div][0];
+            v[n] = X[l][0][0] * synthesis_cossin[n<<div][0][0] +
+                   X[l][0][1] * synthesis_cossin[n<<div][0][1];
             for (k = 1; k < 64 >> div; k++) {
-                v[n] += X[l][k][0] * synthesis_cos[n<<div][k] -
-                        X[l][k][1] * synthesis_sin[n<<div][k];
+                v[n] += X[l][k][0] * synthesis_cossin[n<<div][k][0] +
+                        X[l][k][1] * synthesis_cossin[n<<div][k][1];
             }
             v[n] /= 64 >> div;
         }
