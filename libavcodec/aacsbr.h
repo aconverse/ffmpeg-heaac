@@ -149,7 +149,7 @@ typedef struct {
     float              X_low[32][40][2];
     float              X_high[64][40][2];
     float              Y[2][64][40][2];
-    float              X[64][32][2];
+    float              X[32][64][2];
     float              alpha0[64][2];
     float              alpha1[64][2];
     float              bw_array[2][5];

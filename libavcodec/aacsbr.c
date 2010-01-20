@@ -1079,7 +1079,7 @@ static void sbr_qmf_analysis(const float *in, float *x, float W[2][32][32][2])
 
 // Synthesis QMF Bank (14496-3 sp04 p206)
 // Downsampled Synthesis QMF Bank (14496-3 sp04 p206)
-static void sbr_qmf_synthesis(float *out, float X[64][32][2],
+static void sbr_qmf_synthesis(float *out, float X[32][64][2],
                               float *v, const unsigned int div)
 {
     int k, l, n;
@@ -1087,11 +1087,11 @@ static void sbr_qmf_synthesis(float *out, float X[64][32][2],
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
         for (n = 0; n < 128 >> div; n++) {
-            v[n] = X[0][l][0] * synthesis_cos[n<<div][0] -
-                   X[0][l][1] * synthesis_sin[n<<div][0];
+            v[n] = X[l][0][0] * synthesis_cos[n<<div][0] -
+                   X[l][0][1] * synthesis_sin[n<<div][0];
             for (k = 1; k < 64 >> div; k++) {
-                v[n] += X[k][l][0] * synthesis_cos[n<<div][k] -
-                        X[k][l][1] * synthesis_sin[n<<div][k];
+                v[n] += X[l][k][0] * synthesis_cos[n<<div][k] -
+                        X[l][k][1] * synthesis_sin[n<<div][k];
             }
             v[n] /= 64 >> div;
         }
@@ -1303,35 +1303,35 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
 // Generate the subband filtered lowband
 static int sbr_x_gen(SpectralBandReplication *sbr,
-                      float X[64][32][2], float X_low[32][40][2], float Y[2][64][40][2], int ch) {
+                      float X[32][64][2], float X_low[32][40][2], float Y[2][64][40][2], int ch) {
     int k, l;
     const int t_HFAdj = ENVELOPE_ADJUSTMENT_OFFSET;
     const int l_f = 32;
     const int l_Temp = FFMAX(2*sbr->t_env_num_env_old[ch] - l_f, 0); //FIXME hack to make l_Temp initialize to zero
-    memset(X, 0, 64*sizeof(*X));
+    memset(X, 0, 32*sizeof(*X));
     for (k = 0; k < sbr->k[4]; k++) {
         for (l = 0; l < l_Temp; l++) {
-            X[k][l][0] = X_low[k][l + t_HFAdj][0];
-            X[k][l][1] = X_low[k][l + t_HFAdj][1];
+            X[l][k][0] = X_low[k][l + t_HFAdj][0];
+            X[l][k][1] = X_low[k][l + t_HFAdj][1];
         }
     }
     for (; k < sbr->k[4] + sbr->mold; k++) {
         for (l = 0; l < l_Temp; l++) {
-            X[k][l][0] = Y[1][k][l + t_HFAdj + l_f][0];
-            X[k][l][1] = Y[1][k][l + t_HFAdj + l_f][1];
+            X[l][k][0] = Y[1][k][l + t_HFAdj + l_f][0];
+            X[l][k][1] = Y[1][k][l + t_HFAdj + l_f][1];
         }
     }
 
     for (k = 0; k < sbr->k[3]; k++) {
         for (l = l_Temp; l < l_f; l++) {
-            X[k][l][0] = X_low[k][l + t_HFAdj][0];
-            X[k][l][1] = X_low[k][l + t_HFAdj][1];
+            X[l][k][0] = X_low[k][l + t_HFAdj][0];
+            X[l][k][1] = X_low[k][l + t_HFAdj][1];
         }
     }
     for (; k < sbr->k[3] + sbr->m; k++) {
         for (l = l_Temp; l < l_f; l++) {
-            X[k][l][0] = Y[0][k][l + t_HFAdj][0];
-            X[k][l][1] = Y[0][k][l + t_HFAdj][1];
+            X[l][k][0] = Y[0][k][l + t_HFAdj][0];
+            X[l][k][1] = Y[0][k][l + t_HFAdj][1];
         }
     }
     return 0;
