@@ -1114,7 +1114,7 @@ static void sbr_qmf_synthesis(float *out, float X[64][32][2],
 
 // Inverse Filtering (14496-3 sp04 p214)
 static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],
-                                  float x_low[32][40][2], int k0)
+                                  float X_low[32][40][2], int k0)
 {
     int i, j, k, n;
     for (k = 0; k < k0; k++) {
@@ -1132,11 +1132,11 @@ static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],
                 for (n = 0; n < 16 * 2 + 6; n++) {
                     unsigned int idx1 = n + idxtmp1;
                     unsigned int idx2 = n + idxtmp2;
-                    phi[i][j][0] += x_low[k][idx1][0] * x_low[k][idx2][0] +
-                                    x_low[k][idx1][1] * x_low[k][idx2][1];
+                    phi[i][j][0] += X_low[k][idx1][0] * X_low[k][idx2][0] +
+                                    X_low[k][idx1][1] * X_low[k][idx2][1];
                     if (i != j + 1) { // imaginary part
-                        phi[i][j][1] += x_low[k][idx1][1] * x_low[k][idx2][0] -
-                                        x_low[k][idx1][0] * x_low[k][idx2][1];
+                        phi[i][j][1] += X_low[k][idx1][1] * X_low[k][idx2][0] -
+                                        X_low[k][idx1][0] * X_low[k][idx2][1];
                     }
                 }
             }
@@ -1239,21 +1239,21 @@ static inline int find_freq_subband(uint16_t *table, int nel, int needle)
 
 // Generate the subband filtered lowband
 static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
-                      float x_low[32][40][2], float W[2][32][32][2]) {
+                      float X_low[32][40][2], float W[2][32][32][2]) {
     int k, l;
     const int t_HFGen = 8;
     const int l_f = 32;
-    memset(x_low, 0, 32*sizeof(*x_low));
+    memset(X_low, 0, 32*sizeof(*X_low));
     for (k = 0; k < sbr->k[3]; k++) {
         for (l = t_HFGen; l < l_f + t_HFGen; l++) {
-            x_low[k][l][0] = W[0][k][l - t_HFGen][0];
-            x_low[k][l][1] = W[0][k][l - t_HFGen][1];
+            X_low[k][l][0] = W[0][k][l - t_HFGen][0];
+            X_low[k][l][1] = W[0][k][l - t_HFGen][1];
         }
     }
     for (k = 0; k < sbr->k[4]; k++) {
         for (l = 0; l < t_HFGen; l++) {
-            x_low[k][l][0] = W[1][k][l + l_f - t_HFGen][0];
-            x_low[k][l][1] = W[1][k][l + l_f - t_HFGen][1];
+            X_low[k][l][0] = W[1][k][l + l_f - t_HFGen][0];
+            X_low[k][l][1] = W[1][k][l + l_f - t_HFGen][1];
         }
     }
     return 0;
@@ -1261,7 +1261,7 @@ static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
 // High Frequency Generator (14496-3 sp04 p215)
 static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
-                      float x_high[64][40][2], float x_low[32][40][2], float (*alpha0)[2],
+                      float X_high[64][40][2], float X_low[32][40][2], float (*alpha0)[2],
                       float (*alpha1)[2], float bw_array[2][5], uint8_t *t_env,
                       int bs_num_env)
 {
@@ -1282,18 +1282,18 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
             for (l = t_env[0] << 1; l < t_env[bs_num_env] << 1; l++) {
                 const int idx = l + ENVELOPE_ADJUSTMENT_OFFSET;
-                x_high[k][idx][0] =
-                    (x_low[p][idx - 2][0] * alpha1[p][0] -
-                     x_low[p][idx - 2][1] * alpha1[p][1]) * bw_array[0][g] * bw_array[0][g] +
-                    (x_low[p][idx - 1][0] * alpha0[p][0] -
-                     x_low[p][idx - 1][1] * alpha0[p][1]) * bw_array[0][g] +
-                     x_low[p][idx][0];
-                x_high[k][idx][1] =
-                    (x_low[p][idx - 2][1] * alpha1[p][0] +
-                     x_low[p][idx - 2][0] * alpha1[p][1]) * bw_array[0][g] * bw_array[0][g] +
-                    (x_low[p][idx - 1][1] * alpha0[p][0] +
-                     x_low[p][idx - 1][0] * alpha0[p][1]) * bw_array[0][g] +
-                     x_low[p][idx][1];
+                X_high[k][idx][0] =
+                    (X_low[p][idx - 2][0] * alpha1[p][0] -
+                     X_low[p][idx - 2][1] * alpha1[p][1]) * bw_array[0][g] * bw_array[0][g] +
+                    (X_low[p][idx - 1][0] * alpha0[p][0] -
+                     X_low[p][idx - 1][1] * alpha0[p][1]) * bw_array[0][g] +
+                     X_low[p][idx][0];
+                X_high[k][idx][1] =
+                    (X_low[p][idx - 2][1] * alpha1[p][0] +
+                     X_low[p][idx - 2][0] * alpha1[p][1]) * bw_array[0][g] * bw_array[0][g] +
+                    (X_low[p][idx - 1][1] * alpha0[p][0] +
+                     X_low[p][idx - 1][0] * alpha0[p][1]) * bw_array[0][g] +
+                     X_low[p][idx][1];
             }
         }
     }
@@ -1303,35 +1303,35 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
 // Generate the subband filtered lowband
 static int sbr_x_gen(SpectralBandReplication *sbr,
-                      float x[64][32][2], float x_low[32][40][2], float Y[2][64][40][2], int ch) {
+                      float X[64][32][2], float X_low[32][40][2], float Y[2][64][40][2], int ch) {
     int k, l;
     const int t_HFAdj = ENVELOPE_ADJUSTMENT_OFFSET;
     const int l_f = 32;
     const int l_Temp = FFMAX(2*sbr->t_env_num_env_old[ch] - l_f, 0); //FIXME hack to make l_Temp initialize to zero
-    memset(x, 0, 64*sizeof(*x));
+    memset(X, 0, 64*sizeof(*X));
     for (k = 0; k < sbr->k[4]; k++) {
         for (l = 0; l < l_Temp; l++) {
-            x[k][l][0] = x_low[k][l + t_HFAdj][0];
-            x[k][l][1] = x_low[k][l + t_HFAdj][1];
+            X[k][l][0] = X_low[k][l + t_HFAdj][0];
+            X[k][l][1] = X_low[k][l + t_HFAdj][1];
         }
     }
     for (; k < sbr->k[4] + sbr->mold; k++) {
         for (l = 0; l < l_Temp; l++) {
-            x[k][l][0] = Y[1][k][l + t_HFAdj + l_f][0];
-            x[k][l][1] = Y[1][k][l + t_HFAdj + l_f][1];
+            X[k][l][0] = Y[1][k][l + t_HFAdj + l_f][0];
+            X[k][l][1] = Y[1][k][l + t_HFAdj + l_f][1];
         }
     }
 
     for (k = 0; k < sbr->k[3]; k++) {
         for (l = l_Temp; l < l_f; l++) {
-            x[k][l][0] = x_low[k][l + t_HFAdj][0];
-            x[k][l][1] = x_low[k][l + t_HFAdj][1];
+            X[k][l][0] = X_low[k][l + t_HFAdj][0];
+            X[k][l][1] = X_low[k][l + t_HFAdj][1];
         }
     }
     for (; k < sbr->k[3] + sbr->m; k++) {
         for (l = l_Temp; l < l_f; l++) {
-            x[k][l][0] = Y[0][k][l + t_HFAdj][0];
-            x[k][l][1] = Y[0][k][l + t_HFAdj][1];
+            X[k][l][0] = Y[0][k][l + t_HFAdj][0];
+            X[k][l][1] = Y[0][k][l + t_HFAdj][1];
         }
     }
     return 0;
@@ -1396,7 +1396,7 @@ static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
 }
 
 // Estimation of current envelope (14496-3 sp04 p218)
-static void sbr_env_estimate(float (*e_curr)[48], float x_high[64][40][2],
+static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
                              SpectralBandReplication *sbr, SBRData *ch_data,
                              int ch)
 {
@@ -1412,8 +1412,8 @@ static void sbr_env_estimate(float (*e_curr)[48], float x_high[64][40][2],
                 float sum = 0.0f;
 
                 for (i = ilb; i < iub; i++) {
-                    sum += x_high[m + sbr->k[3]][i][0] * x_high[m + sbr->k[3]][i][0] +
-                           x_high[m + sbr->k[3]][i][1] * x_high[m + sbr->k[3]][i][1];
+                    sum += X_high[m + sbr->k[3]][i][0] * X_high[m + sbr->k[3]][i][0] +
+                           X_high[m + sbr->k[3]][i][1] * X_high[m + sbr->k[3]][i][1];
                 }
                 e_curr[l][m] = sum / env_size;
             }
@@ -1433,8 +1433,8 @@ static void sbr_env_estimate(float (*e_curr)[48], float x_high[64][40][2],
 
                 for (k = table[p]; k < table[p + 1]; k++) {
                     for (i = ilb; i < iub; i++) {
-                        sum += x_high[k][i][0] * x_high[k][i][0] +
-                               x_high[k][i][1] * x_high[k][i][1];
+                        sum += X_high[k][i][0] * X_high[k][i][0] +
+                               X_high[k][i][1] * X_high[k][i][1];
                     }
                 }
                 sum /= den;
@@ -1544,7 +1544,7 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
 }
 
 // Assembling HF Signals (14496-3 sp04 p220)
-static void sbr_hf_assemble(float y[2][64][40][2], float x_high[64][40][2],
+static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
                             SpectralBandReplication *sbr, SBRData *ch_data,
                             int ch, int l_a[2])
 {
@@ -1563,7 +1563,7 @@ static void sbr_hf_assemble(float y[2][64][40][2], float x_high[64][40][2],
     };
     float g_filt[42][48], q_filt[42][48], w_temp[42][48][2];
     float (*g_temp)[48] = sbr->g_temp, (*q_temp)[48] = sbr->q_temp;
-    memcpy(y[1], y[0], sizeof(y[0]));
+    memcpy(Y[1], Y[0], sizeof(Y[0]));
 
     if (sbr->reset) {
         for (i = 0; i < h_SL; i++) {
@@ -1602,8 +1602,8 @@ static void sbr_hf_assemble(float y[2][64][40][2], float x_high[64][40][2],
         const int idx2 = i + ENVELOPE_ADJUSTMENT_OFFSET;
         for (m = 0; m < sbr->m; m++) {
             const int idx1 = m + sbr->k[3];
-            w_temp[i][m][0] = x_high[idx1][idx2][0] * g_filt[i][m];
-            w_temp[i][m][1] = x_high[idx1][idx2][1] * g_filt[i][m];
+            w_temp[i][m][0] = X_high[idx1][idx2][0] * g_filt[i][m];
+            w_temp[i][m][1] = X_high[idx1][idx2][1] * g_filt[i][m];
         }
     }
 
@@ -1641,9 +1641,9 @@ static void sbr_hf_assemble(float y[2][64][40][2], float x_high[64][40][2],
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = sbr->t_env[ch][l] << 1; i < sbr->t_env[ch][l + 1] << 1; i++) {
             for (m = 0; m < sbr->m; m++) {
-                y[0][m + sbr->k[3]][i + ENVELOPE_ADJUSTMENT_OFFSET][0] =
+                Y[0][m + sbr->k[3]][i + ENVELOPE_ADJUSTMENT_OFFSET][0] =
                     w_temp[i][m][0] + sbr->s_m_boost[l][m] * phi[0][sbr->f_indexsine[ch]];
-                y[0][m + sbr->k[3]][i + ENVELOPE_ADJUSTMENT_OFFSET][1] =
+                Y[0][m + sbr->k[3]][i + ENVELOPE_ADJUSTMENT_OFFSET][1] =
                     w_temp[i][m][1] + sbr->s_m_boost[l][m] * phi[1][sbr->f_indexsine[ch]] * (1 - 2*((m + sbr->k[3]) & 1));
             }
             sbr->f_indexsine[ch] = (sbr->f_indexsine[ch] + 1) & 3;
@@ -1663,22 +1663,22 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int id_aac, int 
 
     /* decode channel */
     sbr_qmf_analysis(in, sbr->data[ch].analysis_filterbank_samples, sbr->W);
-    sbr_lf_gen(ac, sbr, sbr->x_low, sbr->W);
+    sbr_lf_gen(ac, sbr, sbr->X_low, sbr->W);
     if (sbr->start) {
-        sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->x_low, sbr->k[0]);
+        sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->X_low, sbr->k[0]);
         sbr_chirp(sbr, &sbr->data[ch]);
-        sbr_hf_gen(ac, sbr, sbr->x_high, sbr->x_low, sbr->alpha0, sbr->alpha1,
+        sbr_hf_gen(ac, sbr, sbr->X_high, sbr->X_low, sbr->alpha0, sbr->alpha1,
                    sbr->bw_array, sbr->t_env[ch], sbr->data[ch].bs_num_env[1]);
 
     // hf_adj
         sbr_mapping(ac, sbr, &sbr->data[ch], ch, l_a);
-        sbr_env_estimate(sbr->e_curr, sbr->x_high, sbr, &sbr->data[ch], ch);
+        sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch], ch);
         sbr_hf_additional_levels(sbr, &sbr->data[ch]);
         sbr_gain_calc(ac, sbr, &sbr->data[ch], l_a);
-        sbr_hf_assemble(sbr->y, sbr->x_high, sbr, &sbr->data[ch], ch, l_a);
+        sbr_hf_assemble(sbr->Y, sbr->X_high, sbr, &sbr->data[ch], ch, l_a);
     }
 
     /* synthesis */
-    sbr_x_gen(sbr, sbr->X, sbr->x_low, sbr->y, ch);
+    sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->Y, ch);
     sbr_qmf_synthesis(out, sbr->X, sbr->data[ch].synthesis_filterbank_samples, 0);
 }
