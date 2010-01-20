@@ -1079,7 +1079,7 @@ static void sbr_qmf_analysis(const float *in, float *x, float W[2][32][32][2])
 
 // Synthesis QMF Bank (14496-3 sp04 p206)
 // Downsampled Synthesis QMF Bank (14496-3 sp04 p206)
-static void sbr_qmf_synthesis(float *out, float X[64][40][2],
+static void sbr_qmf_synthesis(float *out, float X[64][32][2],
                               float *v, const unsigned int div)
 {
     int k, l, n;
@@ -1303,7 +1303,7 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
 // Generate the subband filtered lowband
 static int sbr_x_gen(SpectralBandReplication *sbr,
-                      float x[64][40][2], float x_low[32][40][2], float Y[2][64][40][2], int ch) {
+                      float x[64][32][2], float x_low[32][40][2], float Y[2][64][40][2], int ch) {
     int k, l;
     const int t_HFAdj = ENVELOPE_ADJUSTMENT_OFFSET;
     const int l_f = 32;
