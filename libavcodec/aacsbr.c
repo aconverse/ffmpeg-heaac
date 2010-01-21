@@ -1292,7 +1292,8 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
             }
         }
     }
-    memset(X_high + k, 0, (64 - k) * sizeof(*X_high));
+    if (k < sbr->m + sbr->k[3])
+        memset(X_high + k, 0, (sbr->m + sbr->k[3] - k) * sizeof(*X_high));
 
     return 0;
 }
