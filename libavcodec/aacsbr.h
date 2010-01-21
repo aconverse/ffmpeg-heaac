@@ -82,9 +82,10 @@ typedef struct {
 } SpectrumParameters;
 
 /**
- * Spectral Band Replication data - main bitstream data variables
+ * Spectral Band Replication per channel data
  */
 typedef struct {
+    /* main bitstream data variables */
     uint8_t            bs_frame_class;
     uint8_t            bs_add_harmonic_flag;
     uint8_t            bs_num_env[2];
@@ -101,6 +102,8 @@ typedef struct {
     int32_t            bs_data_noise[2][5];
     uint8_t            bs_add_harmonic[32];
     uint8_t            bs_amp_res;
+
+    /* state variables */
     DECLARE_ALIGNED(16, float, synthesis_filterbank_samples[1280]);
     DECLARE_ALIGNED(16, float, analysis_filterbank_samples [1312]);
     int                l_a[2];
@@ -109,6 +112,13 @@ typedef struct {
     float              Y[2][64][40][2];
     float              g_temp[42][48];
     float              q_temp[42][48];
+    float              env_facs[6][48];
+    float              noise_facs[3][5];
+    uint8_t            t_env[8];
+    uint8_t            t_env_num_env_old;
+    uint8_t            t_q[3];
+    uint16_t           f_indexnoise;
+    uint8_t            f_indexsine;
 } SBRData;
 
 /**
@@ -145,11 +155,6 @@ typedef struct {
     uint8_t            num_patches;
     uint8_t            patch_num_subbands[5];
     uint8_t            patch_start_subband[5];
-    uint8_t            t_env[2][8];
-    uint8_t            t_env_num_env_old[2];
-    uint8_t            t_q[2][3];
-    float              env_facs[2][6][48];
-    float              noise_facs[2][3][5];
     float              X_low[32][40][2];
     float              X_high[64][40][2];
     DECLARE_ALIGNED(16, float, X[32][64][2]);
@@ -170,8 +175,6 @@ typedef struct {
     float              q_m_lim[7][48];
     float              q_m_limboost[7][48];
     float              s_m_boost[7][48];
-    uint16_t           f_indexnoise[2];
-    uint8_t            f_indexsine[2];
 } SpectralBandReplication;
 
 #endif /* AVCODEC_AACSBR_H */
