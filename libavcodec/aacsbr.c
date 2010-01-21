@@ -1264,12 +1264,9 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
                       int bs_num_env)
 {
     int i, x, l;
-    int ktmp = sbr->k[3];
+    int k = sbr->k[3];
     for (i = 0; i < sbr->num_patches; i++) {
-        if (i >= 1)
-            ktmp += sbr->patch_num_subbands[i-1];
-        for (x = 0; x < sbr->patch_num_subbands[i]; x++) {
-            const int k = ktmp + x;
+        for (x = 0; x < sbr->patch_num_subbands[i]; x++, k++) {
             const int g = find_freq_subband(sbr->f_tablenoise, sbr->n_q + 1, k);
             const int p = sbr->patch_start_subband[i] + x;
 
@@ -1295,8 +1292,7 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
             }
         }
     }
-    ktmp += sbr->patch_num_subbands[i-1];
-    memset(X_high + ktmp, 0, (64 - ktmp) * sizeof(*X_high));
+    memset(X_high + k, 0, (64 - k) * sizeof(*X_high));
 
     return 0;
 }
