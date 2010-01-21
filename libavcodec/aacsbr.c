@@ -1295,6 +1295,8 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
             }
         }
     }
+    ktmp += sbr->patch_num_subbands[i-1];
+    memset(X_high + ktmp, 0, (64 - ktmp) * sizeof(*X_high));
 
     return 0;
 }
