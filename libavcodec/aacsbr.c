@@ -624,8 +624,13 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
 }
 
 static void sbr_grid_copy(SBRData *dst, const SBRData *src) {
-    memcpy(dst->bs_freq_res,   src->bs_freq_res,   sizeof(dst->bs_freq_res));
-    memcpy(dst->bs_num_env,    src->bs_num_env,    sizeof(dst->bs_num_env));
+    //These variables are saved from the previous frame rather than copied
+    dst->bs_freq_res[0] = dst->bs_freq_res[dst->bs_num_env[1]];
+    dst->bs_num_env[0]  = dst->bs_num_env[1];
+
+    //These variables are read from the bitstream and therefore copied
+    memcpy(dst->bs_freq_res+1, src->bs_freq_res+1, sizeof(dst->bs_freq_res)-1);
+    memcpy(dst->bs_num_env+1,  src->bs_num_env+1,  sizeof(dst->bs_num_env)-1);
     memcpy(dst->bs_var_bord,   src->bs_var_bord,   sizeof(dst->bs_var_bord));
     memcpy(dst->bs_rel_bord,   src->bs_rel_bord,   sizeof(dst->bs_rel_bord));
     memcpy(dst->bs_num_rel,    src->bs_num_rel,    sizeof(dst->bs_rel_bord));
@@ -798,7 +803,8 @@ static void sbr_channel_pair_element(AACContext *ac,
         sbr_dtdf(sbr, gb, &sbr->data[0]);
         sbr_dtdf(sbr, gb, &sbr->data[1]);
         sbr_invf(sbr, gb, &sbr->data[0]);
-        memcpy(sbr->data[1].bs_invf_mode, sbr->data[0].bs_invf_mode, sizeof(sbr->data[1].bs_invf_mode));
+        memcpy(sbr->data[1].bs_invf_mode[1], sbr->data[1].bs_invf_mode[0], sizeof(sbr->data[1].bs_invf_mode[0]));
+        memcpy(sbr->data[1].bs_invf_mode[0], sbr->data[0].bs_invf_mode[0], sizeof(sbr->data[1].bs_invf_mode[0]));
         sbr_envelope(sbr, gb, &sbr->data[0], 0);
         sbr_noise(sbr, gb, &sbr->data[0], 0);
         sbr_envelope(sbr, gb, &sbr->data[1], 1);
