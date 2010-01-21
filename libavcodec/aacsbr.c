@@ -1664,15 +1664,22 @@ static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
     }
 }
 
-void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int id_aac, int ch, float* in, float* out)
+void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
 {
-    int* l_a = sbr->data[ch].l_a;
+    int ch;
 
     if (sbr->start) {
+        for (ch = 0; ch < (id_aac == TYPE_CPE ? 2 : 1); ch++) {
         sbr_time_freq_grid(ac, sbr, &sbr->data[ch], ch);
         sbr_env_noise_floors(sbr, &sbr->data[ch], ch);
+        }
         sbr_dequant(sbr, id_aac);
     }
+}
+
+void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* in, float* out)
+{
+    int* l_a = sbr->data[ch].l_a;
 
     /* decode channel */
     sbr_qmf_analysis(in, sbr->data[ch].analysis_filterbank_samples, sbr->W);
