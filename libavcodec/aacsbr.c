@@ -633,6 +633,7 @@ static void sbr_grid_copy(SBRData *dst, const SBRData *src) {
     dst->bs_amp_res   = src->bs_amp_res;
     dst->bs_num_noise = src->bs_num_noise;
     dst->bs_pointer   = src->bs_pointer;
+    dst->bs_frame_class = src->bs_frame_class;
 }
 
 static void sbr_dtdf(SpectralBandReplication *sbr, GetBitContext *gb,
