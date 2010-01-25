@@ -104,8 +104,8 @@ typedef struct {
     uint8_t            bs_amp_res;
 
     /* state variables */
-    DECLARE_ALIGNED(16, float, synthesis_filterbank_samples[1280]);
-    DECLARE_ALIGNED(16, float, analysis_filterbank_samples [1312]);
+    DECLARE_ALIGNED(16, float, synthesis_filterbank_samples)[1280];
+    DECLARE_ALIGNED(16, float, analysis_filterbank_samples) [1312];
     int                l_a[2];
     float              bw_array[2][5];
     float              W[2][32][32][2];
@@ -158,7 +158,7 @@ typedef struct {
     uint8_t            patch_start_subband[5];
     float              X_low[32][40][2];
     float              X_high[64][40][2];
-    DECLARE_ALIGNED(16, float, X[32][64][2]);
+    DECLARE_ALIGNED(16, float, X)[32][64][2];
     float              alpha0[64][2];
     float              alpha1[64][2];
     float              e_origmapped[7][48];
