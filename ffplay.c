@@ -133,8 +133,8 @@ typedef struct VideoState {
     int audio_hw_buf_size;
     /* samples output by the codec. we reserve more space for avsync
        compensation */
-    DECLARE_ALIGNED(16,uint8_t,audio_buf1[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2]);
-    DECLARE_ALIGNED(16,uint8_t,audio_buf2[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2]);
+    DECLARE_ALIGNED(16,uint8_t,audio_buf1)[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2];
+    DECLARE_ALIGNED(16,uint8_t,audio_buf2)[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2];
     uint8_t *audio_buf;
     unsigned int audio_buf_size; /* in bytes */
     int audio_buf_index; /* in bytes */
@@ -1722,8 +1722,7 @@ static int stream_component_open(VideoState *is, int stream_index)
     enc->skip_loop_filter= skip_loop_filter;
     enc->error_recognition= error_recognition;
     enc->error_concealment= error_concealment;
-    if (thread_count > 1)
-        avcodec_thread_init(enc, thread_count);
+    avcodec_thread_init(enc, thread_count);
 
     set_context_opts(enc, avcodec_opts[enc->codec_type], 0);
 

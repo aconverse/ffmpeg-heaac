@@ -25,10 +25,10 @@ $(SUBDIR)%$(EXESUF): $(SUBDIR)%.o
 	$(LD) $(FFLDFLAGS) -o $$@ $$^ -l$(FULLNAME) $(FFEXTRALIBS) $$(ELIBS)
 
 $(SUBDIR)%-test.o: $(SUBDIR)%.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -DTEST -c -o $$@ $$^
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DTEST -c $$(CC_O) $$^
 
 $(SUBDIR)%-test.o: $(SUBDIR)%-test.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -DTEST -c -o $$@ $$^
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DTEST -c $$(CC_O) $$^
 
 $(SUBDIR)x86/%.o: $(SUBDIR)x86/%.asm
 	$(YASM) $(YASMFLAGS) -I $$(<D)/ -M -o $$@ $$< > $$(@:.o=.d)
@@ -80,6 +80,9 @@ install-headers::
 	install -d "$(INCINSTDIR)"
 	install -d "$(LIBDIR)/pkgconfig"
 	install -m 644 $(addprefix "$(SRC_DIR)"/,$(HEADERS)) "$(INCINSTDIR)"
+ifdef BUILT_HEADERS
+	install -m 644 $(addprefix $(SUBDIR),$(BUILT_HEADERS)) "$(INCINSTDIR)"
+endif
 	install -m 644 $(BUILD_ROOT)/lib$(NAME)/lib$(NAME).pc "$(LIBDIR)/pkgconfig"
 endef
 

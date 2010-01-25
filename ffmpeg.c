@@ -353,6 +353,10 @@ static void term_init(void)
 
     signal(SIGINT , sigterm_handler); /* Interrupt (ANSI).  */
     signal(SIGTERM, sigterm_handler); /* Termination (ANSI).  */
+#ifdef SIGXCPU
+    signal(SIGXCPU, sigterm_handler);
+#endif
+
     /*
     register a function to be called at normal program termination
     */
@@ -559,6 +563,7 @@ static void do_audio_out(AVFormatContext *s,
 {
     uint8_t *buftmp;
     int64_t audio_out_size, audio_buf_size;
+    int64_t allocated_for_size= size;
 
     int size_out, frame_bytes, ret;
     AVCodecContext *enc= ost->st->codec;
@@ -567,7 +572,8 @@ static void do_audio_out(AVFormatContext *s,
     int isize= av_get_bits_per_sample_format(dec->sample_fmt)/8;
     const int coded_bps = av_get_bits_per_sample(enc->codec->id);
 
-    audio_buf_size= (size + isize*dec->channels - 1) / (isize*dec->channels);
+need_realloc:
+    audio_buf_size= (allocated_for_size + isize*dec->channels - 1) / (isize*dec->channels);
     audio_buf_size= (audio_buf_size*enc->sample_rate + dec->sample_rate) / dec->sample_rate;
     audio_buf_size= audio_buf_size*2 + 10000; //safety factors for the deprecated resampling API
     audio_buf_size*= osize*enc->channels;
@@ -645,10 +651,11 @@ static void do_audio_out(AVFormatContext *s,
                     static uint8_t *input_tmp= NULL;
                     input_tmp= av_realloc(input_tmp, byte_delta + size);
 
-                    if(byte_delta + size <= MAX_AUDIO_PACKET_SIZE)
-                        ist->is_start=0;
-                    else
-                        byte_delta= MAX_AUDIO_PACKET_SIZE - size;
+                    if(byte_delta > allocated_for_size - size){
+                        allocated_for_size= byte_delta + (int64_t)size;
+                        goto need_realloc;
+                    }
+                    ist->is_start=0;
 
                     memset(input_tmp, 0, byte_delta);
                     memcpy(input_tmp + byte_delta, buf, size);
@@ -2927,8 +2934,7 @@ static void opt_input_file(const char *filename)
     for(i=0;i<ic->nb_streams;i++) {
         AVStream *st = ic->streams[i];
         AVCodecContext *enc = st->codec;
-        if(thread_count>1)
-            avcodec_thread_init(enc, thread_count);
+        avcodec_thread_init(enc, thread_count);
         switch(enc->codec_type) {
         case CODEC_TYPE_AUDIO:
             set_context_opts(enc, avcodec_opts[CODEC_TYPE_AUDIO], AV_OPT_FLAG_AUDIO_PARAM | AV_OPT_FLAG_DECODING_PARAM);
@@ -3062,8 +3068,7 @@ static void new_video_stream(AVFormatContext *oc)
     bitstream_filters[nb_output_files][oc->nb_streams - 1]= video_bitstream_filters;
     video_bitstream_filters= NULL;
 
-    if(thread_count>1)
-        avcodec_thread_init(st->codec, thread_count);
+    avcodec_thread_init(st->codec, thread_count);
 
     video_enc = st->codec;
 
@@ -3208,8 +3213,7 @@ static void new_audio_stream(AVFormatContext *oc)
     bitstream_filters[nb_output_files][oc->nb_streams - 1]= audio_bitstream_filters;
     audio_bitstream_filters= NULL;
 
-    if(thread_count>1)
-        avcodec_thread_init(st->codec, thread_count);
+    avcodec_thread_init(st->codec, thread_count);
 
     audio_enc = st->codec;
     audio_enc->codec_type = CODEC_TYPE_AUDIO;
@@ -3863,6 +3867,7 @@ static const OptionDef options[] = {
     { "dframes", OPT_INT | HAS_ARG, {(void*)&max_frames[CODEC_TYPE_DATA]}, "set the number of data frames to record", "number" },
     { "benchmark", OPT_BOOL | OPT_EXPERT, {(void*)&do_benchmark},
       "add timings for benchmarking" },
+    { "timelimit", OPT_FUNC2 | HAS_ARG, {(void*)opt_timelimit}, "set max runtime in seconds", "limit" },
     { "dump", OPT_BOOL | OPT_EXPERT, {(void*)&do_pkt_dump},
       "dump each input packet" },
     { "hex", OPT_BOOL | OPT_EXPERT, {(void*)&do_hex_dump},
