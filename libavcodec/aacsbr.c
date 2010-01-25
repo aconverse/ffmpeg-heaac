@@ -1374,7 +1374,7 @@ static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
     } else if ((ch_data->bs_frame_class == 2) && (ch_data->bs_pointer > 1)) // VARFIX and bs_pointer > 1
         l_a[1] = ch_data->bs_pointer - 1;
 
-    memset(sbr->s_indexmapped[1], 0, 7*sizeof(sbr->s_indexmapped[1]));
+    memset(ch_data->s_indexmapped[1], 0, 7*sizeof(ch_data->s_indexmapped[1]));
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         const unsigned int ilim = sbr->n[ch_data->bs_freq_res[l + 1]];
         uint16_t *table = ch_data->bs_freq_res[l + 1] ? sbr->f_tablehigh : sbr->f_tablelow;
@@ -1395,15 +1395,15 @@ static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
                 const unsigned int m_midpoint =
                     (sbr->f_tablehigh[i] + sbr->f_tablehigh[i + 1]) >> 1;
 
-                sbr->s_indexmapped[l + 1][m_midpoint - sbr->k[3]] = ch_data->bs_add_harmonic[i] *
-                    (l >= l_a[1] || (sbr->s_indexmapped[0][m_midpoint - sbr->k[3]] == 1));
+                ch_data->s_indexmapped[l + 1][m_midpoint - sbr->k[3]] = ch_data->bs_add_harmonic[i] *
+                    (l >= l_a[1] || (ch_data->s_indexmapped[0][m_midpoint - sbr->k[3]] == 1));
             }
         }
 
         for (i = 0; i < ilim; i++) {
             int additional_sinusoid_present = 0;
             for (m = table[i]; m < table[i + 1]; m++) {
-                if (sbr->s_indexmapped[l + 1][m - sbr->k[3]]) {
+                if (ch_data->s_indexmapped[l + 1][m - sbr->k[3]]) {
                     additional_sinusoid_present = 1;
                     break;
                 }
@@ -1413,7 +1413,7 @@ static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
         }
     }
 
-    memcpy(sbr->s_indexmapped[0], sbr->s_indexmapped[ch_data->bs_num_env[1]], sizeof(sbr->s_indexmapped[0]));
+    memcpy(ch_data->s_indexmapped[0], ch_data->s_indexmapped[ch_data->bs_num_env[1]], sizeof(ch_data->s_indexmapped[0]));
 }
 
 // Estimation of current envelope (14496-3 sp04 p218)
@@ -1477,7 +1477,7 @@ static void sbr_hf_additional_levels(SpectralBandReplication *sbr,
         for (m = 0; m < sbr->m; m++) {
             const float temp = sbr->e_origmapped[l][m] / (1.0f + sbr->q_mapped[l][m]);
             sbr->q_m[l][m] = sqrtf(temp * sbr->q_mapped[l][m]);
-            sbr->s_m[l][m] = sqrtf(temp * sbr->s_indexmapped[l + 1][m]);
+            sbr->s_m[l][m] = sqrtf(temp * ch_data->s_indexmapped[l + 1][m]);
         }
     }
 }

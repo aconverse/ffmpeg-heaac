@@ -112,6 +112,7 @@ typedef struct {
     float              Y[2][64][40][2];
     float              g_temp[42][48];
     float              q_temp[42][48];
+    uint8_t            s_indexmapped[8][48];
     float              env_facs[6][48];
     float              noise_facs[3][5];
     uint8_t            t_env[8];
@@ -162,7 +163,6 @@ typedef struct {
     float              alpha1[64][2];
     float              e_origmapped[7][48];
     float              q_mapped[7][48];
-    uint8_t            s_indexmapped[8][48];
     uint8_t            s_mapped[7][48];
     float              e_curr[7][48];
     float              q_m[7][48];
