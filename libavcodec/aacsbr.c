@@ -1592,8 +1592,8 @@ static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
             memcpy(q_temp[i + 2*ch_data->t_env[0]], sbr->q_m_limboost[0],  sbr->m * sizeof(sbr->q_m_limboost[0][0]));
         }
     } else if (h_SL) {
-        memcpy(g_temp[2*ch_data->t_env[0]], g_temp[2*ch_data->t_env_num_env_old - 4], 4*sizeof(g_temp[0]));
-        memcpy(q_temp[2*ch_data->t_env[0]], q_temp[2*ch_data->t_env_num_env_old - 4], 4*sizeof(q_temp[0]));
+        memcpy(g_temp[2*ch_data->t_env[0]], g_temp[2*ch_data->t_env_num_env_old], 4*sizeof(g_temp[0]));
+        memcpy(q_temp[2*ch_data->t_env[0]], q_temp[2*ch_data->t_env_num_env_old], 4*sizeof(q_temp[0]));
     }
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
