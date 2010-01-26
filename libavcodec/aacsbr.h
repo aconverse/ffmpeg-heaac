@@ -100,7 +100,7 @@ typedef struct {
     uint8_t            bs_invf_mode[2][5];
     int32_t            bs_data_env[7][32];
     int32_t            bs_data_noise[2][5];
-    uint8_t            bs_add_harmonic[32];
+    uint8_t            bs_add_harmonic[48];
     uint8_t            bs_amp_res;
 
     /* state variables */
