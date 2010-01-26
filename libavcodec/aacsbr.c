@@ -92,8 +92,8 @@ av_cold void ff_aac_sbr_init(void)
     for (n = 0; n < 128; n++) {
         for (k = 0; k < 64; k++) {
             float syn = (k + 0.5f) * (2.0f * n - 255.0f) * M_PI / 128.0f;
-            synthesis_cossin[n][k][0] =  cosf(syn);
-            synthesis_cossin[n][k][1] = -sinf(syn);
+            synthesis_cossin[n][k][0] =  cosf(syn) / 64;
+            synthesis_cossin[n][k][1] = -sinf(syn) / 64;
         }
     }
     memset(zero64, 0, sizeof(zero64));
@@ -1108,11 +1108,10 @@ static void sbr_qmf_synthesis(DSPContext * dsp, float *out, float X[32][64][2],
                               float *v, const unsigned int div)
 {
     int l, n;
-    float vgain = 1.0f / 64.0f;
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
         for (n = 0; n < 128 >> div; n++) {
-            v[n] = vgain * dsp->scalarproduct_float(X[l][0], synthesis_cossin[n<<div][0], 128 >> div);
+            v[n] = dsp->scalarproduct_float(X[l][0], synthesis_cossin[n<<div][0], 128 >> div);
         }
         dsp->vector_fmul_add(out, v                , sbr_qmf_window               , zero64, 64 >> div);
         dsp->vector_fmul_add(out, v + ( 192 >> div), sbr_qmf_window + ( 64 >> div), out   , 64 >> div);
