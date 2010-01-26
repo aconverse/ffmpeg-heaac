@@ -894,8 +894,7 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
 {
     unsigned int num_sbr_bits = 0, num_align_bits;
     unsigned bytes_read;
-    GetBitContext gbc = *gb_host;
-    GetBitContext *gb = &gbc;
+    GetBitContext gbc = *gb_host, *gb = &gbc;
     skip_bits_long(gb_host, cnt*8 - 4);
 
     sbr->reset = 0;
@@ -1668,7 +1667,6 @@ void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
 
 void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* in, float* out)
 {
-    int* l_a = sbr->data[ch].l_a;
     int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
 
     /* decode channel */
@@ -1681,11 +1679,11 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* i
                    sbr->data[ch].bw_array, sbr->data[ch].t_env, sbr->data[ch].bs_num_env[1]);
 
     // hf_adj
-        sbr_mapping(ac, sbr, &sbr->data[ch], ch, l_a);
+        sbr_mapping(ac, sbr, &sbr->data[ch], ch, sbr->data[ch].l_a);
         sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch], ch);
         sbr_hf_additional_levels(sbr, &sbr->data[ch]);
-        sbr_gain_calc(ac, sbr, &sbr->data[ch], l_a);
-        sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch], ch, l_a);
+        sbr_gain_calc(ac, sbr, &sbr->data[ch], sbr->data[ch].l_a);
+        sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch], ch, sbr->data[ch].l_a);
     }
 
     /* synthesis */
