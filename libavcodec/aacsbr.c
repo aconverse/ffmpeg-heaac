@@ -37,7 +37,8 @@ static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
 static DECLARE_ALIGNED_16(float, analysis_cos)[32][64];
 static DECLARE_ALIGNED_16(float, analysis_sin)[32][64];
-static DECLARE_ALIGNED_16(float, synthesis_cossin)[128][64][2];
+static DECLARE_ALIGNED_16(float, synthesis_cossin_us)[128][64][2];
+static DECLARE_ALIGNED_16(float, synthesis_cossin_ds)[ 64][32][2];
 static DECLARE_ALIGNED_16(float, zero64)[64];
 
 av_cold void ff_aac_sbr_init(void)
@@ -92,9 +93,19 @@ av_cold void ff_aac_sbr_init(void)
     for (n = 0; n < 128; n++) {
         for (k = 0; k < 64; k++) {
             float syn = (k + 0.5f) * (2.0f * n - 255.0f) * M_PI / 128.0f;
-            synthesis_cossin[n][k][0] =  cosf(syn) / 64;
-            synthesis_cossin[n][k][1] = -sinf(syn) / 64;
+            synthesis_cossin_us[n][k][0] =  cosf(syn) / 64;
+            synthesis_cossin_us[n][k][1] = -sinf(syn) / 64;
         }
+    }
+    for (n = 0; n < 64; n++) {
+        for (k = 0; k < 32; k++) {
+            float syn = (k + 0.5f) * (2.0f * n - 127.5f) * M_PI / 64.0f;
+            synthesis_cossin_ds[n][k][0] =  cosf(syn) / 64;
+            synthesis_cossin_ds[n][k][1] = -sinf(syn) / 64;
+        }
+    }
+    for (n = 0; n < 320; n++) {
+        sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
     }
     memset(zero64, 0, sizeof(zero64));
 }
@@ -1085,7 +1096,7 @@ static void sbr_qmf_analysis(const float *in, float *x, float W[2][32][32][2])
     for (l = 0; l < 32; l++) { // 32 = numTimeSlots*RATE = 16*2 as 960 sample frames are not supported
         float z[320], u[64];
         for (i = 0; i < 320; i++)
-            z[i] = x[-i] * sbr_qmf_window[i << 1];
+            z[i] = x[-i] * sbr_qmf_window_us[i << 1];
         for (i = 0; i < 64; i++)
             u[i] = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
         for (k = 0; k < 32; k++) {
@@ -1108,10 +1119,12 @@ static void sbr_qmf_synthesis(DSPContext * dsp, float *out, float X[32][64][2],
                               float *v, const unsigned int div)
 {
     int l, n;
+    float *sbr_qmf_window = div ? sbr_qmf_window_ds : sbr_qmf_window_us;
+    float (*synthesis_cossin)[2] = div ? synthesis_cossin_ds : synthesis_cossin_us;
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
         for (n = 0; n < 128 >> div; n++) {
-            v[n] = dsp->scalarproduct_float(X[l][0], synthesis_cossin[n<<div][0], 128 >> div);
+            v[n] = dsp->scalarproduct_float(X[l][0], (synthesis_cossin+(64>>div)*n)[0], 128 >> div);
         }
         dsp->vector_fmul_add(out, v                , sbr_qmf_window               , zero64, 64 >> div);
         dsp->vector_fmul_add(out, v + ( 192 >> div), sbr_qmf_window + ( 64 >> div), out   , 64 >> div);
