@@ -1112,7 +1112,7 @@ static void sbr_qmf_synthesis(DSPContext * dsp, float *out, float X[32][64][2],
                               float *v, const unsigned int div)
 {
     int l, n;
-    float vgain = 1.0f / (64 >> div);
+    float vgain = 1.0f / 64.0f;
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
         for (n = 0; n < 128 >> div; n++) {
