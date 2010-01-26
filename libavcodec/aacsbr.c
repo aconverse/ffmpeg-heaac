@@ -299,7 +299,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
             return -1;
         }
     } else {
-        unsigned int bands = 14 - (spectrum->bs_freq_scale << 1); // bs_freq_scale  = {1,2,3}
+        int bands = 14 - (spectrum->bs_freq_scale << 1);   // bs_freq_scale  = {1,2,3}
         float warp = spectrum->bs_alter_scale ? 1.3 : 1.0;        // bs_alter_scale = {0,1}
         unsigned int two_regions, num_bands_0;
         int vdk0_max, vdk1_min;
@@ -338,7 +338,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         if (two_regions) {
             int16_t vk1[49];
-            unsigned int num_bands_1 = lroundf(bands * logf(sbr->k[2] / (float)sbr->k[1]) *
+            int num_bands_1 = lroundf(bands * logf(sbr->k[2] / (float)sbr->k[1]) *
                                                INV_2LN2 / warp) << 1;
 
             make_bands(vk1+1, sbr->k[1], sbr->k[2], num_bands_1);
@@ -962,7 +962,7 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
     ch_data->t_env[ch_data->bs_num_env[1]] = abs_bord_trail;
 
     if (ch_data->bs_frame_class == FIXFIX) {
-        unsigned int temp = lroundf(abs_bord_trail / (float)ch_data->bs_num_env[1]);
+        int temp = lroundf(abs_bord_trail / (float)ch_data->bs_num_env[1]);
         for (i = 0; i < n_rel_lead; i++)
             ch_data->t_env[i + 1] = ch_data->t_env[i] + temp;
     } else if (ch_data->bs_frame_class > 1) { // VARFIX or VARVAR
