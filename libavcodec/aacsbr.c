@@ -1495,79 +1495,48 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
                           SBRData *ch_data, int l_a[2])
 {
     int i, k, l, m;
-    float gain_boost_temp[7][48];
-    float gain_max_temp[7][48];
     // max gain limits : -3dB, 0dB, 3dB, inf dB (limiter off)
     const float limgain[4] = { 0.70795, 1.0, 1.41254, 10000000000 };
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         int delta = !((l == l_a[1]) || (l == l_a[0]));
-        for (m = 0; m < sbr->m; m++) {
+        for (k = 0; k < sbr->n_lim; k++) {
+            float gain_boost, gain_max;
+            float sum[2] = { 0.0f, 0.0f };
+            for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
             if (!sbr->s_mapped[l][m]) {
-                sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] /
+                sbr->gain_limboost[l][m] = sqrtf(sbr->e_origmapped[l][m] /
                                         ((1.0f + sbr->e_curr[l][m]) *
                                          (1.0f + sbr->q_mapped[l][m] * delta)));
             } else {
-                sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] * sbr->q_mapped[l][m] /
+                sbr->gain_limboost[l][m] = sqrtf(sbr->e_origmapped[l][m] * sbr->q_mapped[l][m] /
                                         ((1.0f + sbr->e_curr[l][m]) *
                                          (1.0f + sbr->q_mapped[l][m])));
             }
-        }
-    }
-
-    for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        for (k = 0; k < sbr->n_lim; k++) {
-            float sum[2] = { 0.0f, 0.0f };
+            }
             for (i = sbr->f_tablelim[k] - sbr->k[3]; i < sbr->f_tablelim[k + 1] - sbr->k[3]; i++) {
                 sum[0] += sbr->e_origmapped[l][i];
                 sum[1] += sbr->e_curr[l][i];
             }
-            gain_max_temp[l][k] = FFMIN(100000,
+            gain_max = FFMIN(100000,
                                         limgain[sbr->bs_limiter_gains] * sqrtf((EPS0 + sum[0]) / (EPS0 + sum[1])));
-        }
-    }
-
-    for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        for (m = 0; m < sbr->m; m++) {
-            if ((k = find_freq_subband(sbr->f_tablelim, sbr->n_lim, m + sbr->k[3])) < 0) {
-                av_log(ac->avccontext, AV_LOG_ERROR,
-                       "No subband found for frequency %d\n", m + sbr->k[3]);
+            for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
+                sbr->q_m_limboost[l][m]  = FFMIN(sbr->q_m[l][m],  sbr->q_m[l][m] * gain_max / sbr->gain_limboost[l][m]);
+                sbr->gain_limboost[l][m] = FFMIN(sbr->gain_limboost[l][m], gain_max);
             }
-            sbr->gain_max[l][m] = gain_max_temp[l][k];
-            sbr->q_m_lim[l][m]  = FFMIN(sbr->q_m[l][m],  sbr->q_m[l][m] * sbr->gain_max[l][m] / sbr->gain[l][m]);
-            sbr->gain_lim[l][m] = FFMIN(sbr->gain[l][m], sbr->gain_max[l][m]);
-        }
-    }
-
-    for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        int delta = !((l == l_a[1]) || (l == l_a[0]));
-        for (k = 0; k < sbr->n_lim; k++) {
-            float sum[2] = { 0.0f, 0.0f };
+            sum[0] = sum[1] = 0.0f;
             for (i = sbr->f_tablelim[k] - sbr->k[3]; i < sbr->f_tablelim[k + 1] - sbr->k[3]; i++) {
                 sum[0] += sbr->e_origmapped[l][i];
-                sum[1] += sbr->e_curr[l][i] * sbr->gain_lim[l][i] * sbr->gain_lim[l][i]
+                sum[1] += sbr->e_curr[l][i] * sbr->gain_limboost[l][i] * sbr->gain_limboost[l][i]
                           + sbr->s_m[l][i] * sbr->s_m[l][i]
-                          + (delta && !sbr->s_m[l][i]) * sbr->q_m_lim[l][i] * sbr->q_m_lim[l][i];
+                          + (delta && !sbr->s_m[l][i]) * sbr->q_m_limboost[l][i] * sbr->q_m_limboost[l][i];
             }
-            gain_boost_temp[l][k] = FFMIN(1.584893192, sqrtf((EPS0 + sum[0]) / (EPS0 + sum[1])));
-        }
-    }
-
-    for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        for (m = 0; m < sbr->m; m++) {
-            if ((k = find_freq_subband(sbr->f_tablelim, sbr->n_lim, m + sbr->k[3])) < 0) {
-                av_log(ac->avccontext, AV_LOG_ERROR,
-                       "No subband found for frequency %d\n", m + sbr->k[3]);
+            gain_boost = FFMIN(1.584893192, sqrtf((EPS0 + sum[0]) / (EPS0 + sum[1])));
+            for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
+                sbr->gain_limboost[l][m] = sbr->gain_limboost[l][m] * gain_boost;
+                sbr->q_m_limboost[l][m]  = sbr->q_m_limboost[l][m]  * gain_boost;
+                sbr->s_m_boost[l][m]     = sbr->s_m[l][m]           * gain_boost;
             }
-            sbr->gain_boost[l][m] = gain_boost_temp[l][k];
-        }
-    }
-
-    for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        for (m = 0; m < sbr->m; m++) {
-            sbr->gain_limboost[l][m] = sbr->gain_lim[l][m] * sbr->gain_boost[l][m];
-            sbr->q_m_limboost[l][m]  = sbr->q_m_lim[l][m]  * sbr->gain_boost[l][m];
-            sbr->s_m_boost[l][m]     = sbr->s_m[l][m]      * sbr->gain_boost[l][m];
         }
     }
 }
