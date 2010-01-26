@@ -1373,7 +1373,7 @@ static int sbr_x_gen(SpectralBandReplication *sbr,
 
 // Mapping (14496-3 sp04 p217)
 static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
-                        SBRData *ch_data, int ch, int l_a[2])
+                        SBRData *ch_data, int l_a[2])
 {
     int i, l, m;
 
@@ -1429,8 +1429,7 @@ static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
 
 // Estimation of current envelope (14496-3 sp04 p218)
 static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
-                             SpectralBandReplication *sbr, SBRData *ch_data,
-                             int ch)
+                             SpectralBandReplication *sbr, SBRData *ch_data)
 {
     int i, l, m;
 
@@ -1536,7 +1535,7 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
 // Assembling HF Signals (14496-3 sp04 p220)
 static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
                             SpectralBandReplication *sbr, SBRData *ch_data,
-                            int ch, int l_a[2])
+                            int l_a[2])
 {
     int i, j, l, m;
     const int h_SL = sbr->bs_smoothing_mode ? 0 : 4;
@@ -1671,10 +1670,10 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
                    sbr->data[ch].bs_num_env[1]);
 
     // hf_adj
-        sbr_mapping(ac, sbr, &sbr->data[ch], ch, sbr->data[ch].l_a);
-        sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch], ch);
+        sbr_mapping(ac, sbr, &sbr->data[ch], sbr->data[ch].l_a);
+        sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch]);
         sbr_gain_calc(ac, sbr, &sbr->data[ch], sbr->data[ch].l_a);
-        sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch], ch,
+        sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch],
                         sbr->data[ch].l_a);
     }
 
