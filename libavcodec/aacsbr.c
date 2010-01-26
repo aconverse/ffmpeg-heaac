@@ -1070,12 +1070,12 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
     } else { // SCE or one non-coupled CPE
         for (ch = 0; ch < (id_aac == TYPE_CPE ? 2 : 1); ch++) {
             float alpha = sbr->data[ch].bs_amp_res ? 1.0f : 0.5f;
-        for (l = 1; l <= sbr->data[ch].bs_num_env[1]; l++)
-            for (k = 0; k < sbr->n[sbr->data[ch].bs_freq_res[l]]; k++)
-                sbr->data[ch].env_facs[l][k] = exp2f(alpha * sbr->data[ch].env_facs[l][k] + 6.0f);
-        for (l = 1; l <= sbr->data[ch].bs_num_noise; l++)
-            for (k = 0; k < sbr->n_q; k++)
-                sbr->data[ch].noise_facs[l][k] = exp2f(NOISE_FLOOR_OFFSET - sbr->data[ch].noise_facs[l][k]);
+            for (l = 1; l <= sbr->data[ch].bs_num_env[1]; l++)
+                for (k = 0; k < sbr->n[sbr->data[ch].bs_freq_res[l]]; k++)
+                    sbr->data[ch].env_facs[l][k] = exp2f(alpha * sbr->data[ch].env_facs[l][k] + 6.0f);
+            for (l = 1; l <= sbr->data[ch].bs_num_noise; l++)
+                for (k = 0; k < sbr->n_q; k++)
+                    sbr->data[ch].noise_facs[l][k] = exp2f(NOISE_FLOOR_OFFSET - sbr->data[ch].noise_facs[l][k]);
         }
     }
 }
