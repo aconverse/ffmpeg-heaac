@@ -1096,7 +1096,7 @@ static void sbr_qmf_analysis(const float *in, float *x, float W[2][32][32][2])
     for (l = 0; l < 32; l++) { // 32 = numTimeSlots*RATE = 16*2 as 960 sample frames are not supported
         float z[320], u[64];
         for (i = 0; i < 320; i++)
-            z[i] = x[-i] * sbr_qmf_window_us[i << 1];
+            z[i] = x[-i] * sbr_qmf_window_ds[i];
         for (i = 0; i < 64; i++)
             u[i] = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
         for (k = 0; k < 32; k++) {
