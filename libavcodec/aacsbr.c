@@ -1086,28 +1086,22 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
  * @param   x       pointer to the beginning of the first sample window
  * @param   W       array of complex-valued samples split into subbands
  */
-static void sbr_qmf_analysis(const float *in, float *x, float W[2][32][32][2])
+static void sbr_qmf_analysis(DSPContext *dsp, const float *in, float *x, float *u, float W[2][32][32][2])
 {
-    int i, k, l, n;
+    int i, k, l;
     memcpy(W[1], W[0], sizeof(W[0]));
     memcpy(x    , x+1024, (320-32)*sizeof(x[0]));
     memcpy(x+288, in    ,     1024*sizeof(x[0]));
     x += 319;
     for (l = 0; l < 32; l++) { // 32 = numTimeSlots*RATE = 16*2 as 960 sample frames are not supported
-        float z[320], u[64];
+        float z[320];
         for (i = 0; i < 320; i++)
             z[i] = x[-i] * sbr_qmf_window_ds[i];
         for (i = 0; i < 64; i++)
             u[i] = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
         for (k = 0; k < 32; k++) {
-            float temp1 = u[0] * 2.0f;
-            W[0][k][l][0] = temp1 * analysis_cos[k][0];
-            W[0][k][l][1] = temp1 * analysis_sin[k][0];
-            for (n = 1; n < 64; n++) {
-                temp1 = u[n] * 2.0f;
-                W[0][k][l][0] += temp1 * analysis_cos[k][n];
-                W[0][k][l][1] += temp1 * analysis_sin[k][n];
-            }
+            W[0][k][l][0] = 2.0 * dsp->scalarproduct_float(u, analysis_cos[k], 64);
+            W[0][k][l][1] = 2.0 * dsp->scalarproduct_float(u, analysis_sin[k], 64);
         }
         x += 32;
     }
@@ -1668,7 +1662,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* i
     int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
 
     /* decode channel */
-    sbr_qmf_analysis(in, sbr->data[ch].analysis_filterbank_samples, sbr->data[ch].W);
+    sbr_qmf_analysis(&ac->dsp, in, sbr->data[ch].analysis_filterbank_samples, sbr->ana_filter_scratch, sbr->data[ch].W);
     sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
     if (sbr->start) {
         sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->X_low, sbr->k[0]);
