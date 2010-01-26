@@ -180,6 +180,7 @@ static int che_configure(AACContext *ac,
     if (che_pos[type][id]) {
         if (!ac->che[type][id] && !(ac->che[type][id] = av_mallocz(sizeof(ChannelElement))))
             return AVERROR(ENOMEM);
+        ff_aac_sbr_ctx_init(&ac->che[type][id]->sbr);
         if (type != TYPE_CCE) {
             ac->output_data[(*channels)++] = ac->che[type][id]->ch[0].ret;
             if (type == TYPE_CPE) {
@@ -503,13 +504,12 @@ static av_cold int aac_decode_init(AVCodecContext *avccontext)
     int i;
 
     ac->avccontext = avccontext;
+    ac->m4ac.sample_rate = avccontext->sample_rate;
+    avccontext->sample_rate = 0; //Set sample rate to zero for SBR detection
 
     if (avccontext->extradata_size > 0) {
         if (decode_audio_specific_config(ac, avccontext->extradata, avccontext->extradata_size))
             return -1;
-        avccontext->sample_rate = ac->m4ac.sample_rate;
-    } else if (avccontext->channels > 0) {
-        ac->m4ac.sample_rate = avccontext->sample_rate;
     }
 
     avccontext->sample_fmt = SAMPLE_FMT_S16;
@@ -1622,6 +1622,17 @@ static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
     case EXT_SBR_DATA_CRC:
         crc_flag++;
     case EXT_SBR_DATA:
+        if (ac->m4ac.sbr == 0) {
+            av_log(ac->avccontext, AV_LOG_ERROR, "SBR signaled to be not-present but was found in the bitstream.\n");
+            skip_bits_long(gb, 8 * cnt - 4);
+            return res;
+        } else if (ac->m4ac.sbr == -1 && ac->output_configured == OC_LOCKED) {
+            av_log(ac->avccontext, AV_LOG_ERROR, "Implicit SBR was found with a first occurrence after the first frame.\n");
+            skip_bits_long(gb, 8 * cnt - 4);
+            return res;
+        } else {
+            ac->m4ac.sbr = 1;
+        }
         res = ff_decode_sbr_extension(ac, &ac->che[id][tag]->sbr, gb, crc_flag, cnt, id);
         break;
     case EXT_DYNAMIC_RANGE:
@@ -1804,7 +1815,7 @@ static void apply_independent_coupling(AACContext *ac,
     const float *src = cce->ch[0].ret;
     float *dest = target->ret;
 
-    for (i = 0; i < 1024; i++)
+    for (i = 0; i < 2048; i++)
         dest[i] += gain * (src[i] - bias);
 }
 
@@ -1862,10 +1873,18 @@ static void spectral_to_sample(AACContext *ac)
                     apply_tns(che->ch[1].coeffs, &che->ch[1].tns, &che->ch[1].ics, 1);
                 if (type <= TYPE_CPE)
                     apply_channel_coupling(ac, che, type, i, BETWEEN_TNS_AND_IMDCT, apply_dependent_coupling);
-                if (type != TYPE_CCE || che->coup.coupling_point == AFTER_IMDCT)
+                if (type != TYPE_CCE || che->coup.coupling_point == AFTER_IMDCT) {
                     imdct_and_windowing(ac, &che->ch[0]);
-                if (type == TYPE_CPE)
+                    if (ac->m4ac.sbr > 0) {
+                        ff_sbr_dequant(ac, &che->sbr, type == TYPE_CPE ? TYPE_CPE : TYPE_SCE);
+                        ff_sbr_apply(ac, &che->sbr, 0, che->ch[0].ret, che->ch[0].ret);
+                    }
+                }
+                if (type == TYPE_CPE) {
                     imdct_and_windowing(ac, &che->ch[1]);
+                    if (ac->m4ac.sbr > 0)
+                        ff_sbr_apply(ac, &che->sbr, 1, che->ch[1].ret, che->ch[1].ret);
+                }
                 if (type <= TYPE_CCE)
                     apply_channel_coupling(ac, che, type, i, AFTER_IMDCT, apply_independent_coupling);
             }
@@ -1919,6 +1938,7 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
     GetBitContext gb;
     enum RawDataBlockType elem_type, elem_type_prev = 0;
     int err, elem_id, elem_id_prev = 0, data_size_tmp;
+    int samples = 1024, multiplier;
 
     init_get_bits(&gb, buf, buf_size * 8);
 
@@ -1999,6 +2019,11 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
     }
 
     spectral_to_sample(ac);
+    multiplier = ac->m4ac.sbr ? ac->m4ac.ext_sample_rate > ac->m4ac.sample_rate : 0;
+    samples <<= multiplier;
+    if (!avccontext->sample_rate) {
+        avccontext->sample_rate = ac->m4ac.sample_rate << multiplier;
+    }
 
     if (!ac->is_saved) {
         ac->is_saved = 1;
@@ -2006,7 +2031,7 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
         return buf_size;
     }
 
-    data_size_tmp = 1024 * avccontext->channels * sizeof(int16_t);
+    data_size_tmp = samples * avccontext->channels * sizeof(int16_t);
     if (*data_size < data_size_tmp) {
         av_log(avccontext, AV_LOG_ERROR,
                "Output buffer too small (%d) or trying to output too many samples (%d) for this frame.\n",
@@ -2015,7 +2040,7 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
     }
     *data_size = data_size_tmp;
 
-    ac->dsp.float_to_int16_interleave(data, (const float **)ac->output_data, 1024, avccontext->channels);
+    ac->dsp.float_to_int16_interleave(data, (const float **)ac->output_data, samples, avccontext->channels);
 
     if (ac->output_configured)
         ac->output_configured = OC_LOCKED;
