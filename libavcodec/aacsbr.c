@@ -1654,27 +1654,32 @@ void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
     }
 }
 
-void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* in, float* out)
+void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
+                  float* in, float* out)
 {
     int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
 
     /* decode channel */
-    sbr_qmf_analysis(&ac->dsp, in, sbr->data[ch].analysis_filterbank_samples, sbr->ana_filter_scratch, sbr->data[ch].W);
+    sbr_qmf_analysis(&ac->dsp, in, sbr->data[ch].analysis_filterbank_samples,
+                     sbr->ana_filter_scratch, sbr->data[ch].W);
     sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
     if (sbr->start) {
         sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->X_low, sbr->k[0]);
         sbr_chirp(sbr, &sbr->data[ch]);
         sbr_hf_gen(ac, sbr, sbr->X_high, sbr->X_low, sbr->alpha0, sbr->alpha1,
-                   sbr->data[ch].bw_array, sbr->data[ch].t_env, sbr->data[ch].bs_num_env[1]);
+                   sbr->data[ch].bw_array, sbr->data[ch].t_env,
+                   sbr->data[ch].bs_num_env[1]);
 
     // hf_adj
         sbr_mapping(ac, sbr, &sbr->data[ch], ch, sbr->data[ch].l_a);
         sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch], ch);
         sbr_gain_calc(ac, sbr, &sbr->data[ch], sbr->data[ch].l_a);
-        sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch], ch, sbr->data[ch].l_a);
+        sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch], ch,
+                        sbr->data[ch].l_a);
     }
 
     /* synthesis */
     sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->data[ch].Y, ch);
-    sbr_qmf_synthesis(&ac->dsp, out, sbr->X, sbr->data[ch].synthesis_filterbank_samples, downsampled);
+    sbr_qmf_synthesis(&ac->dsp, out, sbr->X, 
+                      sbr->data[ch].synthesis_filterbank_samples, downsampled);
 }
