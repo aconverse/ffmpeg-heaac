@@ -206,6 +206,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     int k;
     const uint8_t *sbr_offset_ptr;
     int16_t stop_dk[13];
+    const float INV_2LN2 = 0.72134752044448170368; // 1 / (2 * ln(2))
 
     if (sbr->sample_rate < 32000) {
         temp = 3000;
@@ -312,7 +313,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
             sbr->k[1] = sbr->k[2];
         }
 
-        num_bands_0 = lroundf(bands * logf(sbr->k[1] / (float)sbr->k[0]) / (2.0f * logf(2.0f))) << 1;
+        num_bands_0 = lroundf(bands * logf(sbr->k[1] / (float)sbr->k[0]) * INV_2LN2) << 1;
 
         if (num_bands_0 <= 0) { // Requirements (14496-3 sp04 p205)
             av_log(ac->avccontext, AV_LOG_ERROR, "Invalid num_bands_0: %d\n", num_bands_0);
@@ -337,8 +338,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         if (two_regions) {
             int16_t vk1[49];
-            unsigned int num_bands_1 = lroundf(bands * logf(sbr->k[2] / (float)sbr->k[1]) /
-                                              (2.0f * logf(2.0f) * warp)) << 1;
+            unsigned int num_bands_1 = lroundf(bands * logf(sbr->k[2] / (float)sbr->k[1]) *
+                                               INV_2LN2 / warp) << 1;
 
             make_bands(vk1+1, sbr->k[1], sbr->k[2], num_bands_1);
 
@@ -489,7 +490,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
     for (k = 1; k <= sbr->n[0]; k++)
         sbr->f_tablelow[k] = sbr->f_tablehigh[(k << 1) - temp];
 
-    sbr->n_q = FFMAX(1, lroundf(sbr->spectrum_params[1].bs_noise_bands * logf(sbr->k[2] / (float)sbr->k[3]) / logf(2.0f))); // 0 <= bs_noise_bands <= 3
+    sbr->n_q = FFMAX(1, lroundf(sbr->spectrum_params[1].bs_noise_bands * log2f(sbr->k[2] / (float)sbr->k[3]))); // 0 <= bs_noise_bands <= 3
     if (sbr->n_q > 5) {
         av_log(ac->avccontext, AV_LOG_ERROR, "Too many noise floor scale factors: %d\n", sbr->n_q);
         return -1;
@@ -546,7 +547,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
     return 0;
 }
 
-static int8_t ceil_log2[] = {
+static const int8_t ceil_log2[] = {
     0, 0, 1, 2, 2, 3, 3,
 };
 
