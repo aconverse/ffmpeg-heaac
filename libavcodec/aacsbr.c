@@ -1479,20 +1479,6 @@ static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
 }
 
 // Calculation of levels of additional HF signal components (14496-3 sp04 p219)
-static void sbr_hf_additional_levels(SpectralBandReplication *sbr,
-                                     SBRData *ch_data)
-{
-    int l, m;
-
-    for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        for (m = 0; m < sbr->m; m++) {
-            const float temp = sbr->e_origmapped[l][m] / (1.0f + sbr->q_mapped[l][m]);
-            sbr->q_m[l][m] = sqrtf(temp * sbr->q_mapped[l][m]);
-            sbr->s_m[l][m] = sqrtf(temp * ch_data->s_indexmapped[l + 1][m]);
-        }
-    }
-}
-
 // Calculation of gain (14496-3 sp04 p219)
 static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
                           SBRData *ch_data, int l_a[2])
@@ -1507,6 +1493,9 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
             float gain_boost, gain_max;
             float sum[2] = { 0.0f, 0.0f };
             for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
+                const float temp = sbr->e_origmapped[l][m] / (1.0f + sbr->q_mapped[l][m]);
+                sbr->q_m[l][m] = sqrtf(temp * sbr->q_mapped[l][m]);
+                sbr->s_m[l][m] = sqrtf(temp * ch_data->s_indexmapped[l + 1][m]);
                 if (!sbr->s_mapped[l][m]) {
                     sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] /
                                             ((1.0f + sbr->e_curr[l][m]) *
@@ -1681,7 +1670,6 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* i
     // hf_adj
         sbr_mapping(ac, sbr, &sbr->data[ch], ch, sbr->data[ch].l_a);
         sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch], ch);
-        sbr_hf_additional_levels(sbr, &sbr->data[ch]);
         sbr_gain_calc(ac, sbr, &sbr->data[ch], sbr->data[ch].l_a);
         sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch], ch, sbr->data[ch].l_a);
     }
