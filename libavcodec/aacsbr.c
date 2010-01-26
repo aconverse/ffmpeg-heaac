@@ -1690,6 +1690,7 @@ void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
 void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* in, float* out)
 {
     int* l_a = sbr->data[ch].l_a;
+    int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
 
     /* decode channel */
     sbr_qmf_analysis(in, sbr->data[ch].analysis_filterbank_samples, sbr->data[ch].W);
@@ -1710,5 +1711,5 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* i
 
     /* synthesis */
     sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->data[ch].Y, ch);
-    sbr_qmf_synthesis(&ac->dsp, out, sbr->X, sbr->data[ch].synthesis_filterbank_samples, 0);
+    sbr_qmf_synthesis(&ac->dsp, out, sbr->X, sbr->data[ch].synthesis_filterbank_samples, downsampled);
 }
