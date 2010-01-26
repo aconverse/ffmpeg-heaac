@@ -231,7 +231,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     } else if (sbr->sample_rate > 64000) {
         sbr_offset_ptr = sbr_offset[5];
     } else {
-        av_log(ac->avccontext, AV_LOG_ERROR, "Unsupported sample rate for SBR: %d\n", sbr->sample_rate);
+        av_log(ac->avccontext, AV_LOG_ERROR,
+               "Unsupported sample rate for SBR: %d\n", sbr->sample_rate);
         return -1;
     }
 
@@ -248,7 +249,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     } else if (spectrum->bs_stop_freq == 15) {
         sbr->k[2] = 3*sbr->k[0];
     } else {
-        av_log(ac->avccontext, AV_LOG_ERROR, "Invalid bs_stop_freq: %d\n", spectrum->bs_stop_freq);
+        av_log(ac->avccontext, AV_LOG_ERROR,
+               "Invalid bs_stop_freq: %d\n", spectrum->bs_stop_freq);
         return -1;
     }
     sbr->k[2] = FFMIN(64, sbr->k[2]);
@@ -386,7 +388,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
         temp = 32;
 
     if (sbr->k[2] - sbr->k[0] > temp) {
-        av_log(ac->avccontext, AV_LOG_ERROR, "Invalid bitstream, too many QMF subbands: %d\n", sbr->k[2] - sbr->k[0]);
+        av_log(ac->avccontext, AV_LOG_ERROR,
+               "Invalid bitstream, too many QMF subbands: %d\n", sbr->k[2] - sbr->k[0]);
         return -1;
     }
 
@@ -472,7 +475,8 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
 
     // Requirements (14496-3 sp04 p205)
     if (sbr->k[3] + sbr->m > 64) {
-        av_log(ac->avccontext, AV_LOG_ERROR, "Stop frequency border too high: %d\n", sbr->k[3] + sbr->m);
+        av_log(ac->avccontext, AV_LOG_ERROR,
+               "Stop frequency border too high: %d\n", sbr->k[3] + sbr->m);
         return -1;
     }
     if (sbr->k[3] > 32) {
@@ -614,12 +618,14 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
 
     if (ch_data->bs_frame_class == FIXFIX && ch_data->bs_num_env[1] > 4) {
         av_log(ac->avccontext, AV_LOG_ERROR,
-               "Invalid bitstream, too many SBR envelopes in FIXFIX type SBR frame: %d\n", ch_data->bs_num_env[1]);
+               "Invalid bitstream, too many SBR envelopes in FIXFIX type SBR frame: %d\n",
+               ch_data->bs_num_env[1]);
         return -1;
     }
     if (ch_data->bs_frame_class == VARVAR && ch_data->bs_num_env[1] > 5) {
         av_log(ac->avccontext, AV_LOG_ERROR,
-               "Invalid bitstream, too many SBR envelopes in VARVAR type SBR frame: %d\n", ch_data->bs_num_env[1]);
+               "Invalid bitstream, too many SBR envelopes in VARVAR type SBR frame: %d\n",
+               ch_data->bs_num_env[1]);
         return -1;
     }
 
@@ -869,7 +875,8 @@ static void sbr_reset(AACContext *ac, SpectralBandReplication *sbr)
     if (err >= 0)
         err = sbr_make_f_derived(ac, sbr);
     if (err < 0) {
-        av_log(ac->avccontext, AV_LOG_ERROR, "SBR reset failed. Switching SBR to pure upsampling mode.\n");
+        av_log(ac->avccontext, AV_LOG_ERROR,
+               "SBR reset failed. Switching SBR to pure upsampling mode.\n");
         sbr->start = 0;
     }
 }
@@ -920,7 +927,8 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
 
     bytes_read = ((num_sbr_bits + num_align_bits + 4) / 8);
     if (bytes_read > cnt) {
-        av_log(ac->avccontext, AV_LOG_ERROR, "Expected to read %d SBR bytes actually read %d.\n", cnt, bytes_read);
+        av_log(ac->avccontext, AV_LOG_ERROR,
+               "Expected to read %d SBR bytes actually read %d.\n", cnt, bytes_read);
     }
     return cnt;
 }
@@ -942,7 +950,8 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
     } else if (ch_data->bs_frame_class < 4) { // VARFIX or VARVAR
         n_rel_lead = ch_data->bs_num_rel[0];
     } else {
-        av_log(ac->avccontext, AV_LOG_ERROR, "Invalid bs_frame_class for SBR: %d\n", ch_data->bs_frame_class);
+        av_log(ac->avccontext, AV_LOG_ERROR,
+               "Invalid bs_frame_class for SBR: %d\n", ch_data->bs_frame_class);
         return -1;
     }
 
@@ -1297,7 +1306,8 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
             const int p = sbr->patch_start_subband[i] + x;
 
             if (g < 0) {
-                av_log(ac->avccontext, AV_LOG_ERROR, "ERROR : no subband found for frequency %d\n", k);
+                av_log(ac->avccontext, AV_LOG_ERROR,
+                       "ERROR : no subband found for frequency %d\n", k);
                 return -1;
             }
 
