@@ -1496,7 +1496,7 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
 {
     int i, k, l, m;
     // max gain limits : -3dB, 0dB, 3dB, inf dB (limiter off)
-    const float limgain[4] = { 0.70795, 1.0, 1.41254, 10000000000 };
+    static const float limgain[4] = { 0.70795, 1.0, 1.41254, 10000000000 };
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         int delta = !((l == l_a[1]) || (l == l_a[0]));
