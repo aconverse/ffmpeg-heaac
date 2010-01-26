@@ -32,11 +32,16 @@
 #include "aac.h"
 #include "aacsbr.h"
 
+/** Initialize SBR. */
 av_cold void ff_aac_sbr_init(void);
+/** Initialize one SBR context. */
 av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr);
+/** Decode one SBR element. */
 int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
                             GetBitContext *gb, int crc, int cnt, int id_aac);
+/** Dequantized all channels in one SBR element. */
 void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac);
+/** Apply dequantized SBR to a single AAC channel. */
 void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch, float* in, float* out);
 
 #endif /* AVCODEC_AACSBR_INTERNAL_H */
