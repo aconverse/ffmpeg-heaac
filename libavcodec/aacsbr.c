@@ -1119,8 +1119,8 @@ static void sbr_qmf_synthesis(DSPContext * dsp, float *out, float X[32][64][2],
                               float *v, const unsigned int div)
 {
     int l, n;
-    float *sbr_qmf_window = div ? sbr_qmf_window_ds : sbr_qmf_window_us;
-    float (*synthesis_cossin)[2] = div ? synthesis_cossin_ds : synthesis_cossin_us;
+    const float *sbr_qmf_window = div ? sbr_qmf_window_ds : sbr_qmf_window_us;
+    const float (*synthesis_cossin)[2] = div ? synthesis_cossin_ds : synthesis_cossin_us;
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
         for (n = 0; n < 128 >> div; n++) {
