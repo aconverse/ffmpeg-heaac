@@ -1497,7 +1497,7 @@ static void sbr_hf_additional_levels(SpectralBandReplication *sbr,
 static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
                           SBRData *ch_data, int l_a[2])
 {
-    int i, k, l, m;
+    int k, l, m;
     // max gain limits : -3dB, 0dB, 3dB, inf dB (limiter off)
     static const float limgain[4] = { 0.70795, 1.0, 1.41254, 10000000000 };
 
@@ -1517,9 +1517,9 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
                                              (1.0f + sbr->q_mapped[l][m])));
                 }
             }
-            for (i = sbr->f_tablelim[k] - sbr->k[3]; i < sbr->f_tablelim[k + 1] - sbr->k[3]; i++) {
-                sum[0] += sbr->e_origmapped[l][i];
-                sum[1] += sbr->e_curr[l][i];
+            for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
+                sum[0] += sbr->e_origmapped[l][m];
+                sum[1] += sbr->e_curr[l][m];
             }
             gain_max = FFMIN(100000,
                              limgain[sbr->bs_limiter_gains] * sqrtf((EPS0 + sum[0]) / (EPS0 + sum[1])));
@@ -1528,11 +1528,11 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
                 sbr->gain[l][m] = FFMIN(sbr->gain[l][m], gain_max);
             }
             sum[0] = sum[1] = 0.0f;
-            for (i = sbr->f_tablelim[k] - sbr->k[3]; i < sbr->f_tablelim[k + 1] - sbr->k[3]; i++) {
-                sum[0] += sbr->e_origmapped[l][i];
-                sum[1] += sbr->e_curr[l][i] * sbr->gain[l][i] * sbr->gain[l][i]
-                          + sbr->s_m[l][i] * sbr->s_m[l][i]
-                          + (delta && !sbr->s_m[l][i]) * sbr->q_m[l][i] * sbr->q_m[l][i];
+            for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
+                sum[0] += sbr->e_origmapped[l][m];
+                sum[1] += sbr->e_curr[l][m] * sbr->gain[l][m] * sbr->gain[l][m]
+                          + sbr->s_m[l][m] * sbr->s_m[l][m]
+                          + (delta && !sbr->s_m[l][m]) * sbr->q_m[l][m] * sbr->q_m[l][m];
             }
             gain_boost = FFMIN(1.584893192, sqrtf((EPS0 + sum[0]) / (EPS0 + sum[1])));
             for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
