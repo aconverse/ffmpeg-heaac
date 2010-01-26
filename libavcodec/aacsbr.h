@@ -167,9 +167,7 @@ typedef struct {
     float              e_curr[7][48];
     float              q_m[7][48];
     float              s_m[7][48];
-    float              gain_limboost[7][48];
-    float              q_m_limboost[7][48];
-    float              s_m_boost[7][48];
+    float              gain[7][48];
 } SpectralBandReplication;
 
 #endif /* AVCODEC_AACSBR_H */

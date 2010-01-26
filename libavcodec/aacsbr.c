@@ -1505,11 +1505,11 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
             float sum[2] = { 0.0f, 0.0f };
             for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
             if (!sbr->s_mapped[l][m]) {
-                sbr->gain_limboost[l][m] = sqrtf(sbr->e_origmapped[l][m] /
+                sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] /
                                         ((1.0f + sbr->e_curr[l][m]) *
                                          (1.0f + sbr->q_mapped[l][m] * delta)));
             } else {
-                sbr->gain_limboost[l][m] = sqrtf(sbr->e_origmapped[l][m] * sbr->q_mapped[l][m] /
+                sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] * sbr->q_mapped[l][m] /
                                         ((1.0f + sbr->e_curr[l][m]) *
                                          (1.0f + sbr->q_mapped[l][m])));
             }
@@ -1521,21 +1521,21 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
             gain_max = FFMIN(100000,
                                         limgain[sbr->bs_limiter_gains] * sqrtf((EPS0 + sum[0]) / (EPS0 + sum[1])));
             for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
-                sbr->q_m_limboost[l][m]  = FFMIN(sbr->q_m[l][m],  sbr->q_m[l][m] * gain_max / sbr->gain_limboost[l][m]);
-                sbr->gain_limboost[l][m] = FFMIN(sbr->gain_limboost[l][m], gain_max);
+                sbr->q_m[l][m]  = FFMIN(sbr->q_m[l][m],  sbr->q_m[l][m] * gain_max / sbr->gain[l][m]);
+                sbr->gain[l][m] = FFMIN(sbr->gain[l][m], gain_max);
             }
             sum[0] = sum[1] = 0.0f;
             for (i = sbr->f_tablelim[k] - sbr->k[3]; i < sbr->f_tablelim[k + 1] - sbr->k[3]; i++) {
                 sum[0] += sbr->e_origmapped[l][i];
-                sum[1] += sbr->e_curr[l][i] * sbr->gain_limboost[l][i] * sbr->gain_limboost[l][i]
+                sum[1] += sbr->e_curr[l][i] * sbr->gain[l][i] * sbr->gain[l][i]
                           + sbr->s_m[l][i] * sbr->s_m[l][i]
-                          + (delta && !sbr->s_m[l][i]) * sbr->q_m_limboost[l][i] * sbr->q_m_limboost[l][i];
+                          + (delta && !sbr->s_m[l][i]) * sbr->q_m[l][i] * sbr->q_m[l][i];
             }
             gain_boost = FFMIN(1.584893192, sqrtf((EPS0 + sum[0]) / (EPS0 + sum[1])));
             for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
-                sbr->gain_limboost[l][m] = sbr->gain_limboost[l][m] * gain_boost;
-                sbr->q_m_limboost[l][m]  = sbr->q_m_limboost[l][m]  * gain_boost;
-                sbr->s_m_boost[l][m]     = sbr->s_m[l][m]           * gain_boost;
+                sbr->gain[l][m] = sbr->gain[l][m] * gain_boost;
+                sbr->q_m[l][m]  = sbr->q_m[l][m]  * gain_boost;
+                sbr->s_m[l][m]  = sbr->s_m[l][m]  * gain_boost;
             }
         }
     }
@@ -1565,8 +1565,8 @@ static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
 
     if (sbr->reset) {
         for (i = 0; i < h_SL; i++) {
-            memcpy(g_temp[i + 2*ch_data->t_env[0]], sbr->gain_limboost[0], sbr->m * sizeof(sbr->gain_limboost[0][0]));
-            memcpy(q_temp[i + 2*ch_data->t_env[0]], sbr->q_m_limboost[0],  sbr->m * sizeof(sbr->q_m_limboost[0][0]));
+            memcpy(g_temp[i + 2*ch_data->t_env[0]], sbr->gain[0], sbr->m * sizeof(sbr->gain[0][0]));
+            memcpy(q_temp[i + 2*ch_data->t_env[0]], sbr->q_m[0],  sbr->m * sizeof(sbr->q_m[0][0]));
         }
     } else if (h_SL) {
         memcpy(g_temp[2*ch_data->t_env[0]], g_temp[2*ch_data->t_env_num_env_old], 4*sizeof(g_temp[0]));
@@ -1575,8 +1575,8 @@ static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
-            memcpy(g_temp[h_SL + i], sbr->gain_limboost[l], sbr->m * sizeof(sbr->gain_limboost[l][0]));
-            memcpy(q_temp[h_SL + i], sbr->q_m_limboost[l],  sbr->m * sizeof(sbr->q_m_limboost[l][0]));
+            memcpy(g_temp[h_SL + i], sbr->gain[l], sbr->m * sizeof(sbr->gain[l][0]));
+            memcpy(q_temp[h_SL + i], sbr->q_m[l],  sbr->m * sizeof(sbr->q_m[l][0]));
         }
     }
 
@@ -1609,7 +1609,7 @@ static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
         if (l != l_a[0] && l != l_a[1]) {
             for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
                 for (m = 0; m < sbr->m; m++) {
-                    if (sbr->s_m_boost[l][m])
+                    if (sbr->s_m[l][m])
                         q_filt[i][m] = 0.0f;
                     else if (h_SL) {
                         const int idx1 = i + h_SL;
@@ -1640,9 +1640,9 @@ static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
         for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
             for (m = 0; m < sbr->m; m++) {
                 Y[0][m + sbr->k[3]][i + ENVELOPE_ADJUSTMENT_OFFSET][0] =
-                    w_temp[i][m][0] + sbr->s_m_boost[l][m] * phi[0][ch_data->f_indexsine];
+                    w_temp[i][m][0] + sbr->s_m[l][m] * phi[0][ch_data->f_indexsine];
                 Y[0][m + sbr->k[3]][i + ENVELOPE_ADJUSTMENT_OFFSET][1] =
-                    w_temp[i][m][1] + sbr->s_m_boost[l][m] * phi[1][ch_data->f_indexsine] * (1 - 2*((m + sbr->k[3]) & 1));
+                    w_temp[i][m][1] + sbr->s_m[l][m] * phi[1][ch_data->f_indexsine] * (1 - 2*((m + sbr->k[3]) & 1));
             }
             ch_data->f_indexsine = (ch_data->f_indexsine + 1) & 3;
         }
