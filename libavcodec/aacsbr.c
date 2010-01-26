@@ -83,21 +83,15 @@ av_cold void ff_aac_sbr_init(void)
 
 
     for (k = 0; k < 32; k++) {
-        float ana = -(k + 0.5f) * M_PI / 128.0f;
-        analysis_cos[k][0] = cosf(ana);
-        analysis_sin[k][0] = sinf(ana);
-        for (n = 1; n < 64; n++) {
-            ana = (n - 0.25f) * (k + 0.5f) * M_PI / 32.0f;
+        for (n = 0; n < 64; n++) {
+            float ana = (n - 0.25f) * (k + 0.5f) * M_PI / 32.0f;
             analysis_cos[k][n] = cosf(ana);
             analysis_sin[k][n] = sinf(ana);
         }
     }
     for (n = 0; n < 128; n++) {
-        float syn = (2.0f * n - 255.0f) * M_PI / 256.0f;
-        synthesis_cossin[n][0][0] =  cosf(syn);
-        synthesis_cossin[n][0][1] = -sinf(syn);
-        for (k = 1; k < 64; k++) {
-            syn = (k + 0.5f) * (2.0f * n - 255.0f) * M_PI / 128.0f;
+        for (k = 0; k < 64; k++) {
+            float syn = (k + 0.5f) * (2.0f * n - 255.0f) * M_PI / 128.0f;
             synthesis_cossin[n][k][0] =  cosf(syn);
             synthesis_cossin[n][k][1] = -sinf(syn);
         }
