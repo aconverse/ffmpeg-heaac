@@ -215,8 +215,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     } else
         temp = 5000;
 
-    start_min = (unsigned int)lroundf((temp << 7) / (float)sbr->sample_rate);
-    stop_min  = (unsigned int)lroundf((temp << 8) / (float)sbr->sample_rate);
+    start_min = lroundf((temp << 7) / (float)sbr->sample_rate);
+    stop_min  = lroundf((temp << 8) / (float)sbr->sample_rate);
 
     if (sbr->sample_rate == 16000) {
         sbr_offset_ptr = sbr_offset[0];
@@ -962,7 +962,7 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
     ch_data->t_env[ch_data->bs_num_env[1]] = abs_bord_trail;
 
     if (ch_data->bs_frame_class == FIXFIX) {
-        unsigned int temp = (unsigned int)lroundf(abs_bord_trail / (float)ch_data->bs_num_env[1]);
+        unsigned int temp = lroundf(abs_bord_trail / (float)ch_data->bs_num_env[1]);
         for (i = 0; i < n_rel_lead; i++)
             ch_data->t_env[i + 1] = ch_data->t_env[i] + temp;
     } else if (ch_data->bs_frame_class > 1) { // VARFIX or VARVAR
