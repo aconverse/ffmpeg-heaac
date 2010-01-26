@@ -1,7 +1,7 @@
 /*
  * AAC Spectral Band Replication decoding functions
  * Copyright (c) 2008-2009 Robert Swain ( rob opendot cl )
- * Copyright (c) 2009 Alex Converse <alex.converse@gmail.com>
+ * Copyright (c) 2009-2010 Alex Converse <alex.converse@gmail.com>
  *
  * This file is part of FFmpeg.
  *
