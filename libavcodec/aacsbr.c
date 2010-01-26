@@ -1504,22 +1504,22 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
             float gain_boost, gain_max;
             float sum[2] = { 0.0f, 0.0f };
             for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
-            if (!sbr->s_mapped[l][m]) {
-                sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] /
-                                        ((1.0f + sbr->e_curr[l][m]) *
-                                         (1.0f + sbr->q_mapped[l][m] * delta)));
-            } else {
-                sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] * sbr->q_mapped[l][m] /
-                                        ((1.0f + sbr->e_curr[l][m]) *
-                                         (1.0f + sbr->q_mapped[l][m])));
-            }
+                if (!sbr->s_mapped[l][m]) {
+                    sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] /
+                                            ((1.0f + sbr->e_curr[l][m]) *
+                                             (1.0f + sbr->q_mapped[l][m] * delta)));
+                } else {
+                    sbr->gain[l][m] = sqrtf(sbr->e_origmapped[l][m] * sbr->q_mapped[l][m] /
+                                            ((1.0f + sbr->e_curr[l][m]) *
+                                             (1.0f + sbr->q_mapped[l][m])));
+                }
             }
             for (i = sbr->f_tablelim[k] - sbr->k[3]; i < sbr->f_tablelim[k + 1] - sbr->k[3]; i++) {
                 sum[0] += sbr->e_origmapped[l][i];
                 sum[1] += sbr->e_curr[l][i];
             }
             gain_max = FFMIN(100000,
-                                        limgain[sbr->bs_limiter_gains] * sqrtf((EPS0 + sum[0]) / (EPS0 + sum[1])));
+                             limgain[sbr->bs_limiter_gains] * sqrtf((EPS0 + sum[0]) / (EPS0 + sum[1])));
             for (m = sbr->f_tablelim[k] - sbr->k[3]; m < sbr->f_tablelim[k + 1] - sbr->k[3]; m++) {
                 sbr->q_m[l][m]  = FFMIN(sbr->q_m[l][m],  sbr->q_m[l][m] * gain_max / sbr->gain[l][m]);
                 sbr->gain[l][m] = FFMIN(sbr->gain[l][m], gain_max);
