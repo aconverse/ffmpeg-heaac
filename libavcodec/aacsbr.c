@@ -221,20 +221,26 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     start_min = lroundf((temp << 7) / (float)sbr->sample_rate);
     stop_min  = lroundf((temp << 8) / (float)sbr->sample_rate);
 
-    if (sbr->sample_rate == 16000) {
+    switch (sbr->sample_rate) {
+    case 16000:
         sbr_offset_ptr = sbr_offset[0];
-    } else if (sbr->sample_rate == 22050) {
+        break;
+    case 22050:
         sbr_offset_ptr = sbr_offset[1];
-    } else if (sbr->sample_rate == 24000) {
+        break;
+    case 24000:
         sbr_offset_ptr = sbr_offset[2];
-    } else if (sbr->sample_rate == 32000) {
+        break;
+    case 32000:
         sbr_offset_ptr = sbr_offset[3];
-    } else if ((sbr->sample_rate >= 44100) &&
-               (sbr->sample_rate <= 64000)) {
+        break;
+    case 44100: case 48000: case 64000:
         sbr_offset_ptr = sbr_offset[4];
-    } else if (sbr->sample_rate > 64000) {
+        break;
+    case 88200: case 96000: case 128000: case 176400: case 192000:
         sbr_offset_ptr = sbr_offset[5];
-    } else {
+        break;
+    default:
         av_log(ac->avccontext, AV_LOG_ERROR,
                "Unsupported sample rate for SBR: %d\n", sbr->sample_rate);
         return -1;
