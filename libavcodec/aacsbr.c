@@ -515,7 +515,8 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
         sbr->f_tablenoise[k] = sbr->f_tablelow[temp];
     }
 
-    sbr_hf_calc_npatches(ac, sbr);
+    if (sbr_hf_calc_npatches(ac, sbr) < 0)
+        return -1;
 
     // Limiter Frequency Band Table (14496-3 sp04 p198)
     if (sbr->bs_limiter_bands > 0) {
