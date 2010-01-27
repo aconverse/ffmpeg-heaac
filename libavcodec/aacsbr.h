@@ -109,7 +109,7 @@ typedef struct {
     /** @} */
 
     /**
-     * @defgroup state         State varaibles
+     * @defgroup state         State variables
      * @{
      */
     DECLARE_ALIGNED(16, float, synthesis_filterbank_samples)[1280];

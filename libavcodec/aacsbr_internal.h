@@ -1,5 +1,5 @@
 /*
- * AAC Spectral Band Replication function delcarations
+ * AAC Spectral Band Replication function declarations
  * Copyright (c) 2008-2009 Robert Swain ( rob opendot cl )
  *
  * This file is part of FFmpeg.

@@ -1065,7 +1065,7 @@ static void sbr_env_noise_floors(SpectralBandReplication *sbr, SBRData *ch_data,
            sizeof(ch_data->noise_facs[0]));
 }
 
-/// Dequantisation and stereo decoding (14496-3 sp04 p203)
+/// Dequantization and stereo decoding (14496-3 sp04 p203)
 static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
 {
     int k, l;
