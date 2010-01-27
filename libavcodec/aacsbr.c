@@ -265,10 +265,10 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         if (!spectrum->bs_alter_scale) {
             dk = 1;
-            sbr->n_master = ((unsigned int)((sbr->k[2] - sbr->k[0]) * 0.50f)) << 1;
+            sbr->n_master =  (sbr->k[2] - sbr->k[0]) & ~0x01;
         } else {
             dk = 2;
-            sbr->n_master =         lroundf((sbr->k[2] - sbr->k[0]) * 0.25f)  << 1;
+            sbr->n_master = ((sbr->k[2] - sbr->k[0] + 2) >> 2) << 1;
         }
 
         for (k = 1; k <= sbr->n_master; k++)
