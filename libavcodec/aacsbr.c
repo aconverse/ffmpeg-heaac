@@ -1676,7 +1676,7 @@ void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
 }
 
 void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
-                  float* in, float* out)
+                  const float* in, float* out)
 {
     int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
 
