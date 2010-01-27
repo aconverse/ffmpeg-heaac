@@ -513,7 +513,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
 
     // Limiter Frequency Band Table (14496-3 sp04 p198)
     if (sbr->bs_limiter_bands > 0) {
-        const float lim_bands_per_octave[3] = {1.2, 2, 3};
+        static const float lim_bands_per_octave[3] = {1.2, 2, 3};
         int16_t patch_borders[5];
 
         patch_borders[0] = sbr->k[4];
@@ -1561,14 +1561,14 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
 {
     int i, j, l, m;
     const int h_SL = sbr->bs_smoothing_mode ? 0 : 4;
-    const float h_smooth[5] = {
+    static const float h_smooth[5] = {
         0.33333333333333,
         0.30150283239582,
         0.21816949906249,
         0.11516383427084,
         0.03183050093751,
     };
-    const int8_t phi[2][4] = {
+    static const int8_t phi[2][4] = {
         {  1,  0, -1,  0}, // real
         {  0,  1,  0, -1}, // imaginary
     };
