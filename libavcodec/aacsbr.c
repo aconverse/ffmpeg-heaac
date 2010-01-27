@@ -1590,8 +1590,8 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
-            memcpy(g_temp[h_SL + i], sbr->gain[l], sbr->m[1] * sizeof(sbr->gain[l][0]));
-            memcpy(q_temp[h_SL + i], sbr->q_m[l],  sbr->m[1] * sizeof(sbr->q_m[l][0]));
+            memcpy(g_temp[h_SL + i], sbr->gain[l], sbr->m[1] * sizeof(sbr->gain[0][0]));
+            memcpy(q_temp[h_SL + i], sbr->q_m[l],  sbr->m[1] * sizeof(sbr->q_m[0][0]));
         }
     }
 
@@ -1605,7 +1605,7 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
                         g_filt[m] += g_temp[idx1 - j][m] * h_smooth[j];
                 }
             } else {
-                memcpy(g_filt, g_temp[i + h_SL], sbr->m[1] * sizeof(g_temp[i + h_SL][0]));
+                memcpy(g_filt, g_temp[i + h_SL], sbr->m[1] * sizeof(g_temp[0][0]));
             }
 
             if (l != l_a[0] && l != l_a[1]) {
