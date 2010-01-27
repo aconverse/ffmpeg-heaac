@@ -307,15 +307,13 @@ static void av_noinline filter_mb_edgech( uint8_t *pix, int stride, int16_t bS[4
 
 void ff_h264_filter_mb_fast( H264Context *h, int mb_x, int mb_y, uint8_t *img_y, uint8_t *img_cb, uint8_t *img_cr, unsigned int linesize, unsigned int uvlinesize) {
     MpegEncContext * const s = &h->s;
-    int mb_y_firstrow = s->picture_structure == PICT_BOTTOM_FIELD;
-    int mb_xy, mb_type;
+    int mb_xy;
+    int mb_type;
     int qp, qp0, qp1, qpc, qpc0, qpc1, qp_thresh;
 
     mb_xy = h->mb_xy;
 
-    if(mb_x==0 || mb_y==mb_y_firstrow || !s->dsp.h264_loop_filter_strength || h->pps.chroma_qp_diff ||
-       (h->deblocking_filter == 2 && (h->slice_num != h->slice_table[h->top_mb_xy] ||
-                                      h->slice_num != h->slice_table[mb_xy - 1]))) {
+    if(!h->top_type || !h->left_type[0] || !s->dsp.h264_loop_filter_strength || h->pps.chroma_qp_diff) {
         ff_h264_filter_mb(h, mb_x, mb_y, img_y, img_cb, img_cr, linesize, uvlinesize);
         return;
     }
@@ -376,16 +374,16 @@ void ff_h264_filter_mb_fast( H264Context *h, int mb_x, int mb_y, uint8_t *img_y,
             int mask_edge1 = (mb_type & (MB_TYPE_16x16 | MB_TYPE_8x16)) ? 3 :
                              (mb_type & MB_TYPE_16x8) ? 1 : 0;
             int mask_edge0 = (mb_type & (MB_TYPE_16x16 | MB_TYPE_8x16))
-                             && (s->current_picture.mb_type[mb_xy-1] & (MB_TYPE_16x16 | MB_TYPE_8x16))
+                             && (h->left_type[0] & (MB_TYPE_16x16 | MB_TYPE_8x16))
                              ? 3 : 0;
             int step = IS_8x8DCT(mb_type) ? 2 : 1;
             edges = (mb_type & MB_TYPE_16x16) && !(h->cbp & 15) ? 1 : 4;
             s->dsp.h264_loop_filter_strength( bS, h->non_zero_count_cache, h->ref_cache, h->mv_cache,
                                               h->list_count==2, edges, step, mask_edge0, mask_edge1, FIELD_PICTURE);
         }
-        if( IS_INTRA(s->current_picture.mb_type[mb_xy-1]) )
+        if( IS_INTRA(h->left_type[0]) )
             bSv[0][0] = 0x0004000400040004ULL;
-        if( IS_INTRA(s->current_picture.mb_type[h->top_mb_xy]) )
+        if( IS_INTRA(h->top_type) )
             bSv[1][0] = FIELD_PICTURE ? 0x0003000300030003ULL : 0x0004000400040004ULL;
 
 #define FILTER(hv,dir,edge)\
@@ -423,7 +421,7 @@ static av_always_inline void filter_mb_dir(H264Context *h, int mb_x, int mb_y, u
     MpegEncContext * const s = &h->s;
     int edge;
     const int mbm_xy = dir == 0 ? mb_xy -1 : h->top_mb_xy;
-    const int mbm_type = s->current_picture.mb_type[mbm_xy];
+    const int mbm_type = dir == 0 ? h->left_type[0] : h->top_type;
 
     // how often to recheck mv-based bS when iterating between edges
     static const uint8_t mask_edge_tab[2][8]={{0,3,3,3,1,1,1,1},
@@ -615,17 +613,13 @@ void ff_h264_filter_mb( H264Context *h, int mb_x, int mb_y, uint8_t *img_y, uint
     int list;
 
     if (FRAME_MBAFF
-            // left mb is in picture
-            && h->slice_table[mb_xy-1] != 0xFFFF
             // and current and left pair do not have the same interlaced type
-            && IS_INTERLACED(mb_type^s->current_picture.mb_type[mb_xy-1])
+            && IS_INTERLACED(mb_type^h->left_type[0])
             // and left mb is in the same slice if deblocking_filter == 2
-            && (h->deblocking_filter!=2 || h->slice_table[mb_xy-1] == h->slice_num)) {
+            && h->left_type[0]) {
         /* First vertical edge is different in MBAFF frames
          * There are 8 different bS to compute and 2 different Qp
          */
-        const int pair_xy = mb_x + (mb_y&~1)*s->mb_stride;
-        const int left_mb_xy[2] = { pair_xy-1, pair_xy-1+s->mb_stride };
         DECLARE_ALIGNED_8(int16_t, bS)[8];
         int qp[2];
         int bqp[2];
@@ -639,24 +633,25 @@ void ff_h264_filter_mb( H264Context *h, int mb_x, int mb_y, uint8_t *img_y, uint
             *(uint64_t*)&bS[4]= 0x0004000400040004ULL;
         else {
             for( i = 0; i < 8; i++ ) {
-                int mbn_xy = MB_FIELD ? left_mb_xy[i>>2] : left_mb_xy[i&1];
+                int j= MB_FIELD ? i>>2 : i&1;
+                int mbn_xy = h->left_mb_xy[j];
+                int mbn_type= h->left_type[j];
 
-                if( IS_INTRA( s->current_picture.mb_type[mbn_xy] ) )
+                if( IS_INTRA( mbn_type ) )
                     bS[i] = 4;
-                else if( h->non_zero_count_cache[12+8*(i>>1)] != 0 ||
-                         ((!h->pps.cabac && IS_8x8DCT(s->current_picture.mb_type[mbn_xy])) ?
+                else{
+                    bS[i] = 1 + !!(h->non_zero_count_cache[12+8*(i>>1)] |
+                         ((!h->pps.cabac && IS_8x8DCT(mbn_type)) ?
                             (h->cbp_table[mbn_xy] & ((MB_FIELD ? (i&2) : (mb_y&1)) ? 8 : 2))
                                                                        :
-                            h->non_zero_count[mbn_xy][7+(MB_FIELD ? (i&3) : (i>>2)+(mb_y&1)*2)*8]))
-                    bS[i] = 2;
-                else
-                    bS[i] = 1;
+                            h->non_zero_count[mbn_xy][7+(MB_FIELD ? (i&3) : (i>>2)+(mb_y&1)*2)*8]));
+                }
             }
         }
 
         mb_qp = s->current_picture.qscale_table[mb_xy];
-        mbn0_qp = s->current_picture.qscale_table[left_mb_xy[0]];
-        mbn1_qp = s->current_picture.qscale_table[left_mb_xy[1]];
+        mbn0_qp = s->current_picture.qscale_table[h->left_mb_xy[0]];
+        mbn1_qp = s->current_picture.qscale_table[h->left_mb_xy[1]];
         qp[0] = ( mb_qp + mbn0_qp + 1 ) >> 1;
         bqp[0] = ( get_chroma_qp( h, 0, mb_qp ) +
                    get_chroma_qp( h, 0, mbn0_qp ) + 1 ) >> 1;

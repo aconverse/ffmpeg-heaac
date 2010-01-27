@@ -20,10 +20,14 @@ ALLPROGS    = $(addsuffix   $(EXESUF), $(BASENAMES))
 ALLPROGS_G  = $(addsuffix _g$(EXESUF), $(BASENAMES))
 ALLMANPAGES = $(addsuffix .1, $(BASENAMES))
 
+FFLIBS-$(CONFIG_AVCODEC)  += avcodec
+FFLIBS-$(CONFIG_AVDEVICE) += avdevice
 FFLIBS-$(CONFIG_AVFILTER) += avfilter
+FFLIBS-$(CONFIG_AVFORMAT) += avformat
 FFLIBS-$(CONFIG_POSTPROC) += postproc
+FFLIBS-$(CONFIG_SWSCALE)  += swscale
 
-FFLIBS := avdevice avformat avcodec avutil swscale
+FFLIBS := avutil
 
 DATA_FILES := $(wildcard $(SRC_DIR)/ffpresets/*.ffpreset)
 
@@ -110,8 +114,16 @@ install-man: $(MANPAGES)
 	install -d "$(MANDIR)/man1"
 	install -m 644 $(MANPAGES) "$(MANDIR)/man1"
 
-uninstall:
-	@echo "I'm sorry, Dave. I'm afraid I can't do that"
+uninstall: uninstall-progs uninstall-data uninstall-man
+
+uninstall-progs:
+	rm -f $(addprefix "$(BINDIR)/", $(ALLPROGS))
+
+uninstall-data:
+	rm -rf "$(DATADIR)"
+
+uninstall-man:
+	rm -f $(addprefix "$(MANDIR)/man1/",$(ALLMANPAGES))
 
 testclean:
 	rm -rf tests/vsynth1 tests/vsynth2 tests/data tests/*~
