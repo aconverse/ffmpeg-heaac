@@ -151,7 +151,7 @@ typedef struct {
     uint8_t            bs_coupling;
     SBRData            data[2];
     uint8_t            reset;
-    uint8_t            k[5]; ///< k0, k1, k2, kx, and kx' respectively
+    uint8_t            k[5]; ///< k0, k1, k2, kx', and kx respectively
     uint8_t            m[2]; ///< M' and M respectively
     uint8_t            n_master;
     uint8_t            n[2]; ///< n_low and n_high respectively
