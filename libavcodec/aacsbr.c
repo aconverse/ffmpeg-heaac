@@ -86,8 +86,8 @@ av_cold void ff_aac_sbr_init(void)
     for (k = 0; k < 32; k++) {
         for (n = 0; n < 64; n++) {
             float ana = (n - 0.25f) * (k + 0.5f) * M_PI / 32.0f;
-            analysis_cos[k][n] = cosf(ana);
-            analysis_sin[k][n] = sinf(ana);
+            analysis_cos[k][n] = 2.0f * cosf(ana);
+            analysis_sin[k][n] = 2.0f * sinf(ana);
         }
     }
     for (n = 0; n < 128; n++) {
@@ -1124,8 +1124,8 @@ static void sbr_qmf_analysis(DSPContext *dsp, const float *in, float *x,
         for (i = 0; i < 64; i++)
             u[i] = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
         for (k = 0; k < 32; k++) {
-            W[0][k][l][0] = 2.0 * dsp->scalarproduct_float(u, analysis_cos[k], 64);
-            W[0][k][l][1] = 2.0 * dsp->scalarproduct_float(u, analysis_sin[k], 64);
+            W[0][k][l][0] = dsp->scalarproduct_float(u, analysis_cos[k], 64);
+            W[0][k][l][1] = dsp->scalarproduct_float(u, analysis_sin[k], 64);
         }
         x += 32;
     }
