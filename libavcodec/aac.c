@@ -1622,7 +1622,7 @@ static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
     case EXT_SBR_DATA_CRC:
         crc_flag++;
     case EXT_SBR_DATA:
-        if (ac->m4ac.sbr == 0) {
+        if (!ac->m4ac.sbr) {
             av_log(ac->avccontext, AV_LOG_ERROR, "SBR signaled to be not-present but was found in the bitstream.\n");
             skip_bits_long(gb, 8 * cnt - 4);
             return res;

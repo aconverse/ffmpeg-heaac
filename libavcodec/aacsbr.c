@@ -476,7 +476,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
 
     memcpy(sbr->f_tablehigh, &sbr->f_master[sbr->spectrum_params[1].bs_xover_band],
            (sbr->n[1] + 1) * sizeof(sbr->f_master[0]));
-    sbr->m[1]    = sbr->f_tablehigh[sbr->n[1]] - sbr->f_tablehigh[0];
+    sbr->m[1] = sbr->f_tablehigh[sbr->n[1]] - sbr->f_tablehigh[0];
     sbr->k[3] = sbr->f_tablehigh[0];
 
     // Requirements (14496-3 sp04 p205)
