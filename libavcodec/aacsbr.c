@@ -377,7 +377,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
             memcpy(&sbr->f_master[0],               vk0,
                    (num_bands_0 + 1) * sizeof(sbr->f_master[0]));
             memcpy(&sbr->f_master[num_bands_0 + 1], vk1 + 1,
-                   num_bands_1      * sizeof(sbr->f_master[0]));
+                    num_bands_1      * sizeof(sbr->f_master[0]));
 
         } else {
             sbr->n_master = num_bands_0;
@@ -419,7 +419,7 @@ static int sbr_hf_calc_npatches(AACContext *ac, SpectralBandReplication *sbr)
     sbr->num_patches = 0;
 
     if (goal_sb < sbr->k[4] + sbr->m[1]) {
-        for (k = 0; sbr->f_master[k] < goal_sb; k++);
+        for (k = 0; sbr->f_master[k] < goal_sb; k++) ;
     } else
         k = sbr->n_master;
 
@@ -1647,8 +1647,8 @@ void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
 
     if (sbr->start) {
         for (ch = 0; ch < (id_aac == TYPE_CPE ? 2 : 1); ch++) {
-        sbr_time_freq_grid(ac, sbr, &sbr->data[ch], ch);
-        sbr_env_noise_floors(sbr, &sbr->data[ch], ch);
+            sbr_time_freq_grid(ac, sbr, &sbr->data[ch], ch);
+            sbr_env_noise_floors(sbr, &sbr->data[ch], ch);
         }
         sbr_dequant(sbr, id_aac);
     }
