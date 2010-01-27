@@ -40,6 +40,9 @@ static DECLARE_ALIGNED_16(float, analysis_sin)[32][64];
 static DECLARE_ALIGNED_16(float, synthesis_cossin_us)[128*64][2];
 static DECLARE_ALIGNED_16(float, synthesis_cossin_ds)[ 64*32][2];
 static DECLARE_ALIGNED_16(float, zero64)[64];
+#define NOISE_FLOOR_OFFSET 6.0f
+/// constant to avoid division by zero, e.g. 96 dB below maximum signal input
+#define EPS0 0.000000000001
 
 av_cold void ff_aac_sbr_init(void)
 {
