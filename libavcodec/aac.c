@@ -87,7 +87,6 @@
 #include "aacdectab.h"
 #include "aacsbr.h"
 #include "aacsbr_internal.h"
-#include "aacsbrdata.h"
 #include "mpeg4audio.h"
 #include "aac_parser.h"
 
