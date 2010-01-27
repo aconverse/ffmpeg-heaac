@@ -624,8 +624,6 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
         for (i = 0; i < ch_data->bs_num_env[1]; i++)
             ch_data->bs_freq_res[i + 1] = get_bits1(gb);
         break;
-    default:
-        break;
     }
 
     if (ch_data->bs_frame_class == FIXFIX && ch_data->bs_num_env[1] > 4) {
@@ -1264,8 +1262,6 @@ static void sbr_chirp(SpectralBandReplication *sbr, SBRData *ch_data)
             break;
         case 3:
             new_bw = 0.98f;
-            break;
-        default:
             break;
         }
 
