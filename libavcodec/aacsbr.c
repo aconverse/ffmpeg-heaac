@@ -1356,7 +1356,7 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
 /// Generate the subband filtered lowband
 static int sbr_x_gen(SpectralBandReplication *sbr,
-                      float X[32][64][2], float X_low[32][40][2], float Y[2][64][38][2], int ch) {
+                      float X[32][64][2], float X_low[32][40][2], float Y[2][38][64][2], int ch) {
     int k, l;
     const int l_f = 32;
     const int l_Temp = FFMAX(2*sbr->data[ch].t_env_num_env_old - l_f, 0); //FIXME hack to make l_Temp initialize to zero
@@ -1369,8 +1369,8 @@ static int sbr_x_gen(SpectralBandReplication *sbr,
     }
     for (; k < sbr->k[3] + sbr->m[0]; k++) {
         for (l = 0; l < l_Temp; l++) {
-            X[l][k][0] = Y[1][k][l + l_f][0];
-            X[l][k][1] = Y[1][k][l + l_f][1];
+            X[l][k][0] = Y[1][l + l_f][k][0];
+            X[l][k][1] = Y[1][l + l_f][k][1];
         }
     }
 
@@ -1382,8 +1382,8 @@ static int sbr_x_gen(SpectralBandReplication *sbr,
     }
     for (; k < sbr->k[4] + sbr->m[1]; k++) {
         for (l = l_Temp; l < l_f; l++) {
-            X[l][k][0] = Y[0][k][l][0];
-            X[l][k][1] = Y[0][k][l][1];
+            X[l][k][0] = Y[0][l][k][0];
+            X[l][k][1] = Y[0][l][k][1];
         }
     }
     return 0;
@@ -1555,7 +1555,7 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
 }
 
 /// Assembling HF Signals (14496-3 sp04 p220)
-static void sbr_hf_assemble(float Y[2][64][38][2], float X_high[64][40][2],
+static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
                             SpectralBandReplication *sbr, SBRData *ch_data,
                             int l_a[2])
 {
@@ -1652,9 +1652,9 @@ static void sbr_hf_assemble(float Y[2][64][38][2], float X_high[64][40][2],
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
             for (m = 0; m < sbr->m[1]; m++) {
-                Y[0][m + sbr->k[4]][i][0] =
+                Y[0][i][m + sbr->k[4]][0] =
                     w_temp[i][m][0] + sbr->s_m[l][m] * phi[0][ch_data->f_indexsine];
-                Y[0][m + sbr->k[4]][i][1] =
+                Y[0][i][m + sbr->k[4]][1] =
                     w_temp[i][m][1] + sbr->s_m[l][m] * phi[1][ch_data->f_indexsine] * (1 - 2*((m + sbr->k[4]) & 1));
             }
             ch_data->f_indexsine = (ch_data->f_indexsine + 1) & 3;

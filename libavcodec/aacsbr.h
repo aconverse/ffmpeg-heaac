@@ -117,7 +117,7 @@ typedef struct {
     int                l_a[2];
     float              bw_array[2][5];
     float              W[2][32][32][2];
-    float              Y[2][64][38][2];
+    float              Y[2][38][64][2];
     float              g_temp[42][48];
     float              q_temp[42][48];
     uint8_t            s_indexmapped[8][48];
