@@ -514,7 +514,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
     // Limiter Frequency Band Table (14496-3 sp04 p198)
     if (sbr->bs_limiter_bands > 0) {
         const float lim_bands_per_octave[3] = {1.2, 2, 3};
-        int16_t patch_borders[sbr->num_patches + 1];
+        int16_t patch_borders[5];
 
         patch_borders[0] = sbr->k[4];
         for (k=1; k <= sbr->num_patches; k++)
