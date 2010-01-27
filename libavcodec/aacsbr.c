@@ -1163,7 +1163,7 @@ static void sbr_qmf_synthesis(DSPContext * dsp, float *out, float X[32][64][2],
     }
 }
 
-/** High Frequency Generation (14496-3 sp04 p214+) and Inverse Filtering 
+/** High Frequency Generation (14496-3 sp04 p214+) and Inverse Filtering
  * (14496-3 sp04 p214)
  */
 static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],

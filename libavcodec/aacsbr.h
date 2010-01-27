@@ -73,7 +73,7 @@ typedef struct {
     uint8_t bs_xover_band;
 
     /**
-     * @defgroup bs_header_extra_1     Variables associated with bs_header_extra_1   
+     * @defgroup bs_header_extra_1     Variables associated with bs_header_extra_1
      * @{
      */
     uint8_t bs_freq_scale;
@@ -140,7 +140,7 @@ typedef struct {
     uint8_t            bs_amp_res_header;
     SpectrumParameters spectrum_params[2];
     /**
-     * @defgroup bs_header_extra_2     variables associated with bs_header_extra_2   
+     * @defgroup bs_header_extra_2     variables associated with bs_header_extra_2
      * @{
      */
     uint8_t            bs_limiter_bands;
