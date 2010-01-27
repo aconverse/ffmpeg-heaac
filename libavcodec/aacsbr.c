@@ -1115,7 +1115,7 @@ static void sbr_qmf_analysis(DSPContext *dsp, const float *in, float *x,
                              float *u, float W[2][32][32][2])
 {
     int i, k, l;
-    memcpy(W[1], W[0], sizeof(W[0]));
+    memcpy(W[0], W[1], sizeof(W[0]));
     memcpy(x    , x+1024, (320-32)*sizeof(x[0]));
     memcpy(x+288, in    ,     1024*sizeof(x[0]));
     x += 319;
@@ -1127,8 +1127,8 @@ static void sbr_qmf_analysis(DSPContext *dsp, const float *in, float *x,
         for (i = 0; i < 64; i++)
             u[i] = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
         for (k = 0; k < 32; k++) {
-            W[0][k][l][0] = dsp->scalarproduct_float(u, analysis_cos[k], 64);
-            W[0][k][l][1] = dsp->scalarproduct_float(u, analysis_sin[k], 64);
+            W[1][k][l][0] = dsp->scalarproduct_float(u, analysis_cos[k], 64);
+            W[1][k][l][1] = dsp->scalarproduct_float(u, analysis_sin[k], 64);
         }
         x += 32;
     }
@@ -1299,14 +1299,14 @@ static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
     memset(X_low, 0, 32*sizeof(*X_low));
     for (k = 0; k < sbr->k[4]; k++) {
         for (l = t_HFGen; l < l_f + t_HFGen; l++) {
-            X_low[k][l][0] = W[0][k][l - t_HFGen][0];
-            X_low[k][l][1] = W[0][k][l - t_HFGen][1];
+            X_low[k][l][0] = W[1][k][l - t_HFGen][0];
+            X_low[k][l][1] = W[1][k][l - t_HFGen][1];
         }
     }
     for (k = 0; k < sbr->k[3]; k++) {
         for (l = 0; l < t_HFGen; l++) {
-            X_low[k][l][0] = W[1][k][l + l_f - t_HFGen][0];
-            X_low[k][l][1] = W[1][k][l + l_f - t_HFGen][1];
+            X_low[k][l][0] = W[0][k][l + l_f - t_HFGen][0];
+            X_low[k][l][1] = W[0][k][l + l_f - t_HFGen][1];
         }
     }
     return 0;
@@ -1369,8 +1369,8 @@ static int sbr_x_gen(SpectralBandReplication *sbr,
     }
     for (; k < sbr->k[3] + sbr->m[0]; k++) {
         for (l = 0; l < l_Temp; l++) {
-            X[l][k][0] = Y[1][l + l_f][k][0];
-            X[l][k][1] = Y[1][l + l_f][k][1];
+            X[l][k][0] = Y[0][l + l_f][k][0];
+            X[l][k][1] = Y[0][l + l_f][k][1];
         }
     }
 
@@ -1382,8 +1382,8 @@ static int sbr_x_gen(SpectralBandReplication *sbr,
     }
     for (; k < sbr->k[4] + sbr->m[1]; k++) {
         for (l = l_Temp; l < l_f; l++) {
-            X[l][k][0] = Y[0][l][k][0];
-            X[l][k][1] = Y[0][l][k][1];
+            X[l][k][0] = Y[1][l][k][0];
+            X[l][k][1] = Y[1][l][k][1];
         }
     }
     return 0;
@@ -1574,7 +1574,7 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
     };
     float g_filt[42][48], q_filt[42][48], w_temp[42][48][2];
     float (*g_temp)[48] = ch_data->g_temp, (*q_temp)[48] = ch_data->q_temp;
-    memcpy(Y[1], Y[0], sizeof(Y[0]));
+    memcpy(Y[0], Y[1], sizeof(Y[0]));
 
     if (sbr->reset) {
         for (i = 0; i < h_SL; i++) {
@@ -1652,9 +1652,9 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
             for (m = 0; m < sbr->m[1]; m++) {
-                Y[0][i][m + sbr->k[4]][0] =
+                Y[1][i][m + sbr->k[4]][0] =
                     w_temp[i][m][0] + sbr->s_m[l][m] * phi[0][ch_data->f_indexsine];
-                Y[0][i][m + sbr->k[4]][1] =
+                Y[1][i][m + sbr->k[4]][1] =
                     w_temp[i][m][1] + sbr->s_m[l][m] * phi[1][ch_data->f_indexsine] * (1 - 2*((m + sbr->k[4]) & 1));
             }
             ch_data->f_indexsine = (ch_data->f_indexsine + 1) & 3;
