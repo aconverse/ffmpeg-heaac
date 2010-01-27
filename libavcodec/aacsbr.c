@@ -412,7 +412,7 @@ static int sbr_hf_calc_npatches(AACContext *ac, SpectralBandReplication *sbr)
 
     sbr->num_patches = 0;
 
-    if (goal_sb < sbr->k[3] + sbr->m) {
+    if (goal_sb < sbr->k[3] + sbr->m[1]) {
         for (k = 0; sbr->f_master[k] < goal_sb; k++);
     } else
         k = sbr->n_master;
@@ -436,7 +436,7 @@ static int sbr_hf_calc_npatches(AACContext *ac, SpectralBandReplication *sbr)
 
         if (sbr->f_master[k] - sb < 3)
             k = sbr->n_master;
-    } while (sb != sbr->k[3] + sbr->m);
+    } while (sb != sbr->k[3] + sbr->m[1]);
 
     if ((sbr->patch_num_subbands[sbr->num_patches-1] < 3) && (sbr->num_patches > 1))
         sbr->num_patches--;
@@ -476,13 +476,13 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
 
     memcpy(sbr->f_tablehigh, &sbr->f_master[sbr->spectrum_params[1].bs_xover_band],
            (sbr->n[1] + 1) * sizeof(sbr->f_master[0]));
-    sbr->m    = sbr->f_tablehigh[sbr->n[1]] - sbr->f_tablehigh[0];
+    sbr->m[1]    = sbr->f_tablehigh[sbr->n[1]] - sbr->f_tablehigh[0];
     sbr->k[3] = sbr->f_tablehigh[0];
 
     // Requirements (14496-3 sp04 p205)
-    if (sbr->k[3] + sbr->m > 64) {
+    if (sbr->k[3] + sbr->m[1] > 64) {
         av_log(ac->avccontext, AV_LOG_ERROR,
-               "Stop frequency border too high: %d\n", sbr->k[3] + sbr->m);
+               "Stop frequency border too high: %d\n", sbr->k[3] + sbr->m[1]);
         return -1;
     }
     if (sbr->k[3] > 32) {
@@ -923,7 +923,7 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
 
     //Save some state from the previous frame.
     sbr->k[4] = sbr->k[3];
-    sbr->mold = sbr->m;
+    sbr->m[0] = sbr->m[1];
 
     num_sbr_bits++;
     if (get_bits1(gb)) // bs_header_flag
@@ -1348,8 +1348,8 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
             }
         }
     }
-    if (k < sbr->m + sbr->k[3])
-        memset(X_high + k, 0, (sbr->m + sbr->k[3] - k) * sizeof(*X_high));
+    if (k < sbr->m[1] + sbr->k[3])
+        memset(X_high + k, 0, (sbr->m[1] + sbr->k[3] - k) * sizeof(*X_high));
 
     return 0;
 }
@@ -1367,7 +1367,7 @@ static int sbr_x_gen(SpectralBandReplication *sbr,
             X[l][k][1] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][1];
         }
     }
-    for (; k < sbr->k[4] + sbr->mold; k++) {
+    for (; k < sbr->k[4] + sbr->m[0]; k++) {
         for (l = 0; l < l_Temp; l++) {
             X[l][k][0] = Y[1][k][l + l_f][0];
             X[l][k][1] = Y[1][k][l + l_f][1];
@@ -1380,7 +1380,7 @@ static int sbr_x_gen(SpectralBandReplication *sbr,
             X[l][k][1] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][1];
         }
     }
-    for (; k < sbr->k[3] + sbr->m; k++) {
+    for (; k < sbr->k[3] + sbr->m[1]; k++) {
         for (l = l_Temp; l < l_f; l++) {
             X[l][k][0] = Y[0][k][l][0];
             X[l][k][1] = Y[0][k][l][1];
@@ -1459,7 +1459,7 @@ static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
             int ilb = ch_data->t_env[l]     * 2 + ENVELOPE_ADJUSTMENT_OFFSET;
             int iub = ch_data->t_env[l + 1] * 2 + ENVELOPE_ADJUSTMENT_OFFSET;
 
-            for (m = 0; m < sbr->m; m++) {
+            for (m = 0; m < sbr->m[1]; m++) {
                 float sum = 0.0f;
 
                 for (i = ilb; i < iub; i++) {
@@ -1578,8 +1578,8 @@ static void sbr_hf_assemble(float Y[2][64][38][2], float X_high[64][40][2],
 
     if (sbr->reset) {
         for (i = 0; i < h_SL; i++) {
-            memcpy(g_temp[i + 2*ch_data->t_env[0]], sbr->gain[0], sbr->m * sizeof(sbr->gain[0][0]));
-            memcpy(q_temp[i + 2*ch_data->t_env[0]], sbr->q_m[0],  sbr->m * sizeof(sbr->q_m[0][0]));
+            memcpy(g_temp[i + 2*ch_data->t_env[0]], sbr->gain[0], sbr->m[1] * sizeof(sbr->gain[0][0]));
+            memcpy(q_temp[i + 2*ch_data->t_env[0]], sbr->q_m[0],  sbr->m[1] * sizeof(sbr->q_m[0][0]));
         }
     } else if (h_SL) {
         memcpy(g_temp[2*ch_data->t_env[0]], g_temp[2*ch_data->t_env_num_env_old], 4*sizeof(g_temp[0]));
@@ -1588,15 +1588,15 @@ static void sbr_hf_assemble(float Y[2][64][38][2], float X_high[64][40][2],
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
-            memcpy(g_temp[h_SL + i], sbr->gain[l], sbr->m * sizeof(sbr->gain[l][0]));
-            memcpy(q_temp[h_SL + i], sbr->q_m[l],  sbr->m * sizeof(sbr->q_m[l][0]));
+            memcpy(g_temp[h_SL + i], sbr->gain[l], sbr->m[1] * sizeof(sbr->gain[l][0]));
+            memcpy(q_temp[h_SL + i], sbr->q_m[l],  sbr->m[1] * sizeof(sbr->q_m[l][0]));
         }
     }
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         if (h_SL && l != l_a[0] && l != l_a[1]) {
             for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
-                for (m = 0; m < sbr->m; m++) {
+                for (m = 0; m < sbr->m[1]; m++) {
                     const int idx1 = i + h_SL;
                     g_filt[i][m] = 0.0f;
                     for (j = 0; j <= h_SL; j++)
@@ -1605,13 +1605,13 @@ static void sbr_hf_assemble(float Y[2][64][38][2], float X_high[64][40][2],
             }
         } else {
             for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++)
-                memcpy(g_filt[i], g_temp[i + h_SL], sbr->m * sizeof(g_temp[i + h_SL][0]));
+                memcpy(g_filt[i], g_temp[i + h_SL], sbr->m[1] * sizeof(g_temp[i + h_SL][0]));
         }
     }
 
     for (i = ch_data->t_env[0] << 1; i < ch_data->t_env[ch_data->bs_num_env[1]] << 1; i++) {
         const int idx2 = i + ENVELOPE_ADJUSTMENT_OFFSET;
-        for (m = 0; m < sbr->m; m++) {
+        for (m = 0; m < sbr->m[1]; m++) {
             const int idx1 = m + sbr->k[3];
             w_temp[i][m][0] = X_high[idx1][idx2][0] * g_filt[i][m];
             w_temp[i][m][1] = X_high[idx1][idx2][1] * g_filt[i][m];
@@ -1621,7 +1621,7 @@ static void sbr_hf_assemble(float Y[2][64][38][2], float X_high[64][40][2],
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         if (l != l_a[0] && l != l_a[1]) {
             for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
-                for (m = 0; m < sbr->m; m++) {
+                for (m = 0; m < sbr->m[1]; m++) {
                     if (sbr->s_m[l][m])
                         q_filt[i][m] = 0.0f;
                     else if (h_SL) {
@@ -1635,13 +1635,13 @@ static void sbr_hf_assemble(float Y[2][64][38][2], float X_high[64][40][2],
             }
         } else {
             for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++)
-                memset(q_filt[i], 0, sbr->m * sizeof(q_filt[i][0]));
+                memset(q_filt[i], 0, sbr->m[1] * sizeof(q_filt[i][0]));
         }
     }
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
-            for (m = 0; m < sbr->m; m++) {
+            for (m = 0; m < sbr->m[1]; m++) {
                 ch_data->f_indexnoise = (ch_data->f_indexnoise + 1) & 0x1ff;
                 w_temp[i][m][0] += q_filt[i][m] * sbr_noise_table[ch_data->f_indexnoise][0];
                 w_temp[i][m][1] += q_filt[i][m] * sbr_noise_table[ch_data->f_indexnoise][1];
@@ -1651,7 +1651,7 @@ static void sbr_hf_assemble(float Y[2][64][38][2], float X_high[64][40][2],
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
-            for (m = 0; m < sbr->m; m++) {
+            for (m = 0; m < sbr->m[1]; m++) {
                 Y[0][m + sbr->k[3]][i][0] =
                     w_temp[i][m][0] + sbr->s_m[l][m] * phi[0][ch_data->f_indexsine];
                 Y[0][m + sbr->k[3]][i][1] =
