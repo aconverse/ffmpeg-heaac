@@ -38,7 +38,7 @@
 
 #define NOISE_FLOOR_OFFSET 6.0f
 #define ENVELOPE_ADJUSTMENT_OFFSET 2
-// constant to avoid division by zero, e.g. 96 dB below maximum signal input
+/// constant to avoid division by zero, e.g. 96 dB below maximum signal input
 #define EPS0 0.000000000001
 
 /**
@@ -75,17 +75,24 @@ typedef struct {
     uint8_t bs_stop_freq;
     uint8_t bs_xover_band;
 
-    // if (bs_header_extra_1)
+    /**
+     * @defgroup bs_header_extra_1     Variables associated with bs_header_extra_1   
+     * @{
+     */
     uint8_t bs_freq_scale;
     uint8_t bs_alter_scale;
     uint8_t bs_noise_bands;
+    /** @} */
 } SpectrumParameters;
 
 /**
  * Spectral Band Replication per channel data
  */
 typedef struct {
-    /* main bitstream data variables */
+    /**
+     * @defgroup bitstream     Main bitstream data variables
+     * @{
+     */
     uint8_t            bs_frame_class;
     uint8_t            bs_add_harmonic_flag;
     uint8_t            bs_num_env[2];
@@ -102,8 +109,12 @@ typedef struct {
     int32_t            bs_data_noise[2][5];
     uint8_t            bs_add_harmonic[48];
     uint8_t            bs_amp_res;
+    /** @} */
 
-    /* state variables */
+    /**
+     * @defgroup state         State varaibles
+     * @{
+     */
     DECLARE_ALIGNED(16, float, synthesis_filterbank_samples)[1280];
     DECLARE_ALIGNED(16, float, analysis_filterbank_samples) [1312];
     int                l_a[2];
@@ -120,6 +131,7 @@ typedef struct {
     uint8_t            t_q[3];
     uint16_t           f_indexnoise;
     uint8_t            f_indexsine;
+    /** @} */
 } SBRData;
 
 /**
@@ -128,24 +140,25 @@ typedef struct {
 typedef struct {
     uint8_t            start;
     int32_t            sample_rate;
-    // SBR header bitstream variables
     uint8_t            bs_amp_res_header;
     SpectrumParameters spectrum_params[2];
-    // if (bs_header_extra_2)
+    /**
+     * @defgroup bs_header_extra_2     variables associated with bs_header_extra_2   
+     * @{
+     */
     uint8_t            bs_limiter_bands;
     uint8_t            bs_limiter_gains;
     uint8_t            bs_interpol_freq;
     uint8_t            bs_smoothing_mode;
-    // SBR data bitstream variables
+    /** @} */
     uint8_t            bs_coupling;
     SBRData            data[2];
-    // SBR tool variables
     uint8_t            reset;
-    uint8_t            k[5]; // k0, k1, k2, kx, and kx' respectively
+    uint8_t            k[5]; ///< k0, k1, k2, kx, and kx' respectively
     uint8_t            m;
     uint8_t            mold;
     uint8_t            n_master;
-    uint8_t            n[2]; // n_low and n_high respectively
+    uint8_t            n[2]; ///< n_low and n_high respectively
     uint8_t            n_q;
     uint8_t            n_lim;
     uint16_t           f_master[49];

@@ -197,7 +197,7 @@ static void make_bands(int16_t* bands, int start, int stop, int num_bands)
     bands[num_bands-1] = stop - previous;
 }
 
-// Master Frequency Band Table (14496-3 sp04 p194)
+/// Master Frequency Band Table (14496-3 sp04 p194)
 static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
                              SpectrumParameters *spectrum)
 {
@@ -399,7 +399,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     return 0;
 }
 
-// High Frequency Generation - Patch Construction (14496-3 sp04 p216 fig. 4.46)
+/// High Frequency Generation - Patch Construction (14496-3 sp04 p216 fig. 4.46)
 static int sbr_hf_calc_npatches(AACContext *ac, SpectralBandReplication *sbr)
 {
     int i, k, sb = 0;
@@ -463,7 +463,7 @@ static inline int in_table(void *table, int last_el, int el_size, void *needle)
     return 0;
 }
 
-// Derived Frequency Band Tables (14496-3 sp04 p197)
+/// Derived Frequency Band Tables (14496-3 sp04 p197)
 static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
 {
     int k, temp;
@@ -941,7 +941,7 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
     return cnt;
 }
 
-// Time/frequency Grid (14496-3 sp04 p200)
+/// Time/frequency Grid (14496-3 sp04 p200)
 static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
                               SBRData *ch_data, int ch)
 {
@@ -1013,7 +1013,7 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
     return 0;
 }
 
-// SBR Envelope and Noise Floor Decoding (14496-3 sp04 p201)
+/// SBR Envelope and Noise Floor Decoding (14496-3 sp04 p201)
 static void sbr_env_noise_floors(SpectralBandReplication *sbr, SBRData *ch_data,
                                  int ch)
 {
@@ -1062,7 +1062,7 @@ static void sbr_env_noise_floors(SpectralBandReplication *sbr, SBRData *ch_data,
            sizeof(ch_data->noise_facs[0]));
 }
 
-// Dequantisation and stereo decoding (14496-3 sp04 p203)
+/// Dequantisation and stereo decoding (14496-3 sp04 p203)
 static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
 {
     int k, l;
@@ -1102,7 +1102,7 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
     }
 }
 
-  /**
+/**
  * Analysis QMF Bank (14496-3 sp04 p206)
  *
  * @param   x       pointer to the beginning of the first sample window
@@ -1131,8 +1131,10 @@ static void sbr_qmf_analysis(DSPContext *dsp, const float *in, float *x,
     }
 }
 
-// Synthesis QMF Bank (14496-3 sp04 p206)
-// Downsampled Synthesis QMF Bank (14496-3 sp04 p206)
+/**
+ * Synthesis QMF Bank (14496-3 sp04 p206) and Downsampled Synthesis QMF Bank
+ * (14496-3 sp04 p206)
+ */
 static void sbr_qmf_synthesis(DSPContext * dsp, float *out, float X[32][64][2],
                               float *v, const unsigned int div)
 {
@@ -1158,9 +1160,9 @@ static void sbr_qmf_synthesis(DSPContext * dsp, float *out, float X[32][64][2],
     }
 }
 
-// High Frequency Generation (14496-3 sp04 p214+)
-
-// Inverse Filtering (14496-3 sp04 p214)
+/** High Frequency Generation (14496-3 sp04 p214+) and Inverse Filtering 
+ * (14496-3 sp04 p214)
+ */
 static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],
                                   float X_low[32][40][2], int k0)
 {
@@ -1233,7 +1235,7 @@ static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],
     }
 }
 
-// Chirp Factors (14496-3 sp04 p214)
+/// Chirp Factors (14496-3 sp04 p214)
 static void sbr_chirp(SpectralBandReplication *sbr, SBRData *ch_data)
 {
     int i;
@@ -1285,7 +1287,7 @@ static inline int find_freq_subband(uint16_t *table, int nel, int needle)
     return -1;
 }
 
-// Generate the subband filtered lowband
+/// Generate the subband filtered lowband
 static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
                       float X_low[32][40][2], float W[2][32][32][2]) {
     int k, l;
@@ -1307,7 +1309,7 @@ static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
     return 0;
 }
 
-// High Frequency Generator (14496-3 sp04 p215)
+/// High Frequency Generator (14496-3 sp04 p215)
 static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
                       float X_high[64][40][2], float X_low[32][40][2], float (*alpha0)[2],
                       float (*alpha1)[2], float bw_array[2][5], uint8_t *t_env,
@@ -1349,7 +1351,7 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
     return 0;
 }
 
-// Generate the subband filtered lowband
+/// Generate the subband filtered lowband
 static int sbr_x_gen(SpectralBandReplication *sbr,
                       float X[32][64][2], float X_low[32][40][2], float Y[2][64][40][2], int ch) {
     int k, l;
@@ -1385,9 +1387,9 @@ static int sbr_x_gen(SpectralBandReplication *sbr,
     return 0;
 }
 
-// High Frequency Adjustment (14496-3 sp04 p217)
-
-// Mapping (14496-3 sp04 p217)
+/** High Frequency Adjustment (14496-3 sp04 p217) and Mapping
+ * (14496-3 sp04 p217)
+ */
 static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
                         SBRData *ch_data, int l_a[2])
 {
@@ -1443,7 +1445,7 @@ static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
     memcpy(ch_data->s_indexmapped[0], ch_data->s_indexmapped[ch_data->bs_num_env[1]], sizeof(ch_data->s_indexmapped[0]));
 }
 
-// Estimation of current envelope (14496-3 sp04 p218)
+/// Estimation of current envelope (14496-3 sp04 p218)
 static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
                              SpectralBandReplication *sbr, SBRData *ch_data)
 {
@@ -1493,8 +1495,10 @@ static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
     }
 }
 
-// Calculation of levels of additional HF signal components (14496-3 sp04 p219)
-// Calculation of gain (14496-3 sp04 p219)
+/**
+ * Calculation of levels of additional HF signal components (14496-3 sp04 p219)
+ * and Calculation of gain (14496-3 sp04 p219)
+ */
 static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
                           SBRData *ch_data, int l_a[2])
 {
@@ -1548,7 +1552,7 @@ static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
     }
 }
 
-// Assembling HF Signals (14496-3 sp04 p220)
+/// Assembling HF Signals (14496-3 sp04 p220)
 static void sbr_hf_assemble(float Y[2][64][40][2], float X_high[64][40][2],
                             SpectralBandReplication *sbr, SBRData *ch_data,
                             int l_a[2])
