@@ -781,7 +781,7 @@ static void sbr_sinusoidal_coding(SpectralBandReplication *sbr,
 static void sbr_extension(SpectralBandReplication *sbr, GetBitContext *gb,
                           int bs_extension_id, int *num_bits_left)
 {
-/* FIXME - implement ps_data for parametric stereo parsing
+/* TODO - implement ps_data for parametric stereo parsing
     switch (bs_extension_id) {
     case EXTENSION_ID_PS:
         num_bits_left -= ps_data(sbr, gb);
@@ -917,7 +917,7 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
         ac->m4ac.ext_sample_rate = 2 * ac->m4ac.sample_rate;
 
     if (crc) {
-        skip_bits(gb, 10); // bs_sbr_crc_bits; FIXME - implement CRC check
+        skip_bits(gb, 10); // bs_sbr_crc_bits; TODO - implement CRC check
         num_sbr_bits += 10;
     }
 
@@ -968,7 +968,7 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
 
     n_rel_trail = ch_data->bs_frame_class & 1 ? ch_data->bs_num_rel[1] : 0;
 
-    ch_data->t_env_num_env_old = ch_data->t_env[ch_data->bs_num_env[0]]; //FIXME move me into a setup next frame area
+    ch_data->t_env_num_env_old = ch_data->t_env[ch_data->bs_num_env[0]];
     ch_data->t_env[0]                      = abs_bord_lead;
     ch_data->t_env[ch_data->bs_num_env[1]] = abs_bord_trail;
 
@@ -1359,7 +1359,7 @@ static int sbr_x_gen(SpectralBandReplication *sbr,
                       float X[32][64][2], float X_low[32][40][2], float Y[2][38][64][2], int ch) {
     int k, l;
     const int l_f = 32;
-    const int l_Temp = FFMAX(2*sbr->data[ch].t_env_num_env_old - l_f, 0); //FIXME hack to make l_Temp initialize to zero
+    const int l_Temp = FFMAX(2*sbr->data[ch].t_env_num_env_old - l_f, 0);
     memset(X, 0, 32*sizeof(*X));
     for (k = 0; k < sbr->k[3]; k++) {
         for (l = 0; l < l_Temp; l++) {
