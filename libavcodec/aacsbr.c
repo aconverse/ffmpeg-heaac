@@ -1574,7 +1574,7 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
         {  1,  0, -1,  0}, // real
         {  0,  1,  0, -1}, // imaginary
     };
-    float g_filt[42][48], q_filt[42][48];
+    float g_filt[48], q_filt[48];
     float (*g_temp)[48] = ch_data->g_temp, (*q_temp)[48] = ch_data->q_temp;
     memcpy(Y[0], Y[1], sizeof(Y[0]));
 
@@ -1596,53 +1596,43 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
     }
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        if (h_SL && l != l_a[0] && l != l_a[1]) {
-            for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
+        for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
+            if (h_SL && l != l_a[0] && l != l_a[1]) {
                 for (m = 0; m < sbr->m[1]; m++) {
                     const int idx1 = i + h_SL;
-                    g_filt[i][m] = 0.0f;
+                    g_filt[m] = 0.0f;
                     for (j = 0; j <= h_SL; j++)
-                        g_filt[i][m] += g_temp[idx1 - j][m] * h_smooth[j];
+                        g_filt[m] += g_temp[idx1 - j][m] * h_smooth[j];
                 }
+            } else {
+                memcpy(g_filt, g_temp[i + h_SL], sbr->m[1] * sizeof(g_temp[i + h_SL][0]));
             }
-        } else {
-            for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++)
-                memcpy(g_filt[i], g_temp[i + h_SL], sbr->m[1] * sizeof(g_temp[i + h_SL][0]));
-        }
-    }
 
-    for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        if (l != l_a[0] && l != l_a[1]) {
-            for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
+            if (l != l_a[0] && l != l_a[1]) {
                 for (m = 0; m < sbr->m[1]; m++) {
                     if (sbr->s_m[l][m])
-                        q_filt[i][m] = 0.0f;
+                        q_filt[m] = 0.0f;
                     else if (h_SL) {
                         const int idx1 = i + h_SL;
-                        q_filt[i][m] = 0.0f;
+                        q_filt[m] = 0.0f;
                         for (j = 0; j <= h_SL; j++)
-                            q_filt[i][m] += q_temp[idx1 - j][m] * h_smooth[j];
+                            q_filt[m] += q_temp[idx1 - j][m] * h_smooth[j];
                     } else
-                        q_filt[i][m] = q_temp[i][m];
+                        q_filt[m] = q_temp[i][m];
                 }
+            } else {
+                memset(q_filt, 0, sbr->m[1] * sizeof(q_filt[0]));
             }
-        } else {
-            for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++)
-                memset(q_filt[i], 0, sbr->m[1] * sizeof(q_filt[i][0]));
-        }
-    }
 
-    for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        for (i = ch_data->t_env[l] << 1; i < ch_data->t_env[l + 1] << 1; i++) {
             for (m = 0; m < sbr->m[1]; m++) {
                 ch_data->f_indexnoise = (ch_data->f_indexnoise + 1) & 0x1ff;
                 Y[1][i][m + sbr->k[4]][0] =
-                    X_high[m + sbr->k[4]][i + ENVELOPE_ADJUSTMENT_OFFSET][0] * g_filt[i][m] +
-                    q_filt[i][m] * sbr_noise_table[ch_data->f_indexnoise][0] +
+                    X_high[m + sbr->k[4]][i + ENVELOPE_ADJUSTMENT_OFFSET][0] * g_filt[m] +
+                    q_filt[m] * sbr_noise_table[ch_data->f_indexnoise][0] +
                     sbr->s_m[l][m] * phi[0][ch_data->f_indexsine];
                 Y[1][i][m + sbr->k[4]][1] =
-                    X_high[m + sbr->k[4]][i + ENVELOPE_ADJUSTMENT_OFFSET][1] * g_filt[i][m] +
-                    q_filt[i][m] * sbr_noise_table[ch_data->f_indexnoise][1] +
+                    X_high[m + sbr->k[4]][i + ENVELOPE_ADJUSTMENT_OFFSET][1] * g_filt[m] +
+                    q_filt[m] * sbr_noise_table[ch_data->f_indexnoise][1] +
                     sbr->s_m[l][m] * phi[1][ch_data->f_indexsine] * (1 - 2*((m + sbr->k[4]) & 1));
             }
             ch_data->f_indexsine = (ch_data->f_indexsine + 1) & 3;
