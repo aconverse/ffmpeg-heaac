@@ -62,7 +62,7 @@
  * N                    MIDI
  * N                    Harmonic and Individual Lines plus Noise
  * N                    Text-To-Speech Interface
- * N (code in SoC repo) Spectral Band Replication
+ * Y                    Spectral Band Replication
  * Y (not in this code) Layer-1
  * Y (not in this code) Layer-2
  * Y (not in this code) Layer-3
