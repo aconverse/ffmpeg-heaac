@@ -167,7 +167,7 @@ typedef struct {
     uint8_t            patch_start_subband[5];
     float              X_low[32][40][2];
     float              X_high[64][40][2];
-    DECLARE_ALIGNED(16, float, X)[32][64][2];
+    DECLARE_ALIGNED(16, float, X)[2][32][64];
     float              alpha0[64][2];
     float              alpha1[64][2];
     float              e_origmapped[7][48];
@@ -178,6 +178,8 @@ typedef struct {
     float              s_m[7][48];
     float              gain[7][48];
     DECLARE_ALIGNED(16, float, ana_filter_scratch)[64];
+    FFTContext         mdct;
+    DECLARE_ALIGNED(16, float, mdct_buf)[2][64];
 } SpectralBandReplication;
 
 #endif /* AVCODEC_AACSBR_H */

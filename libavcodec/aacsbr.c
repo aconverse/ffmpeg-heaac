@@ -37,8 +37,6 @@ static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
 static DECLARE_ALIGNED_16(float, analysis_cos)[32][64];
 static DECLARE_ALIGNED_16(float, analysis_sin)[32][64];
-static DECLARE_ALIGNED_16(float, synthesis_cossin_us)[128*64][2];
-static DECLARE_ALIGNED_16(float, synthesis_cossin_ds)[ 64*32][2];
 static DECLARE_ALIGNED_16(float, zero64)[64];
 #define NOISE_FLOOR_OFFSET 6.0f
 /// constant to avoid division by zero, e.g. 96 dB below maximum signal input
@@ -93,20 +91,6 @@ av_cold void ff_aac_sbr_init(void)
             analysis_sin[k][n] = 2.0f * sinf(ana);
         }
     }
-    for (n = 0; n < 128; n++) {
-        for (k = 0; k < 64; k++) {
-            float syn = (k + 0.5f) * (2.0f * n - 255.0f) * M_PI / 128.0f;
-            synthesis_cossin_us[n*64+k][0] =  cosf(syn) / 64;
-            synthesis_cossin_us[n*64+k][1] = -sinf(syn) / 64;
-        }
-    }
-    for (n = 0; n < 64; n++) {
-        for (k = 0; k < 32; k++) {
-            float syn = (k + 0.5f) * (2.0f * n - 127.5f) * M_PI / 64.0f;
-            synthesis_cossin_ds[n*32+k][0] =  cosf(syn) / 64;
-            synthesis_cossin_ds[n*32+k][1] = -sinf(syn) / 64;
-        }
-    }
     for (n = 0; n < 320; n++) {
         sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
     }
@@ -116,6 +100,7 @@ av_cold void ff_aac_sbr_init(void)
 av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
 {
     sbr->k[3] = sbr->k[4] = 32; //Typo in spec, kx' inits to 32
+    ff_mdct_init(&sbr->mdct, 7, 1, 1.0/64);
 }
 
 static unsigned int sbr_header(SpectralBandReplication *sbr, GetBitContext *gb)
@@ -1144,16 +1129,27 @@ static void sbr_qmf_analysis(DSPContext *dsp, const float *in, float *x,
  * Synthesis QMF Bank (14496-3 sp04 p206) and Downsampled Synthesis QMF Bank
  * (14496-3 sp04 p206)
  */
-static void sbr_qmf_synthesis(DSPContext * dsp, float *out, float X[32][64][2],
+static void sbr_qmf_synthesis(DSPContext * dsp, FFTContext *mdct,
+                              float *out, float X[2][32][64],
+                              float mdct_buf[2][64],
                               float *v, const unsigned int div)
 {
     int l, n;
     const float *sbr_qmf_window = div ? sbr_qmf_window_ds : sbr_qmf_window_us;
-    float (*synthesis_cossin)[2] = div ? synthesis_cossin_ds : synthesis_cossin_us;
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
-        for (n = 0; n < 128 >> div; n++) {
-            v[n] = dsp->scalarproduct_float(X[l][0], (synthesis_cossin+(64>>div)*n)[0], 128 >> div);
+        for (n = 1; n < 64 >> div; n+=2) {
+            X[1][l][n] = -X[1][l][n];
+        }
+        if (div) {
+            memset(X[0][l]+32, 0, 32*sizeof(float));
+            memset(X[1][l]+32, 0, 32*sizeof(float));
+        }
+        ff_imdct_half(mdct, mdct_buf[0], X[0][l]);
+        ff_imdct_half(mdct, mdct_buf[1], X[1][l]);
+        for (n = 0; n < 64 >> div; n++) {
+            v[               n] = -mdct_buf[0][64-1-(n<<div)    ] + mdct_buf[1][ n<<div     ];
+            v[(128>>div)-1 - n] =  mdct_buf[0][64-1-(n<<div)-div] + mdct_buf[1][(n<<div)+div];
         }
         dsp->vector_fmul_add(out, v                , sbr_qmf_window               , zero64, 64 >> div);
         dsp->vector_fmul_add(out, v + ( 192 >> div), sbr_qmf_window + ( 64 >> div), out   , 64 >> div);
@@ -1360,34 +1356,34 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
 /// Generate the subband filtered lowband
 static int sbr_x_gen(SpectralBandReplication *sbr,
-                      float X[32][64][2], float X_low[32][40][2], float Y[2][38][64][2], int ch) {
+                      float X[2][32][64], float X_low[32][40][2], float Y[2][38][64][2], int ch) {
     int k, l;
     const int l_f = 32;
     const int l_Temp = FFMAX(2*sbr->data[ch].t_env_num_env_old - l_f, 0);
-    memset(X, 0, 32*sizeof(*X));
+    memset(X, 0, 2*sizeof(*X));
     for (k = 0; k < sbr->k[3]; k++) {
         for (l = 0; l < l_Temp; l++) {
-            X[l][k][0] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][0];
-            X[l][k][1] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][1];
+            X[0][l][k] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][0];
+            X[1][l][k] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][1];
         }
     }
     for (; k < sbr->k[3] + sbr->m[0]; k++) {
         for (l = 0; l < l_Temp; l++) {
-            X[l][k][0] = Y[0][l + l_f][k][0];
-            X[l][k][1] = Y[0][l + l_f][k][1];
+            X[0][l][k] = Y[0][l + l_f][k][0];
+            X[1][l][k] = Y[0][l + l_f][k][1];
         }
     }
 
     for (k = 0; k < sbr->k[4]; k++) {
         for (l = l_Temp; l < l_f; l++) {
-            X[l][k][0] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][0];
-            X[l][k][1] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][1];
+            X[0][l][k] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][0];
+            X[1][l][k] = X_low[k][l + ENVELOPE_ADJUSTMENT_OFFSET][1];
         }
     }
     for (; k < sbr->k[4] + sbr->m[1]; k++) {
         for (l = l_Temp; l < l_f; l++) {
-            X[l][k][0] = Y[1][l][k][0];
-            X[l][k][1] = Y[1][l][k][1];
+            X[0][l][k] = Y[1][l][k][0];
+            X[1][l][k] = Y[1][l][k][1];
         }
     }
     return 0;
@@ -1681,6 +1677,6 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
 
     /* synthesis */
     sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->data[ch].Y, ch);
-    sbr_qmf_synthesis(&ac->dsp, out, sbr->X,
+    sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out, sbr->X, sbr->mdct_buf,
                       sbr->data[ch].synthesis_filterbank_samples, downsampled);
 }
