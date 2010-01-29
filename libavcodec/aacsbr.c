@@ -218,8 +218,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     } else
         temp = 5000;
 
-    start_min = lroundf((temp << 7) / (float)sbr->sample_rate);
-    stop_min  = lroundf((temp << 8) / (float)sbr->sample_rate);
+    start_min = ((temp << 7) + (sbr->sample_rate >> 1)) / sbr->sample_rate;
+    stop_min  = ((temp << 8) + (sbr->sample_rate >> 1)) / sbr->sample_rate;
 
     switch (sbr->sample_rate) {
     case 16000:
@@ -414,7 +414,7 @@ static int sbr_hf_calc_npatches(AACContext *ac, SpectralBandReplication *sbr)
     int i, k, sb = 0;
     int msb = sbr->k[0];
     int usb = sbr->k[4];
-    int goal_sb = lroundf((1 << 11) * 1000 / (float)sbr->sample_rate);
+    int goal_sb = ((1000 << 11) + (sbr->sample_rate >> 1)) / sbr->sample_rate;
 
     sbr->num_patches = 0;
 
@@ -978,7 +978,8 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
     ch_data->t_env[ch_data->bs_num_env[1]] = abs_bord_trail;
 
     if (ch_data->bs_frame_class == FIXFIX) {
-        int temp = lroundf(abs_bord_trail / (float)ch_data->bs_num_env[1]);
+        int temp = (abs_bord_trail + (ch_data->bs_num_env[1] >> 1)) /
+                   ch_data->bs_num_env[1];
         for (i = 0; i < n_rel_lead; i++)
             ch_data->t_env[i + 1] = ch_data->t_env[i] + temp;
     } else if (ch_data->bs_frame_class > 1) { // VARFIX or VARVAR
