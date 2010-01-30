@@ -35,8 +35,10 @@
 static VLC vlc_sbr[10];
 static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
-static DECLARE_ALIGNED_16(float, analysis_cos)[32][64];
-static DECLARE_ALIGNED_16(float, analysis_sin)[32][64];
+static DECLARE_ALIGNED_16(float, analysis_cos_pre)[64];
+static DECLARE_ALIGNED_16(float, analysis_sin_pre)[64];
+static DECLARE_ALIGNED_16(float, analysis_cos_post)[32];
+static DECLARE_ALIGNED_16(float, analysis_sin_post)[32];
 static DECLARE_ALIGNED_16(float, zero64)[64];
 #define NOISE_FLOOR_OFFSET 6.0f
 /// constant to avoid division by zero, e.g. 96 dB below maximum signal input
@@ -84,12 +86,15 @@ av_cold void ff_aac_sbr_init(void)
     SBR_INIT_VLC_STATIC(9, 512);
 
 
+    for (n = 0; n < 64; n++) {
+        float pre = M_PI * n / 64;
+        analysis_cos_pre[n] = cos(pre);
+        analysis_sin_pre[n] = sin(pre);
+    }
     for (k = 0; k < 32; k++) {
-        for (n = 0; n < 64; n++) {
-            float ana = (n - 0.25f) * (k + 0.5f) * M_PI / 32.0f;
-            analysis_cos[k][n] = 2.0f * cosf(ana);
-            analysis_sin[k][n] = 2.0f * sinf(ana);
-        }
+        float post = M_PI * (k + 0.5) / 128;
+        analysis_cos_post[k] =  2.0 * cos(post);
+        analysis_sin_post[k] = -2.0 * sin(post);
     }
     for (n = 0; n < 320; n++) {
         sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
@@ -101,6 +106,7 @@ av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
 {
     sbr->k[3] = sbr->k[4] = 32; //Typo in spec, kx' inits to 32
     ff_mdct_init(&sbr->mdct, 7, 1, 1.0/64);
+    ff_fft_init(&sbr->fft, 6, 1);
 }
 
 static unsigned int sbr_header(SpectralBandReplication *sbr, GetBitContext *gb)
@@ -1102,10 +1108,11 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
  * @param   x       pointer to the beginning of the first sample window
  * @param   W       array of complex-valued samples split into subbands
  */
-static void sbr_qmf_analysis(DSPContext *dsp, const float *in, float *x,
-                             float *u, float W[2][32][32][2])
+static void sbr_qmf_analysis(DSPContext *dsp, FFTContext *fft, const float *in, float *x,
+                             FFTComplex u[64], float W[2][32][32][2])
 {
     int i, k, l;
+    const uint16_t *revtab = fft->revtab;
     memcpy(W[0], W[1], sizeof(W[0]));
     memcpy(x    , x+1024, (320-32)*sizeof(x[0]));
     memcpy(x+288, in    ,     1024*sizeof(x[0]));
@@ -1115,11 +1122,15 @@ static void sbr_qmf_analysis(DSPContext *dsp, const float *in, float *x,
         float z[320];
         for (i = 0; i < 320; i++)
             z[i] = x[-i] * sbr_qmf_window_ds[i];
-        for (i = 0; i < 64; i++)
-            u[i] = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
+        for (i = 0; i < 64; i++) {
+            float f = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
+            u[revtab[i]].re = f * analysis_cos_pre[i];
+            u[revtab[i]].im = f * analysis_sin_pre[i];
+        }
+        ff_fft_calc(fft, u);
         for (k = 0; k < 32; k++) {
-            W[1][k][l][0] = dsp->scalarproduct_float(u, analysis_cos[k], 64);
-            W[1][k][l][1] = dsp->scalarproduct_float(u, analysis_sin[k], 64);
+            W[1][k][l][0] = u[k].re * analysis_cos_post[k] - u[k].im * analysis_sin_post[k];
+            W[1][k][l][1] = u[k].re * analysis_sin_post[k] + u[k].im * analysis_cos_post[k];
         }
         x += 32;
     }
@@ -1657,7 +1668,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
     int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
 
     /* decode channel */
-    sbr_qmf_analysis(&ac->dsp, in, sbr->data[ch].analysis_filterbank_samples,
+    sbr_qmf_analysis(&ac->dsp, &sbr->fft, in, sbr->data[ch].analysis_filterbank_samples,
                      sbr->ana_filter_scratch, sbr->data[ch].W);
     sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
     if (sbr->start) {
