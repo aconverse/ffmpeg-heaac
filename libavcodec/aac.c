@@ -186,8 +186,11 @@ static int che_configure(AACContext *ac,
                 ac->output_data[(*channels)++] = ac->che[type][id]->ch[1].ret;
             }
         }
-    } else
+    } else {
+        if (ac->che[type][id])
+            ff_aac_sbr_ctx_close(&ac->che[type][id]->sbr);
         av_freep(&ac->che[type][id]);
+    }
     return 0;
 }
 
@@ -2053,8 +2056,11 @@ static av_cold int aac_decode_close(AVCodecContext *avccontext)
     int i, type;
 
     for (i = 0; i < MAX_ELEM_ID; i++) {
-        for (type = 0; type < 4; type++)
+        for (type = 0; type < 4; type++) {
+            if (ac->che[type][i])
+                ff_aac_sbr_ctx_close(&ac->che[type][i]->sbr);
             av_freep(&ac->che[type][i]);
+        }
     }
 
     ff_mdct_end(&ac->mdct);

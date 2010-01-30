@@ -109,6 +109,12 @@ av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
     ff_fft_init(&sbr->fft, 6, 1);
 }
 
+av_cold void ff_aac_sbr_ctx_close(SpectralBandReplication *sbr)
+{
+    ff_mdct_end(&sbr->mdct);
+    ff_fft_end(&sbr->fft);
+}
+
 static int qsort_comparison_function_int16(const void *a, const void *b)
 {
     return *(const int16_t *)a - *(const int16_t *)b;
