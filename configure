@@ -231,6 +231,7 @@ Advanced options (experts only):
   --disable-vis            disable VIS optimizations
   --disable-yasm           disable use of yasm assembler
   --enable-pic             build position-independent code
+  --malloc-prefix=PFX      prefix malloc and related names with PFX
 
 Developer options (useful when working on FFmpeg itself):
   --disable-debug          disable debugging symbols
@@ -984,6 +985,7 @@ HAVE_LIST="
     alsa_asoundlib_h
     altivec_h
     arpa_inet_h
+    attribute_may_alias
     attribute_packed
     bswap
     closesocket
@@ -1062,6 +1064,7 @@ HAVE_LIST="
 
 # options emitted with CONFIG_ prefix but not available on command line
 CONFIG_EXTRA="
+    avutil
     gplv3
     lgplv3
 "
@@ -1107,6 +1110,7 @@ CMDLINE_SET="
     host_os
     ld
     logfile
+    malloc_prefix
     nm
     source_path
     sysinclude
@@ -1409,6 +1413,7 @@ host_os=$target_os
 enable avcodec
 enable avdevice
 enable avformat
+enable avutil
 enable asm
 enable debug
 enable doc
@@ -1444,7 +1449,7 @@ CC_O='-o $@'
 host_cflags='-D_ISOC99_SOURCE -D_POSIX_C_SOURCE=200112 -O3 -g -Wall'
 host_libs='-lm'
 
-target_path='.'
+target_path='$(CURDIR)'
 
 # gcc stupidly only outputs the basename of targets with -MM, but we need the
 # full relative path for objects in subdirectories for non-recursive Make.
@@ -1655,20 +1660,28 @@ if   $cc -v 2>&1 | grep -qi ^gcc; then
         CC_DEPFLAGS='-MMD -MF $(@:.o=.d) -MT $@'
         AS_DEPFLAGS='-MMD -MF $(@:.o=.d) -MT $@'
     fi
+    speed_cflags='-O3'
+    size_cflags='-Os'
 elif $cc --version 2>/dev/null | grep -q Intel; then
     cc_type=icc
     cc_version="AV_STRINGIFY(__INTEL_COMPILER)"
     CC_DEPFLAGS='-MMD'
     AS_DEPFLAGS='-MMD'
+    speed_cflags='-O3'
+    size_cflags='-Os'
 elif $cc -v 2>&1 | grep -q xlc; then
     cc_type=xlc
     cc_version="AV_STRINGIFY(__IBMC__)"
+    speed_cflags='-O5'
+    size_cflags='-O5 -qcompact'
 elif $cc -V 2>/dev/null | grep -q Compaq; then
     cc_type=ccc
     cc_version="AV_STRINGIFY(__DECC_VER)"
     DEPFLAGS='$(CPPFLAGS) $(CFLAGS) -M'
     debuglevel=3
     add_ldflags -Wl,-z,now # calls to libots crash without this
+    speed_cflags='-fast'
+    size_cflags='-O1'
 elif $cc --vsn 2>/dev/null | grep -q "ARM C/C++ Compiler"; then
     test -d "$sysroot" || die "No valid sysroot specified."
     cc_type=armcc
@@ -1683,6 +1696,8 @@ elif $cc --vsn 2>/dev/null | grep -q "ARM C/C++ Compiler"; then
     as_default="${cross_prefix}gcc"
     CC_DEPFLAGS='-MMD'
     AS_DEPFLAGS='-MMD'
+    speed_cflags='-O3'
+    size_cflags='-Os'
 elif $cc -version 2>/dev/null | grep -q TMS470; then
     cc_type=tms470
     cc_version="AV_STRINGIFY(__TI_COMPILER_VERSION__)"
@@ -1695,6 +1710,8 @@ elif $cc -version 2>/dev/null | grep -q TMS470; then
     add_cflags -D__gnuc_va_list=va_list -D__USER_LABEL_PREFIX__=
     CC_DEPFLAGS='-ppa -ppd=$(@:.o=.d)'
     AS_DEPFLAGS='-MMD'
+    speed_cflags='-O3 -mf=5'
+    size_cflags='-O3 -mf=2'
     filter_cflags=tms470_flags
     tms470_flags(){
         for flag; do
@@ -1714,8 +1731,7 @@ elif $cc -version 2>/dev/null | grep -q TMS470; then
                 -mfpu=vfp)      echo --float_support=vfpv2        ;;
                 -mfpu=vfpv3)    echo --float_support=vfpv3        ;;
                 -msoft-float)   echo --float_support=vfplib       ;;
-                -Os)            echo -O3 -mf=2                    ;;
-                -O[0-3])        echo $flag -mf=5                  ;;
+                -O[0-3]|-mf=*)  echo $flag                        ;;
                 -g)             echo -g -mn                       ;;
                 -pds=*)         echo $flag                        ;;
             esac
@@ -1726,11 +1742,15 @@ elif $cc -v 2>&1 | grep -q clang; then
     cc_version=__VERSION__
     CC_DEPFLAGS='-MMD'
     AS_DEPFLAGS='-MMD'
+    speed_cflags='-O3'
+    size_cflags='-Os'
 elif $cc -V 2>&1 | grep -q Sun; then
     cc_type=suncc
     cc_version="AV_STRINGIFY(__SUNPRO_C)"
     DEPEND_CMD='$(DEPCC) $(DEPFLAGS) $< | sed -e "1s,^.*: ,$@: ," -e "\$$!s,\$$, \\\," -e "1!s,^.*: , ," > $(@:.o=.d)'
     DEPFLAGS='$(CPPFLAGS) $(CFLAGS) -xM1'
+    speed_cflags='-O5'
+    size_cflags='-O5 -xspace'
     filter_cflags=suncc_flags
     suncc_flags(){
         for flag; do
@@ -1759,7 +1779,6 @@ elif $cc -V 2>&1 | grep -q Sun; then
                 -std=c99)             echo -xc99              ;;
                 -fomit-frame-pointer) echo -xregs=frameptr    ;;
                 -fPIC)                echo -KPIC -xcode=pic32 ;;
-                -Os)                  echo -O5 -xspace        ;;
                 -W*,*)                echo $flag              ;;
                 -f*-*|-W*)                                    ;;
                 *)                    echo $flag              ;;
@@ -1867,31 +1886,43 @@ if test "$cpu" = generic; then
     : do nothing
 elif enabled ppc; then
 
-    case $cpu in
-        601|ppc601|PowerPC601)
+    case $(tolower $cpu) in
+        601|ppc601|powerpc601)
             cpuflags="-mcpu=601"
+            disable altivec
         ;;
-        603*|ppc603*|PowerPC603*)
+        603*|ppc603*|powerpc603*)
             cpuflags="-mcpu=603"
+            disable altivec
         ;;
-        604*|ppc604*|PowerPC604*)
+        604*|ppc604*|powerpc604*)
             cpuflags="-mcpu=604"
+            disable altivec
         ;;
-        G3|g3|75*|ppc75*|PowerPC75*)
+        g3|75*|ppc75*|powerpc75*)
             cpuflags="-mcpu=750 -mpowerpc-gfxopt"
+            disable altivec
         ;;
-        G4|g4|745*|ppc745*|PowerPC745*)
+        g4|745*|ppc745*|powerpc745*)
             cpuflags="-mcpu=7450 -mpowerpc-gfxopt"
         ;;
-        74*|ppc74*|PowerPC74*)
+        74*|ppc74*|powerpc74*)
             cpuflags="-mcpu=7400 -mpowerpc-gfxopt"
         ;;
-        G5|g5|970|ppc970|PowerPC970|power4*|Power4*)
+        g5|970|ppc970|powerpc970|power4*)
             cpuflags="-mcpu=970 -mpowerpc-gfxopt -mpowerpc64"
         ;;
-        Cell|CELL|cell)
+        cell)
             cpuflags="-mcpu=cell"
             enable ldbrx
+        ;;
+        e500v2)
+            cpuflags="-mcpu=8548 -mhard-float -mfloat-gprs=double"
+            disable altivec
+        ;;
+        e500)
+            cpuflags="-mcpu=8540 -mhard-float"
+            disable altivec
         ;;
     esac
 
@@ -2093,11 +2124,6 @@ case $target_os in
             { check_cflags -mdynamic-no-pic && add_asflags -mdynamic-no-pic; }
         ;;
     mingw32*)
-        # Adding _WIN32_WINNT=0x0501 makes functions that require
-        # XP visible and thus may make it binary incompatible with
-        # earlier versions. Set --target-os=mingw32-prexp if this
-        # isn't desired.
-        test $target_os = "mingw32" && add_cflags -D_WIN32_WINNT=0x0501
         if test $target_os = "mingw32ce"; then
             disable network
         else
@@ -2280,6 +2306,10 @@ check_cc <<EOF && enable attribute_packed
 struct { int x; } __attribute__((packed)) x;
 EOF
 
+check_cc <<EOF && enable attribute_may_alias
+union { int x; } __attribute__((may_alias)) x;
+EOF
+
 check_cc <<EOF || die "endian test failed"
 unsigned int endian = 'B' << 24 | 'I' << 16 | 'G' << 8 | 'E';
 EOF
@@ -2422,9 +2452,9 @@ check_func  gethrtime
 check_func  getrusage
 check_func  inet_aton $network_extralibs
 check_func  isatty
-check_func  memalign
+check_func  ${malloc_prefix}memalign            && enable memalign
 check_func  mkstemp
-check_func  posix_memalign
+check_func  ${malloc_prefix}posix_memalign      && enable posix_memalign
 check_func_headers io.h setmode
 check_func_headers lzo/lzo1x.h lzo1x_999_compress
 check_func_headers windows.h GetProcessTimes
@@ -2553,8 +2583,6 @@ if enabled network; then
             network_extralibs="-lws2" || \
         { check_func_headers winsock2.h closesocket -lws2_32 && \
             network_extralibs="-lws2_32"; }
-        # getaddrinfo is available if _WIN32_WINNT >= 0x0501 is defined
-        check_func_headers ws2tcpip.h getaddrinfo $network_extralibs
         check_type ws2tcpip.h socklen_t
         check_type ws2tcpip.h "struct addrinfo"
         check_type ws2tcpip.h "struct ipv6_mreq"
@@ -2630,19 +2658,10 @@ test_ldflags -Wl,--version-script,$TMPV &&
     append SHFLAGS '-Wl,--version-script,\$(SUBDIR)lib\$(NAME).ver'
 
 if enabled small; then
-    check_cflags -Os            # not all compilers support -Os
+    add_cflags $size_cflags
     optimizations="small"
 elif enabled optimizations; then
-    if enabled xlc; then
-        add_cflags  -O5
-        add_ldflags -O5
-    elif enabled suncc; then
-        add_cflags -O5
-    elif enabled ccc; then
-        add_cflags -fast
-    else
-        add_cflags -O3
-    fi
+    add_cflags $speed_cflags
 fi
 check_cflags -fno-math-errno
 check_cflags -fno-signed-zeros
@@ -2970,6 +2989,9 @@ cat > $TMPH <<EOF
 #define EXTERN_PREFIX "${extern_prefix}"
 #define EXTERN_ASM ${extern_prefix}
 EOF
+
+test -n "$malloc_prefix" &&
+    echo "#define MALLOC_PREFIX $malloc_prefix" >>$TMPH
 
 if enabled small || disabled optimizations; then
     echo "#define av_always_inline"  >> $TMPH

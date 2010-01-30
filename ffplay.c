@@ -23,6 +23,7 @@
 #include <math.h>
 #include <limits.h>
 #include "libavutil/avstring.h"
+#include "libavutil/pixdesc.h"
 #include "libavformat/avformat.h"
 #include "libavdevice/avdevice.h"
 #include "libswscale/swscale.h"
@@ -48,9 +49,9 @@ const int program_birth_year = 2003;
 
 //#define DEBUG_SYNC
 
-#define MAX_VIDEOQ_SIZE (5 * 256 * 1024)
-#define MAX_AUDIOQ_SIZE (20 * 16 * 1024)
-#define MAX_SUBTITLEQ_SIZE (5 * 16 * 1024)
+#define MAX_QUEUE_SIZE (15 * 1024 * 1024)
+#define MIN_AUDIOQ_SIZE (20 * 16 * 1024)
+#define MIN_FRAMES 5
 
 /* SDL audio buffer size, in samples. Should be small to have precise
    A/V sync as SDL does not have hardware buffer fullness info. */
@@ -2025,9 +2026,10 @@ static int decode_thread(void *arg)
         }
 
         /* if the queue are full, no need to read more */
-        if (is->audioq.size > MAX_AUDIOQ_SIZE ||
-            is->videoq.size > MAX_VIDEOQ_SIZE ||
-            is->subtitleq.size > MAX_SUBTITLEQ_SIZE) {
+        if (   is->audioq.size + is->videoq.size + is->subtitleq.size > MAX_QUEUE_SIZE
+            || (   (is->audioq   .size  > MIN_AUDIOQ_SIZE || is->audio_stream<0)
+                && (is->videoq   .nb_packets > MIN_FRAMES || is->video_stream<0)
+                && (is->subtitleq.nb_packets > MIN_FRAMES || is->subtitle_stream<0))) {
             /* wait 10 ms */
             SDL_Delay(10);
             continue;
@@ -2406,7 +2408,7 @@ static void opt_format(const char *arg)
 
 static void opt_frame_pix_fmt(const char *arg)
 {
-    frame_pix_fmt = avcodec_get_pix_fmt(arg);
+    frame_pix_fmt = av_get_pix_fmt(arg);
 }
 
 static int opt_sync(const char *opt, const char *arg)

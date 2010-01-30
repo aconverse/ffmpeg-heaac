@@ -38,6 +38,7 @@
 #include "libavcodec/audioconvert.h"
 #include "libavcodec/colorspace.h"
 #include "libavutil/fifo.h"
+#include "libavutil/pixdesc.h"
 #include "libavutil/avstring.h"
 #include "libavformat/os_support.h"
 
@@ -89,7 +90,7 @@ typedef struct AVMetaDataMap {
 
 static const OptionDef options[];
 
-#define MAX_FILES 20
+#define MAX_FILES 100
 
 static const char *last_asked_format = NULL;
 static AVFormatContext *input_files[MAX_FILES];
@@ -299,6 +300,7 @@ typedef struct AVInputStream {
                                 is not defined */
     int64_t       pts;       /* current pts */
     int is_start;            /* is 1 at the start and after a discontinuity */
+    int showed_multi_packet_warning;
 } AVInputStream;
 
 typedef struct AVInputFile {
@@ -1312,8 +1314,10 @@ static int output_packet(AVInputStream *ist, int ist_index,
         ist->pts= ist->next_pts;
 
         if(avpkt.size && avpkt.size != pkt->size &&
-           !(ist->st->codec->codec->capabilities & CODEC_CAP_SUBFRAMES) && verbose>0)
+           (!ist->showed_multi_packet_warning && verbose>0 || verbose>1)){
             fprintf(stderr, "Multiple frames in a packet from stream %d\n", pkt->stream_index);
+            ist->showed_multi_packet_warning=1;
+        }
 
         /* decode the packet if needed */
         decoded_data_buf = NULL; /* fail safe */
@@ -2578,7 +2582,7 @@ static void opt_frame_pad_right(const char *arg)
 static void opt_frame_pix_fmt(const char *arg)
 {
     if (strcmp(arg, "list")) {
-        frame_pix_fmt = avcodec_get_pix_fmt(arg);
+        frame_pix_fmt = av_get_pix_fmt(arg);
         if (frame_pix_fmt == PIX_FMT_NONE) {
             fprintf(stderr, "Unknown pixel format requested: %s\n", arg);
             av_exit(1);
@@ -2879,10 +2883,6 @@ static void opt_input_file(const char *filename)
    // ap->sample_fmt = audio_sample_fmt; //FIXME:not implemented in libavformat
     ap->channel = video_channel;
     ap->standard = video_standard;
-    ap->video_codec_id = find_codec_or_die(video_codec_name, CODEC_TYPE_VIDEO, 0);
-    ap->audio_codec_id = find_codec_or_die(audio_codec_name, CODEC_TYPE_AUDIO, 0);
-    if(pgmyuv_compatibility_hack)
-        ap->video_codec_id= CODEC_ID_PGMYUV;
 
     set_context_opts(ic, avformat_opts, AV_OPT_FLAG_DECODING_PARAM);
 
@@ -2890,6 +2890,9 @@ static void opt_input_file(const char *filename)
     ic->audio_codec_id   = find_codec_or_die(audio_codec_name   , CODEC_TYPE_AUDIO   , 0);
     ic->subtitle_codec_id= find_codec_or_die(subtitle_codec_name, CODEC_TYPE_SUBTITLE, 0);
     ic->flags |= AVFMT_FLAG_NONBLOCK;
+
+    if(pgmyuv_compatibility_hack)
+        ic->video_codec_id= CODEC_ID_PGMYUV;
 
     /* open the input file with generic libav function */
     err = av_open_input_file(&ic, filename, file_iformat, 0, ap);

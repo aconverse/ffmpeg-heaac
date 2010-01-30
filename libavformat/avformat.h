@@ -22,7 +22,7 @@
 #define AVFORMAT_AVFORMAT_H
 
 #define LIBAVFORMAT_VERSION_MAJOR 52
-#define LIBAVFORMAT_VERSION_MINOR 47
+#define LIBAVFORMAT_VERSION_MINOR 48
 #define LIBAVFORMAT_VERSION_MICRO  0
 
 #define LIBAVFORMAT_VERSION_INT AV_VERSION_INT(LIBAVFORMAT_VERSION_MAJOR, \
@@ -520,7 +520,11 @@ typedef struct AVChapter {
     AVMetadata *metadata;
 } AVChapter;
 
+#if LIBAVFORMAT_VERSION_MAJOR < 53
 #define MAX_STREAMS 20
+#else
+#define MAX_STREAMS 100
+#endif
 
 /**
  * Format I/O context.
