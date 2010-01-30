@@ -664,9 +664,9 @@ static void sbr_grid_copy(SBRData *dst, const SBRData *src) {
     memcpy(dst->bs_var_bord,   src->bs_var_bord,   sizeof(dst->bs_var_bord));
     memcpy(dst->bs_rel_bord,   src->bs_rel_bord,   sizeof(dst->bs_rel_bord));
     memcpy(dst->bs_num_rel,    src->bs_num_rel,    sizeof(dst->bs_rel_bord));
-    dst->bs_amp_res   = src->bs_amp_res;
-    dst->bs_num_noise = src->bs_num_noise;
-    dst->bs_pointer   = src->bs_pointer;
+    dst->bs_amp_res     = src->bs_amp_res;
+    dst->bs_num_noise   = src->bs_num_noise;
+    dst->bs_pointer     = src->bs_pointer;
     dst->bs_frame_class = src->bs_frame_class;
 }
 
@@ -1151,7 +1151,7 @@ static void sbr_qmf_analysis(DSPContext *dsp, FFTContext *fft, const float *in, 
  * Synthesis QMF Bank (14496-3 sp04 p206) and Downsampled Synthesis QMF Bank
  * (14496-3 sp04 p206)
  */
-static void sbr_qmf_synthesis(DSPContext * dsp, FFTContext *mdct,
+static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
                               float *out, float X[2][32][64],
                               float mdct_buf[2][64],
                               float *v, const unsigned int div)
@@ -1523,7 +1523,7 @@ static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
  * Calculation of levels of additional HF signal components (14496-3 sp04 p219)
  * and Calculation of gain (14496-3 sp04 p219)
  */
-static void sbr_gain_calc(AACContext * ac, SpectralBandReplication *sbr,
+static void sbr_gain_calc(AACContext *ac, SpectralBandReplication *sbr,
                           SBRData *ch_data, int l_a[2])
 {
     int k, l, m;
