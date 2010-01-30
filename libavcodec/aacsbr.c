@@ -109,6 +109,28 @@ av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
     ff_fft_init(&sbr->fft, 6, 1);
 }
 
+static int qsort_comparison_function_int16(const void *a, const void *b)
+{
+    return *(const int16_t *)a - *(const int16_t *)b;
+}
+
+static inline void remove_table_element(void *table, uint8_t *last_el, int el_size,
+                                        int el)
+{
+    memmove((uint8_t *)table + el_size*el, (uint8_t *)table + el_size*(el + 1), (*last_el - el)*el_size);
+    (*last_el)--;
+}
+
+static inline int in_table(void *table, int last_el, int el_size, void *needle)
+{
+    int i;
+    uint8_t *table_ptr = table; // avoids a warning with void * ptr arith
+    for (i = 0; i <= last_el; i++, table_ptr += el_size)
+        if (!memcmp(table_ptr, needle, el_size))
+            return 1;
+    return 0;
+}
+
 /// Limiter Frequency Band Table (14496-3 sp04 p198)
 static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
 {
@@ -216,11 +238,6 @@ static int array_min_int16(int16_t *array, int nel)
         if (array[i] < min)
             min = array[i];
     return min;
-}
-
-static int qsort_comparison_function_int16(const void *a, const void *b)
-{
-    return *(const int16_t *)a - *(const int16_t *)b;
 }
 
 static void make_bands(int16_t* bands, int start, int stop, int num_bands)
@@ -493,23 +510,6 @@ static int sbr_hf_calc_npatches(AACContext *ac, SpectralBandReplication *sbr)
         return -1;
     }
 
-    return 0;
-}
-
-static inline void remove_table_element(void *table, uint8_t *last_el, int el_size,
-                                        int el)
-{
-    memmove((uint8_t *)table + el_size*el, (uint8_t *)table + el_size*(el + 1), (*last_el - el)*el_size);
-    (*last_el)--;
-}
-
-static inline int in_table(void *table, int last_el, int el_size, void *needle)
-{
-    int i;
-    uint8_t *table_ptr = table; // avoids a warning with void * ptr arith
-    for (i = 0; i <= last_el; i++, table_ptr += el_size)
-        if (!memcmp(table_ptr, needle, el_size))
-            return 1;
     return 0;
 }
 
