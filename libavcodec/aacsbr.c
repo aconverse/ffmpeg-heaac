@@ -114,19 +114,18 @@ static int qsort_comparison_function_int16(const void *a, const void *b)
     return *(const int16_t *)a - *(const int16_t *)b;
 }
 
-static inline void remove_table_element(void *table, uint8_t *last_el, int el_size,
+static inline void remove_table_element_int16(int16_t *table, uint8_t *last_el,
                                         int el)
 {
-    memmove((uint8_t *)table + el_size*el, (uint8_t *)table + el_size*(el + 1), (*last_el - el)*el_size);
+    memmove(table + el, table + el + 1, (*last_el - el)*sizeof(int16_t));
     (*last_el)--;
 }
 
-static inline int in_table(void *table, int last_el, int el_size, void *needle)
+static inline int in_table_int16(int16_t *table, int last_el, int16_t needle)
 {
     int i;
-    uint8_t *table_ptr = table; // avoids a warning with void * ptr arith
-    for (i = 0; i <= last_el; i++, table_ptr += el_size)
-        if (!memcmp(table_ptr, needle, el_size))
+    for (i = 0; i <= last_el; i++)
+        if (table[i] == needle)
             return 1;
     return 0;
 }
@@ -162,10 +161,10 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
                 continue;
             }
             if (sbr->f_tablelim[k] == sbr->f_tablelim[k-1] ||
-                !in_table(patch_borders, sbr->num_patches, sizeof(patch_borders[0]), &sbr->f_tablelim[k]))
-                remove_table_element(sbr->f_tablelim, &sbr->n_lim, sizeof(sbr->f_tablelim[0]), k);
-            else if (!in_table(patch_borders, sbr->num_patches, sizeof(patch_borders[0]), &sbr->f_tablelim[k-1]))
-                remove_table_element(sbr->f_tablelim, &sbr->n_lim, sizeof(sbr->f_tablelim[0]), k-1);
+                !in_table_int16(patch_borders, sbr->num_patches, sbr->f_tablelim[k]))
+                remove_table_element_int16(sbr->f_tablelim, &sbr->n_lim, k);
+            else if (!in_table_int16(patch_borders, sbr->num_patches, sbr->f_tablelim[k-1]))
+                remove_table_element_int16(sbr->f_tablelim, &sbr->n_lim, k-1);
             else
                 k++;
         };
