@@ -135,10 +135,11 @@ typedef struct {
  * Spectral Band Replication
  */
 typedef struct {
-    uint8_t            start;
     int32_t            sample_rate;
-    uint8_t            bs_amp_res_header;
+    uint8_t            start;
+    uint8_t            reset;
     SpectrumParameters spectrum_params[2];
+    uint8_t            bs_amp_res_header;
     /**
      * @defgroup bs_header_extra_2     variables associated with bs_header_extra_2
      * @{
@@ -149,11 +150,10 @@ typedef struct {
     uint8_t            bs_smoothing_mode;
     /** @} */
     uint8_t            bs_coupling;
-    SBRData            data[2];
-    uint8_t            reset;
     uint8_t            k[5]; ///< k0, k1, k2, kx', and kx respectively
     uint8_t            m[2]; ///< M' and M respectively
     uint8_t            n_master;
+    SBRData            data[2];
     uint8_t            n[2]; ///< n_low and n_high respectively
     uint8_t            n_q;
     uint8_t            n_lim;
