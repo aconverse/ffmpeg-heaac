@@ -90,6 +90,7 @@ typedef struct VideoPicture {
     SDL_Overlay *bmp;
     int width, height; /* source height & width */
     int allocated;
+    SDL_TimerID timer_id;
 } VideoPicture;
 
 typedef struct SubPicture {
@@ -115,6 +116,7 @@ typedef struct VideoState {
     int seek_flags;
     int64_t seek_pos;
     int64_t seek_rel;
+    int read_pause_return;
     AVFormatContext *ic;
     int dtg_active_format;
 
@@ -167,7 +169,7 @@ typedef struct VideoState {
     AVStream *video_st;
     PacketQueue videoq;
     double video_current_pts;                    ///<current displayed pts (different from video_clock if frame fifos are used)
-    int64_t video_current_pts_time;              ///<time (av_gettime) at which we updated video_current_pts - used to have running video pts
+    double video_current_pts_drift;              ///<video_current_pts - time (av_gettime) at which we updated video_current_pts - used to have running video pts
     VideoPicture pictq[VIDEO_PICTURE_QUEUE_SIZE];
     int pictq_size, pictq_rindex, pictq_windex;
     SDL_mutex *pictq_mutex;
@@ -177,6 +179,12 @@ typedef struct VideoState {
     //    QETimer *video_timer;
     char filename[1024];
     int width, height, xleft, ytop;
+
+    int64_t faulty_pts;
+    int64_t faulty_dts;
+    int64_t last_dts_for_fault_detection;
+    int64_t last_pts_for_fault_detection;
+
 } VideoState;
 
 static void show_help(void);
@@ -216,7 +224,7 @@ static enum AVDiscard skip_idct= AVDISCARD_DEFAULT;
 static enum AVDiscard skip_loop_filter= AVDISCARD_DEFAULT;
 static int error_recognition = FF_ER_CAREFUL;
 static int error_concealment = 3;
-static int decoder_reorder_pts= 0;
+static int decoder_reorder_pts= -1;
 
 /* current context */
 static int is_full_screen;
@@ -231,12 +239,15 @@ static AVPacket flush_pkt;
 
 static SDL_Surface *screen;
 
+static int packet_queue_put(PacketQueue *q, AVPacket *pkt);
+
 /* packet queue handling */
 static void packet_queue_init(PacketQueue *q)
 {
     memset(q, 0, sizeof(PacketQueue));
     q->mutex = SDL_CreateMutex();
     q->cond = SDL_CreateCond();
+    packet_queue_put(q, &flush_pkt);
 }
 
 static void packet_queue_flush(PacketQueue *q)
@@ -906,10 +917,10 @@ static Uint32 sdl_refresh_timer_cb(Uint32 interval, void *opaque)
 }
 
 /* schedule a video refresh in 'delay' ms */
-static void schedule_refresh(VideoState *is, int delay)
+static SDL_TimerID schedule_refresh(VideoState *is, int delay)
 {
     if(!delay) delay=1; //SDL seems to be buggy when the delay is 0
-    SDL_AddTimer(delay, sdl_refresh_timer_cb, is);
+    return SDL_AddTimer(delay, sdl_refresh_timer_cb, is);
 }
 
 /* get the current audio clock value */
@@ -932,13 +943,11 @@ static double get_audio_clock(VideoState *is)
 /* get the current video clock value */
 static double get_video_clock(VideoState *is)
 {
-    double delta;
     if (is->paused) {
-        delta = 0;
+        return is->video_current_pts;
     } else {
-        delta = (av_gettime() - is->video_current_pts_time) / 1000000.0;
+        return is->video_current_pts_drift + av_gettime() / 1000000.0;
     }
-    return is->video_current_pts + delta;
 }
 
 /* get the current external clock value */
@@ -971,7 +980,7 @@ static double get_master_clock(VideoState *is)
 }
 
 /* seek in the stream */
-static void stream_seek(VideoState *is, int64_t pos, int64_t rel)
+static void stream_seek(VideoState *is, int64_t pos, int64_t rel, int seek_by_bytes)
 {
     if (!is->seek_req) {
         is->seek_pos = pos;
@@ -985,11 +994,14 @@ static void stream_seek(VideoState *is, int64_t pos, int64_t rel)
 /* pause or resume the video */
 static void stream_pause(VideoState *is)
 {
-    is->paused = !is->paused;
-    if (!is->paused) {
-        is->video_current_pts = get_video_clock(is);
-        is->frame_timer += (av_gettime() - is->video_current_pts_time) / 1000000.0;
+    if (is->paused) {
+        is->frame_timer += av_gettime() / 1000000.0 + is->video_current_pts_drift - is->video_current_pts;
+        if(is->read_pause_return != AVERROR(ENOSYS)){
+            is->video_current_pts = is->video_current_pts_drift + av_gettime() / 1000000.0;
+        }
+        is->video_current_pts_drift = is->video_current_pts - av_gettime() / 1000000.0;
     }
+    is->paused = !is->paused;
 }
 
 static double compute_frame_delay(double frame_current_pts, VideoState *is)
@@ -1053,18 +1065,14 @@ static void video_refresh_timer(void *opaque)
 
     if (is->video_st) {
         if (is->pictq_size == 0) {
-            /* if no picture, need to wait */
-            schedule_refresh(is, 1);
+//            fprintf(stderr, "Internal error detected in the SDL timer\n");
         } else {
             /* dequeue the picture */
             vp = &is->pictq[is->pictq_rindex];
 
             /* update current video pts */
             is->video_current_pts = vp->pts;
-            is->video_current_pts_time = av_gettime();
-
-            /* launch timer for next picture */
-            schedule_refresh(is, (int)(compute_frame_delay(vp->pts, is) * 1000 + 0.5));
+            is->video_current_pts_drift = is->video_current_pts - av_gettime() / 1000000.0;
 
             if(is->subtitle_st) {
                 if (is->subtitle_stream_changed) {
@@ -1118,6 +1126,7 @@ static void video_refresh_timer(void *opaque)
                 is->pictq_rindex = 0;
 
             SDL_LockMutex(is->pictq_mutex);
+            vp->timer_id= 0;
             is->pictq_size--;
             SDL_CondSignal(is->pictq_cond);
             SDL_UnlockMutex(is->pictq_mutex);
@@ -1155,8 +1164,8 @@ static void video_refresh_timer(void *opaque)
             av_diff = 0;
             if (is->audio_st && is->video_st)
                 av_diff = get_audio_clock(is) - get_video_clock(is);
-            printf("%7.2f A-V:%7.3f aq=%5dKB vq=%5dKB sq=%5dB    \r",
-                   get_master_clock(is), av_diff, aqsize / 1024, vqsize / 1024, sqsize);
+            printf("%7.2f A-V:%7.3f aq=%5dKB vq=%5dKB sq=%5dB f=%Ld/%Ld   \r",
+                   get_master_clock(is), av_diff, aqsize / 1024, vqsize / 1024, sqsize, is->faulty_dts, is->faulty_pts);
             fflush(stdout);
             last_time = cur_time;
         }
@@ -1273,6 +1282,8 @@ static int queue_picture(VideoState *is, AVFrame *src_frame, double pts)
             is->pictq_windex = 0;
         SDL_LockMutex(is->pictq_mutex);
         is->pictq_size++;
+        //We must schedule in a mutex as we must store the timer id before the timer dies or might end up freeing a alraedy freed id
+        vp->timer_id= schedule_refresh(is, (int)(compute_frame_delay(vp->pts, is) * 1000 + 0.5));
         SDL_UnlockMutex(is->pictq_mutex);
     }
     return 0;
@@ -1321,7 +1332,7 @@ static int video_thread(void *arg)
 {
     VideoState *is = arg;
     AVPacket pkt1, *pkt = &pkt1;
-    int len1, got_picture;
+    int len1, got_picture, i;
     AVFrame *frame= avcodec_alloc_frame();
     double pts;
 
@@ -1334,6 +1345,26 @@ static int video_thread(void *arg)
 
         if(pkt->data == flush_pkt.data){
             avcodec_flush_buffers(is->video_st->codec);
+
+            SDL_LockMutex(is->pictq_mutex);
+            //Make sure there are no long delay timers (ideally we should just flush the que but thats harder)
+            for(i=0; i<VIDEO_PICTURE_QUEUE_SIZE; i++){
+                if(is->pictq[i].timer_id){
+                    SDL_RemoveTimer(is->pictq[i].timer_id);
+                    is->pictq[i].timer_id=0;
+                    schedule_refresh(is, 1);
+                }
+            }
+            while (is->pictq_size && !is->videoq.abort_request) {
+                SDL_CondWait(is->pictq_cond, is->pictq_mutex);
+            }
+            SDL_UnlockMutex(is->pictq_mutex);
+
+            is->last_dts_for_fault_detection=
+            is->last_pts_for_fault_detection= INT64_MIN;
+            is->frame_last_pts= AV_NOPTS_VALUE;
+            is->frame_last_delay = 0;
+
             continue;
         }
 
@@ -1344,7 +1375,20 @@ static int video_thread(void *arg)
                                     frame, &got_picture,
                                     pkt);
 
-        if(   (decoder_reorder_pts || pkt->dts == AV_NOPTS_VALUE)
+        if (got_picture) {
+            if(pkt->dts != AV_NOPTS_VALUE){
+                is->faulty_dts += pkt->dts <= is->last_dts_for_fault_detection;
+                is->last_dts_for_fault_detection= pkt->dts;
+            }
+            if(frame->reordered_opaque != AV_NOPTS_VALUE){
+                is->faulty_pts += frame->reordered_opaque <= is->last_pts_for_fault_detection;
+                is->last_pts_for_fault_detection= frame->reordered_opaque;
+            }
+        }
+
+        if(   (   decoder_reorder_pts==1
+               || (decoder_reorder_pts && is->faulty_pts<is->faulty_dts)
+               || pkt->dts == AV_NOPTS_VALUE)
            && frame->reordered_opaque != AV_NOPTS_VALUE)
             pts= frame->reordered_opaque;
         else if(pkt->dts != AV_NOPTS_VALUE)
@@ -1771,9 +1815,8 @@ static int stream_component_open(VideoState *is, int stream_index)
         is->video_stream = stream_index;
         is->video_st = ic->streams[stream_index];
 
-        is->frame_last_delay = 40e-3;
         is->frame_timer = (double)av_gettime() / 1000000.0;
-        is->video_current_pts_time = av_gettime();
+//        is->video_current_pts_time = av_gettime();
 
         packet_queue_init(&is->videoq);
         is->video_tid = SDL_CreateThread(video_thread, is);
@@ -1881,6 +1924,8 @@ static int decode_thread(void *arg)
     AVFormatParameters params, *ap = &params;
     int eof=0;
 
+    ic = avformat_alloc_context();
+
     video_index = -1;
     audio_index = -1;
     subtitle_index = -1;
@@ -1893,10 +1938,13 @@ static int decode_thread(void *arg)
 
     memset(ap, 0, sizeof(*ap));
 
+    ap->prealloced_context = 1;
     ap->width = frame_width;
     ap->height= frame_height;
     ap->time_base= (AVRational){1, 25};
     ap->pix_fmt = frame_pix_fmt;
+
+    set_context_opts(ic, avformat_opts, AV_OPT_FLAG_DECODING_PARAM);
 
     err = av_open_input_file(&ic, is->filename, is->iformat, 0, ap);
     if (err < 0) {
@@ -1985,7 +2033,7 @@ static int decode_thread(void *arg)
         if (is->paused != is->last_paused) {
             is->last_paused = is->paused;
             if (is->paused)
-                av_read_pause(ic);
+                is->read_pause_return= av_read_pause(ic);
             else
                 av_read_play(ic);
         }
@@ -2314,11 +2362,11 @@ static void event_loop(void)
                         else
                             incr *= 180000.0;
                         pos += incr;
-                        stream_seek(cur_stream, pos, incr);
+                        stream_seek(cur_stream, pos, incr, 1);
                     } else {
                         pos = get_master_clock(cur_stream);
                         pos += incr;
-                        stream_seek(cur_stream, (int64_t)(pos * AV_TIME_BASE), (int64_t)(incr * AV_TIME_BASE));
+                        stream_seek(cur_stream, (int64_t)(pos * AV_TIME_BASE), (int64_t)(incr * AV_TIME_BASE), 0);
                     }
                 }
                 break;
@@ -2328,24 +2376,29 @@ static void event_loop(void)
             break;
         case SDL_MOUSEBUTTONDOWN:
             if (cur_stream) {
-                int64_t ts;
-                int ns, hh, mm, ss;
-                int tns, thh, tmm, tss;
-                tns = cur_stream->ic->duration/1000000LL;
-                thh = tns/3600;
-                tmm = (tns%3600)/60;
-                tss = (tns%60);
-                frac = (double)event.button.x/(double)cur_stream->width;
-                ns = frac*tns;
-                hh = ns/3600;
-                mm = (ns%3600)/60;
-                ss = (ns%60);
-                fprintf(stderr, "Seek to %2.0f%% (%2d:%02d:%02d) of total duration (%2d:%02d:%02d)       \n", frac*100,
-                        hh, mm, ss, thh, tmm, tss);
-                ts = frac*cur_stream->ic->duration;
-                if (cur_stream->ic->start_time != AV_NOPTS_VALUE)
-                    ts += cur_stream->ic->start_time;
-                stream_seek(cur_stream, ts, 0);
+                if(seek_by_bytes || cur_stream->ic->duration<=0){
+                    uint64_t size=  url_fsize(cur_stream->ic->pb);
+                    stream_seek(cur_stream, size*(double)event.button.x/(double)cur_stream->width, 0, 1);
+                }else{
+                    int64_t ts;
+                    int ns, hh, mm, ss;
+                    int tns, thh, tmm, tss;
+                    tns = cur_stream->ic->duration/1000000LL;
+                    thh = tns/3600;
+                    tmm = (tns%3600)/60;
+                    tss = (tns%60);
+                    frac = (double)event.button.x/(double)cur_stream->width;
+                    ns = frac*tns;
+                    hh = ns/3600;
+                    mm = (ns%3600)/60;
+                    ss = (ns%60);
+                    fprintf(stderr, "Seek to %2.0f%% (%2d:%02d:%02d) of total duration (%2d:%02d:%02d)       \n", frac*100,
+                            hh, mm, ss, thh, tmm, tss);
+                    ts = frac*cur_stream->ic->duration;
+                    if (cur_stream->ic->start_time != AV_NOPTS_VALUE)
+                        ts += cur_stream->ic->start_time;
+                    stream_seek(cur_stream, ts, 0, 0);
+                }
             }
             break;
         case SDL_VIDEORESIZE:
@@ -2476,7 +2529,7 @@ static const OptionDef options[] = {
     { "vismv", HAS_ARG | OPT_FUNC2 | OPT_EXPERT, {(void*)opt_vismv}, "visualize motion vectors", "" },
     { "fast", OPT_BOOL | OPT_EXPERT, {(void*)&fast}, "non spec compliant optimizations", "" },
     { "genpts", OPT_BOOL | OPT_EXPERT, {(void*)&genpts}, "generate pts", "" },
-    { "drp", OPT_BOOL |OPT_EXPERT, {(void*)&decoder_reorder_pts}, "let decoder reorder pts", ""},
+    { "drp", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&decoder_reorder_pts}, "let decoder reorder pts 0=off 1=on -1=auto", ""},
     { "lowres", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&lowres}, "", "" },
     { "skiploop", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&skip_loop_filter}, "", "" },
     { "skipframe", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&skip_frame}, "", "" },

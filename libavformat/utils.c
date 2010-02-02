@@ -808,6 +808,9 @@ static void compute_pkt_fields(AVFormatContext *s, AVStream *st,
     int num, den, presentation_delayed, delay, i;
     int64_t offset;
 
+    if((s->flags & AVFMT_FLAG_IGNDTS) && pkt->pts != AV_NOPTS_VALUE)
+        pkt->dts= AV_NOPTS_VALUE;
+
     if (st->codec->codec_id != CODEC_ID_H264 && pc && pc->pict_type == FF_B_TYPE)
         //FIXME Set low_delay = 0 when has_b_frames = 1
         st->codec->has_b_frames = 1;
@@ -1768,6 +1771,7 @@ static void av_estimate_timings_from_bit_rate(AVFormatContext *ic)
 }
 
 #define DURATION_MAX_READ_SIZE 250000
+#define DURATION_MAX_RETRY 3
 
 /* only usable for MPEG-PS streams */
 static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset)
@@ -1777,6 +1781,7 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     int read_size, i, ret;
     int64_t end_time, start_time[MAX_STREAMS];
     int64_t filesize, offset, duration;
+    int retry=0;
 
     ic->cur_st = NULL;
 
@@ -1802,14 +1807,16 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
     /* estimate the end time (duration) */
     /* XXX: may need to support wrapping */
     filesize = ic->file_size;
-    offset = filesize - DURATION_MAX_READ_SIZE;
+    end_time = AV_NOPTS_VALUE;
+    do{
+    offset = filesize - (DURATION_MAX_READ_SIZE<<retry);
     if (offset < 0)
         offset = 0;
 
     url_fseek(ic->pb, offset, SEEK_SET);
     read_size = 0;
     for(;;) {
-        if (read_size >= DURATION_MAX_READ_SIZE)
+        if (read_size >= DURATION_MAX_READ_SIZE<<(FFMAX(retry-1,0)))
             break;
 
         do{
@@ -1833,6 +1840,9 @@ static void av_estimate_timings_from_pts(AVFormatContext *ic, int64_t old_offset
         }
         av_free_packet(pkt);
     }
+    }while(   end_time==AV_NOPTS_VALUE
+           && filesize > (DURATION_MAX_READ_SIZE<<retry)
+           && ++retry <= DURATION_MAX_RETRY);
 
     fill_all_stream_timings(ic);
 
