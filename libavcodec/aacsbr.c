@@ -1143,8 +1143,8 @@ static void sbr_qmf_analysis(DSPContext *dsp, FFTContext *fft, const float *in, 
         }
         ff_fft_calc(fft, u);
         for (k = 0; k < 32; k++) {
-            W[1][k][l][0] = u[k].re * analysis_cos_post[k] - u[k].im * analysis_sin_post[k];
-            W[1][k][l][1] = u[k].re * analysis_sin_post[k] + u[k].im * analysis_cos_post[k];
+            W[1][l][k][0] = u[k].re * analysis_cos_post[k] - u[k].im * analysis_sin_post[k];
+            W[1][l][k][1] = u[k].re * analysis_sin_post[k] + u[k].im * analysis_cos_post[k];
         }
         x += 32;
     }
@@ -1324,14 +1324,14 @@ static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
     memset(X_low, 0, 32*sizeof(*X_low));
     for (k = 0; k < sbr->k[4]; k++) {
         for (l = t_HFGen; l < l_f + t_HFGen; l++) {
-            X_low[k][l][0] = W[1][k][l - t_HFGen][0];
-            X_low[k][l][1] = W[1][k][l - t_HFGen][1];
+            X_low[k][l][0] = W[1][l - t_HFGen][k][0];
+            X_low[k][l][1] = W[1][l - t_HFGen][k][1];
         }
     }
     for (k = 0; k < sbr->k[3]; k++) {
         for (l = 0; l < t_HFGen; l++) {
-            X_low[k][l][0] = W[0][k][l + l_f - t_HFGen][0];
-            X_low[k][l][1] = W[0][k][l + l_f - t_HFGen][1];
+            X_low[k][l][0] = W[0][l + l_f - t_HFGen][k][0];
+            X_low[k][l][1] = W[0][l + l_f - t_HFGen][k][1];
         }
     }
     return 0;
