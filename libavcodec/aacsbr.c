@@ -256,7 +256,7 @@ static void make_bands(int16_t* bands, int start, int stop, int num_bands)
 
     for (k = 0; k < num_bands-1; k++) {
         prod *= base;
-        present  = lroundf(start * prod);
+        present  = lrintf(start * prod);
         bands[k] = present - previous;
         previous = present;
     }
@@ -383,7 +383,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
             sbr->k[1] = sbr->k[2];
         }
 
-        num_bands_0 = lroundf(half_bands * log2f(sbr->k[1] / (float)sbr->k[0])) << 1;
+        num_bands_0 = lrintf(half_bands * log2f(sbr->k[1] / (float)sbr->k[0])) << 1;
 
         if (num_bands_0 <= 0) { // Requirements (14496-3 sp04 p205)
             av_log(ac->avccontext, AV_LOG_ERROR, "Invalid num_bands_0: %d\n", num_bands_0);
@@ -409,7 +409,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
         if (two_regions) {
             int16_t vk1[49];
             float invwarp = spectrum->bs_alter_scale ? 0.76923076923076923077 : 1.0; // bs_alter_scale = {0,1}
-            int num_bands_1 = lroundf(half_bands * log2f(sbr->k[2] / (float)sbr->k[1]) *
+            int num_bands_1 = lrintf(half_bands * log2f(sbr->k[2] / (float)sbr->k[1]) *
                                       invwarp) << 1;
 
             make_bands(vk1+1, sbr->k[1], sbr->k[2], num_bands_1);
@@ -546,7 +546,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
     for (k = 1; k <= sbr->n[0]; k++)
         sbr->f_tablelow[k] = sbr->f_tablehigh[(k << 1) - temp];
 
-    sbr->n_q = FFMAX(1, lroundf(sbr->spectrum_params[1].bs_noise_bands *
+    sbr->n_q = FFMAX(1, lrintf(sbr->spectrum_params[1].bs_noise_bands *
                                 log2f(sbr->k[2] / (float)sbr->k[4]))); // 0 <= bs_noise_bands <= 3
     if (sbr->n_q > 5) {
         av_log(ac->avccontext, AV_LOG_ERROR, "Too many noise floor scale factors: %d\n", sbr->n_q);
