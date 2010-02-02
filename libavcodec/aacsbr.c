@@ -272,7 +272,6 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     int k;
     const uint8_t *sbr_offset_ptr;
     int16_t stop_dk[13];
-    const float INV_2LN2 = 0.72134752044448170368; // 1 / (2 * ln(2))
 
     if (sbr->sample_rate < 32000) {
         temp = 3000;
@@ -371,7 +370,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
             return -1;
         }
     } else {
-        int bands = 14 - (spectrum->bs_freq_scale << 1);   // bs_freq_scale  = {1,2,3}
+        int half_bands = 7 - spectrum->bs_freq_scale;      // bs_freq_scale  = {1,2,3}
         float warp = spectrum->bs_alter_scale ? 1.3 : 1.0; // bs_alter_scale = {0,1}
         unsigned int two_regions, num_bands_0;
         int vdk0_max, vdk1_min;
@@ -385,7 +384,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
             sbr->k[1] = sbr->k[2];
         }
 
-        num_bands_0 = lroundf(bands * logf(sbr->k[1] / (float)sbr->k[0]) * INV_2LN2) << 1;
+        num_bands_0 = lroundf(half_bands * log2f(sbr->k[1] / (float)sbr->k[0])) << 1;
 
         if (num_bands_0 <= 0) { // Requirements (14496-3 sp04 p205)
             av_log(ac->avccontext, AV_LOG_ERROR, "Invalid num_bands_0: %d\n", num_bands_0);
@@ -410,8 +409,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         if (two_regions) {
             int16_t vk1[49];
-            int num_bands_1 = lroundf(bands * logf(sbr->k[2] / (float)sbr->k[1]) *
-                                      INV_2LN2 / warp) << 1;
+            int num_bands_1 = lroundf(half_bands * log2f(sbr->k[2] / (float)sbr->k[1]) /
+                                      warp) << 1;
 
             make_bands(vk1+1, sbr->k[1], sbr->k[2], num_bands_1);
 
