@@ -408,9 +408,10 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         if (two_regions) {
             int16_t vk1[49];
-            float invwarp = spectrum->bs_alter_scale ? 0.76923076923076923077 : 1.0; // bs_alter_scale = {0,1}
-            int num_bands_1 = lrintf(half_bands * log2f(sbr->k[2] / (float)sbr->k[1]) *
-                                      invwarp) << 1;
+            float invwarp = spectrum->bs_alter_scale ? 0.76923076923076923077
+                                                     : 1.0; // bs_alter_scale = {0,1}
+            int num_bands_1 = lrintf(half_bands * invwarp *
+                                     log2f(sbr->k[2] / (float)sbr->k[1])) << 1;
 
             make_bands(vk1+1, sbr->k[1], sbr->k[2], num_bands_1);
 
@@ -547,7 +548,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
         sbr->f_tablelow[k] = sbr->f_tablehigh[(k << 1) - temp];
 
     sbr->n_q = FFMAX(1, lrintf(sbr->spectrum_params[1].bs_noise_bands *
-                                log2f(sbr->k[2] / (float)sbr->k[4]))); // 0 <= bs_noise_bands <= 3
+                               log2f(sbr->k[2] / (float)sbr->k[4]))); // 0 <= bs_noise_bands <= 3
     if (sbr->n_q > 5) {
         av_log(ac->avccontext, AV_LOG_ERROR, "Too many noise floor scale factors: %d\n", sbr->n_q);
         return -1;
