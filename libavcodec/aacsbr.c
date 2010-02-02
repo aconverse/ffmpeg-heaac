@@ -572,8 +572,9 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
     return 0;
 }
 
+/** ceil(log2(index+1)) */
 static const int8_t ceil_log2[] = {
-    0, 0, 1, 2, 2, 3, 3,
+    0, 1, 2, 2, 3, 3,
 };
 
 static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
@@ -603,7 +604,7 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
         for (i = 0; i < ch_data->bs_num_rel[1]; i++)
             ch_data->bs_rel_bord[1][i] = (get_bits(gb, 2) << 1) + 2;
 
-        ch_data->bs_pointer = get_bits(gb, ceil_log2[ch_data->bs_num_env[1] + 1]);
+        ch_data->bs_pointer = get_bits(gb, ceil_log2[ch_data->bs_num_env[1]]);
 
         for (i = 0; i < ch_data->bs_num_env[1]; i++)
             ch_data->bs_freq_res[ch_data->bs_num_env[1] - i] = get_bits1(gb);
@@ -616,7 +617,7 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
         for (i = 0; i < ch_data->bs_num_rel[0]; i++)
             ch_data->bs_rel_bord[0][i] = (get_bits(gb, 2) << 1) + 2;
 
-        ch_data->bs_pointer = get_bits(gb, ceil_log2[ch_data->bs_num_env[1] + 1]);
+        ch_data->bs_pointer = get_bits(gb, ceil_log2[ch_data->bs_num_env[1]]);
 
         for (i = 0; i < ch_data->bs_num_env[1]; i++)
             ch_data->bs_freq_res[i + 1] = get_bits1(gb);
@@ -633,7 +634,7 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
         for (i = 0; i < ch_data->bs_num_rel[1]; i++)
             ch_data->bs_rel_bord[1][i] = (get_bits(gb, 2) << 1) + 2;
 
-        ch_data->bs_pointer = get_bits(gb, ceil_log2[ch_data->bs_num_env[1] + 1]);
+        ch_data->bs_pointer = get_bits(gb, ceil_log2[ch_data->bs_num_env[1]]);
 
         for (i = 0; i < ch_data->bs_num_env[1]; i++)
             ch_data->bs_freq_res[i + 1] = get_bits1(gb);
