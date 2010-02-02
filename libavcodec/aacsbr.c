@@ -1126,19 +1126,16 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
  * @param   W       array of complex-valued samples split into subbands
  */
 static void sbr_qmf_analysis(DSPContext *dsp, FFTContext *fft, const float *in, float *x,
-                             FFTComplex u[64], float W[2][32][32][2])
+                             FFTComplex u[64], float z[320], float W[2][32][32][2])
 {
     int i, k, l;
     const uint16_t *revtab = fft->revtab;
     memcpy(W[0], W[1], sizeof(W[0]));
     memcpy(x    , x+1024, (320-32)*sizeof(x[0]));
     memcpy(x+288, in    ,     1024*sizeof(x[0]));
-    x += 319;
     for (l = 0; l < 32; l++) { // numTimeSlots*RATE = 16*2 as 960 sample frames
                                // are not supported
-        float z[320];
-        for (i = 0; i < 320; i++)
-            z[i] = x[-i] * sbr_qmf_window_ds[i];
+        dsp->vector_fmul_reverse(z, sbr_qmf_window_ds, x, 320);
         for (i = 0; i < 64; i++) {
             float f = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
             u[revtab[i]].re = f * analysis_cos_pre[i];
@@ -1686,7 +1683,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
 
     /* decode channel */
     sbr_qmf_analysis(&ac->dsp, &sbr->fft, in, sbr->data[ch].analysis_filterbank_samples,
-                     sbr->ana_filter_scratch, sbr->data[ch].W);
+                     sbr->ana_filter_scratch, sbr->analysis_win_buf, sbr->data[ch].W);
     sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
     if (sbr->start) {
         sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->X_low, sbr->k[0]);
