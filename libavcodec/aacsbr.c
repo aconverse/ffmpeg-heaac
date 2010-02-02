@@ -251,12 +251,12 @@ static void make_bands(int16_t* bands, int start, int stop, int num_bands)
     float base, prod;
 
     base = powf((float)stop / start, 1.0f / num_bands);
-    prod = 1.0f;
+    prod = start;
     previous = start;
 
     for (k = 0; k < num_bands-1; k++) {
         prod *= base;
-        present  = lrintf(start * prod);
+        present  = lrintf(prod);
         bands[k] = present - previous;
         previous = present;
     }
