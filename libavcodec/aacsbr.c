@@ -408,9 +408,9 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         if (two_regions) {
             int16_t vk1[49];
-            float warp = spectrum->bs_alter_scale ? 1.3 : 1.0; // bs_alter_scale = {0,1}
-            int num_bands_1 = lroundf(half_bands * log2f(sbr->k[2] / (float)sbr->k[1]) /
-                                      warp) << 1;
+            float invwarp = spectrum->bs_alter_scale ? 0.76923076923076923077 : 1.0; // bs_alter_scale = {0,1}
+            int num_bands_1 = lroundf(half_bands * log2f(sbr->k[2] / (float)sbr->k[1]) *
+                                      invwarp) << 1;
 
             make_bands(vk1+1, sbr->k[1], sbr->k[2], num_bands_1);
 
