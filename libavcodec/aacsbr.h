@@ -177,11 +177,10 @@ typedef struct {
     float              q_m[7][48];
     float              s_m[7][48];
     float              gain[7][48];
-    DECLARE_ALIGNED(16, FFTComplex, ana_filter_scratch)[64];
+    DECLARE_ALIGNED(16, float, qmf_filter_scratch)[2][64];
     DECLARE_ALIGNED(16, float, analysis_win_buf)[320];
     FFTContext         fft;
     FFTContext         mdct;
-    DECLARE_ALIGNED(16, float, mdct_buf)[2][64];
 } SpectralBandReplication;
 
 #endif /* AVCODEC_AACSBR_H */

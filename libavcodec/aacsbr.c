@@ -1683,7 +1683,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
 
     /* decode channel */
     sbr_qmf_analysis(&ac->dsp, &sbr->fft, in, sbr->data[ch].analysis_filterbank_samples,
-                     sbr->ana_filter_scratch, sbr->analysis_win_buf, sbr->data[ch].W);
+                     (FFTComplex*)sbr->qmf_filter_scratch, sbr->analysis_win_buf, sbr->data[ch].W);
     sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
     if (sbr->start) {
         sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->X_low, sbr->k[0]);
@@ -1702,6 +1702,6 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
 
     /* synthesis */
     sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->data[ch].Y, ch);
-    sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out, sbr->X, sbr->mdct_buf,
+    sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out, sbr->X, sbr->qmf_filter_scratch,
                       sbr->data[ch].synthesis_filterbank_samples, downsampled);
 }
