@@ -37,8 +37,7 @@ static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
 static DECLARE_ALIGNED_16(float, analysis_cos_pre)[64];
 static DECLARE_ALIGNED_16(float, analysis_sin_pre)[64];
-static DECLARE_ALIGNED_16(float, analysis_cos_post)[32];
-static DECLARE_ALIGNED_16(float, analysis_sin_post)[32];
+static DECLARE_ALIGNED_16(float, analysis_cossin_post)[32][2];
 static DECLARE_ALIGNED_16(float, zero64)[64];
 #define NOISE_FLOOR_OFFSET 6.0f
 /// constant to avoid division by zero, e.g. 96 dB below maximum signal input
@@ -93,8 +92,8 @@ av_cold void ff_aac_sbr_init(void)
     }
     for (k = 0; k < 32; k++) {
         float post = M_PI * (k + 0.5) / 128;
-        analysis_cos_post[k] =  2.0 * cos(post);
-        analysis_sin_post[k] = -2.0 * sin(post);
+        analysis_cossin_post[k][0] =  2.0 * cos(post);
+        analysis_cossin_post[k][1] = -2.0 * sin(post);
     }
     for (n = 0; n < 320; n++) {
         sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
@@ -1146,13 +1145,13 @@ static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in
         ff_rdft_calc(rdft, z);
         re = z[0] * 0.5f;
         im = dsp->scalarproduct_float(z+64, analysis_sin_pre, 64);
-        W[1][l][0][0] = re * analysis_cos_post[0] - im * analysis_sin_post[0];
-        W[1][l][0][1] = re * analysis_sin_post[0] + im * analysis_cos_post[0];
+        W[1][l][0][0] = re * analysis_cossin_post[0][0] - im * analysis_cossin_post[0][1];
+        W[1][l][0][1] = re * analysis_cossin_post[0][1] + im * analysis_cossin_post[0][0];
         for (k = 1; k < 32; k++) {
             re = z[2*k  ] - re;
             im = z[2*k+1] - im;
-            W[1][l][k][0] = re * analysis_cos_post[k] - im * analysis_sin_post[k];
-            W[1][l][k][1] = re * analysis_sin_post[k] + im * analysis_cos_post[k];
+            W[1][l][k][0] = re * analysis_cossin_post[k][0] - im * analysis_cossin_post[k][1];
+            W[1][l][k][1] = re * analysis_cossin_post[k][1] + im * analysis_cossin_post[k][0];
         }
         x += 32;
     }
