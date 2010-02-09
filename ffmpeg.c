@@ -301,6 +301,7 @@ typedef struct AVInputStream {
     int64_t       pts;       /* current pts */
     int is_start;            /* is 1 at the start and after a discontinuity */
     int showed_multi_packet_warning;
+    int is_past_recording_time;
 } AVInputStream;
 
 typedef struct AVInputFile {
@@ -1314,7 +1315,7 @@ static int output_packet(AVInputStream *ist, int ist_index,
         ist->pts= ist->next_pts;
 
         if(avpkt.size && avpkt.size != pkt->size &&
-           (!ist->showed_multi_packet_warning && verbose>0 || verbose>1)){
+           ((!ist->showed_multi_packet_warning && verbose>0) || verbose>1)){
             fprintf(stderr, "Multiple frames in a packet from stream %d\n", pkt->stream_index);
             ist->showed_multi_packet_warning=1;
         }
@@ -1507,7 +1508,10 @@ static int output_packet(AVInputStream *ist, int ist_index,
                         opkt.flags= pkt->flags;
 
                         //FIXME remove the following 2 lines they shall be replaced by the bitstream filters
-                        if(ost->st->codec->codec_id != CODEC_ID_H264) {
+                        if(   ost->st->codec->codec_id != CODEC_ID_H264
+                           && ost->st->codec->codec_id != CODEC_ID_MPEG1VIDEO
+                           && ost->st->codec->codec_id != CODEC_ID_MPEG2VIDEO
+                           ) {
                             if(av_parser_change(ist->st->parser, ost->st->codec, &opkt.data, &opkt.size, data_buf, data_size, pkt->flags & PKT_FLAG_KEY))
                                 opkt.destruct= av_destruct_packet;
                         } else {
@@ -2218,11 +2222,8 @@ static int av_encode(AVFormatContext **output_files,
             ost = ost_table[i];
             os = output_files[ost->file_index];
             ist = ist_table[ost->source_index];
-            if(no_packet[ist->file_index])
+            if(ist->is_past_recording_time || no_packet[ist->file_index])
                 continue;
-            if(ost->st->codec->codec_type == CODEC_TYPE_VIDEO)
-                opts = ost->sync_opts * av_q2d(ost->st->codec->time_base);
-            else
                 opts = ost->st->pts.val * av_q2d(ost->st->time_base);
             ipts = (double)ist->pts;
             if (!file_table[ist->file_index].eof_reached){
@@ -2318,8 +2319,10 @@ static int av_encode(AVFormatContext **output_files,
         }
 
         /* finish if recording time exhausted */
-        if (pkt.pts * av_q2d(ist->st->time_base) >= (recording_time / 1000000.0))
+        if (pkt.pts * av_q2d(ist->st->time_base) >= (recording_time / 1000000.0)) {
+            ist->is_past_recording_time = 1;
             goto discard_packet;
+        }
 
         //fprintf(stderr,"read #%d.%d size=%d\n", ist->file_index, ist->index, pkt.size);
         if (output_packet(ist, ist_index, ost_table, nb_ostreams, &pkt) < 0) {
@@ -2592,7 +2595,7 @@ static void opt_frame_pix_fmt(const char *arg)
             av_exit(1);
         }
     } else {
-        list_fmts(avcodec_pix_fmt_string, PIX_FMT_NB);
+        show_pix_fmts();
         av_exit(0);
     }
 }

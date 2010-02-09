@@ -35,8 +35,8 @@ OBJS-$(CONFIG_ASS_DEMUXER)               += assdec.o
 OBJS-$(CONFIG_ASS_MUXER)                 += assenc.o
 OBJS-$(CONFIG_AU_DEMUXER)                += au.o raw.o
 OBJS-$(CONFIG_AU_MUXER)                  += au.o
-OBJS-$(CONFIG_AVI_DEMUXER)               += avidec.o riff.o
-OBJS-$(CONFIG_AVI_MUXER)                 += avienc.o riff.o
+OBJS-$(CONFIG_AVI_DEMUXER)               += avidec.o riff.o avi.o
+OBJS-$(CONFIG_AVI_MUXER)                 += avienc.o riff.o avi.o
 OBJS-$(CONFIG_AVISYNTH)                  += avisynth.o
 OBJS-$(CONFIG_AVM2_MUXER)                += swfenc.o
 OBJS-$(CONFIG_AVS_DEMUXER)               += avs.o vocdec.o voc.o
@@ -269,6 +269,7 @@ OBJS-$(CONFIG_RTMP_PROTOCOL)             += rtmpproto.o rtmppkt.o
 OBJS-$(CONFIG_RTP_PROTOCOL)              += rtpproto.o
 OBJS-$(CONFIG_TCP_PROTOCOL)              += tcp.o
 OBJS-$(CONFIG_UDP_PROTOCOL)              += udp.o
+OBJS-$(CONFIG_CONCAT_PROTOCOL)           += concat.o
 
 # libavdevice dependencies
 OBJS-$(CONFIG_JACK_INDEV)                += timefilter.o

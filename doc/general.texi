@@ -387,9 +387,14 @@ following image formats are supported:
     @tab Used in Quake II.
 @item id RoQ video           @tab  X  @tab  X
     @tab Used in Quake III, Jedi Knight 2, other computer games.
+@item IFF ILBM               @tab     @tab  X
+    @tab IFF interlaved bitmap
+@item IFF ByteRun1           @tab     @tab  X
+    @tab IFF run length encoded bitmap
 @item Intel H.263            @tab     @tab  X
 @item Intel Indeo 2          @tab     @tab  X
 @item Intel Indeo 3          @tab     @tab  X
+@item Intel Indeo 5          @tab     @tab  X
 @item Interplay C93          @tab     @tab  X
     @tab Used in the game Cyberia from Interplay.
 @item Interplay MVE video    @tab     @tab  X

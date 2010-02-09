@@ -1548,6 +1548,9 @@ static int av_seek_frame_generic(AVFormatContext *s,
 
     index = av_index_search_timestamp(st, timestamp, flags);
 
+    if(index < 0 && st->nb_index_entries && timestamp < st->index_entries[0].timestamp)
+        return -1;
+
     if(index < 0 || index==st->nb_index_entries-1){
         int i;
         AVPacket pkt;
@@ -2088,6 +2091,13 @@ int av_find_stream_info(AVFormatContext *ic)
             if(st->need_parsing == AVSTREAM_PARSE_HEADERS && st->parser){
                 st->parser->flags |= PARSER_FLAG_COMPLETE_FRAMES;
             }
+        }
+        assert(!st->codec->codec);
+        //try to just open decoders, in case this is enough to get parameters
+        if(!has_codec_parameters(st->codec)){
+            AVCodec *codec = avcodec_find_decoder(st->codec->codec_id);
+            if (codec)
+                avcodec_open(st->codec, codec);
         }
     }
 
@@ -2731,13 +2741,9 @@ int ff_interleave_compare_dts(AVFormatContext *s, AVPacket *next, AVPacket *pkt)
 {
     AVStream *st = s->streams[ pkt ->stream_index];
     AVStream *st2= s->streams[ next->stream_index];
-    int64_t left = st2->time_base.num * (int64_t)st ->time_base.den;
-    int64_t right= st ->time_base.num * (int64_t)st2->time_base.den;
-
-    if (pkt->dts == AV_NOPTS_VALUE)
-        return 0;
-
-    return next->dts * left > pkt->dts * right; //FIXME this can overflow
+    int64_t a= st2->time_base.num * (int64_t)st ->time_base.den;
+    int64_t b= st ->time_base.num * (int64_t)st2->time_base.den;
+    return av_rescale_rnd(pkt->dts, b, a, AV_ROUND_DOWN) < next->dts;
 }
 
 int av_interleave_packet_per_dts(AVFormatContext *s, AVPacket *out, AVPacket *pkt, int flush){
