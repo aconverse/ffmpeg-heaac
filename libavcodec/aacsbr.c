@@ -1136,6 +1136,7 @@ static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in
         x[288 + i] = (in[i] - bias) * scale;
     for (l = 0; l < 32; l++) { // numTimeSlots*RATE = 16*2 as 960 sample frames
                                // are not supported
+        float re, im;
         dsp->vector_fmul_reverse(z, sbr_qmf_window_ds, x, 320);
         for (i = 0; i < 64; i++) {
             float f = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
@@ -1143,15 +1144,15 @@ static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in
             u[i+64] = f;
         }
         ff_rdft_calc(rdft, u);
-        u[0] *= 0.5f;
-        u[1]  = dsp->scalarproduct_float(u+64, analysis_sin_pre, 64);
-        W[1][l][0][0] = u[0] * analysis_cos_post[0] - u[1] * analysis_sin_post[0];
-        W[1][l][0][1] = u[0] * analysis_sin_post[0] + u[1] * analysis_cos_post[0];
+        re = u[0] * 0.5f;
+        im = dsp->scalarproduct_float(u+64, analysis_sin_pre, 64);
+        W[1][l][0][0] = re * analysis_cos_post[0] - im * analysis_sin_post[0];
+        W[1][l][0][1] = re * analysis_sin_post[0] + im * analysis_cos_post[0];
         for (k = 1; k < 32; k++) {
-            u[2*k  ] = u[2*k  ] - u[2*k-2];
-            u[2*k+1] = u[2*k+1] - u[2*k-1];
-            W[1][l][k][0] = u[2*k] * analysis_cos_post[k] - u[2*k+1] * analysis_sin_post[k];
-            W[1][l][k][1] = u[2*k] * analysis_sin_post[k] + u[2*k+1] * analysis_cos_post[k];
+            re = u[2*k  ] - re;
+            im = u[2*k+1] - im;
+            W[1][l][k][0] = re * analysis_cos_post[k] - im * analysis_sin_post[k];
+            W[1][l][k][1] = re * analysis_sin_post[k] + im * analysis_cos_post[k];
         }
         x += 32;
     }
