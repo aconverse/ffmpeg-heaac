@@ -1126,7 +1126,7 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
  * @param   W       array of complex-valued samples split into subbands
  */
 static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in, float *x,
-                             FFTSample u[128], float z[320], float W[2][32][32][2],
+                             float z[320], float W[2][32][32][2],
                              float bias, float scale)
 {
     int i, k, l;
@@ -1140,17 +1140,17 @@ static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in
         dsp->vector_fmul_reverse(z, sbr_qmf_window_ds, x, 320);
         for (i = 0; i < 64; i++) {
             float f = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
-            u[i] = f * 2 * analysis_cos_pre[i];
-            u[i+64] = f;
+            z[i] = f * 2 * analysis_cos_pre[i];
+            z[i+64] = f;
         }
-        ff_rdft_calc(rdft, u);
-        re = u[0] * 0.5f;
-        im = dsp->scalarproduct_float(u+64, analysis_sin_pre, 64);
+        ff_rdft_calc(rdft, z);
+        re = z[0] * 0.5f;
+        im = dsp->scalarproduct_float(z+64, analysis_sin_pre, 64);
         W[1][l][0][0] = re * analysis_cos_post[0] - im * analysis_sin_post[0];
         W[1][l][0][1] = re * analysis_sin_post[0] + im * analysis_cos_post[0];
         for (k = 1; k < 32; k++) {
-            re = u[2*k  ] - re;
-            im = u[2*k+1] - im;
+            re = z[2*k  ] - re;
+            im = z[2*k+1] - im;
             W[1][l][k][0] = re * analysis_cos_post[k] - im * analysis_sin_post[k];
             W[1][l][k][1] = re * analysis_sin_post[k] + im * analysis_cos_post[k];
         }
@@ -1694,7 +1694,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
 
     /* decode channel */
     sbr_qmf_analysis(&ac->dsp, &sbr->rdft, in, sbr->data[ch].analysis_filterbank_samples,
-                     (FFTSample*)sbr->qmf_filter_scratch, sbr->analysis_win_buf,
+                     sbr->analysis_win_buf,
                      sbr->data[ch].W, ac->add_bias, 1/(-1024 * ac->sf_scale));
     sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
     if (sbr->start) {
