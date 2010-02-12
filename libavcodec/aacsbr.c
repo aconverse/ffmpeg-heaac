@@ -1694,7 +1694,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
 
     /* decode channel */
     sbr_qmf_analysis(&ac->dsp, &sbr->rdft, in, sbr->data[ch].analysis_filterbank_samples,
-                     sbr->analysis_win_buf,
+                     (float*)sbr->qmf_filter_scratch,
                      sbr->data[ch].W, ac->add_bias, 1/(-1024 * ac->sf_scale));
     sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
     if (sbr->start) {
