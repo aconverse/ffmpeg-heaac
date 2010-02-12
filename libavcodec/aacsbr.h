@@ -179,7 +179,7 @@ typedef struct {
     float              gain[7][48];
     DECLARE_ALIGNED(16, float, qmf_filter_scratch)[2][64];
     DECLARE_ALIGNED(16, float, analysis_win_buf)[320];
-    FFTContext         fft;
+    RDFTContext        rdft;
     FFTContext         mdct;
 } SpectralBandReplication;
 

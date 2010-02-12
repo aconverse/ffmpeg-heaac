@@ -106,13 +106,13 @@ av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
 {
     sbr->k[3] = sbr->k[4] = 32; //Typo in spec, kx' inits to 32
     ff_mdct_init(&sbr->mdct, 7, 1, 1.0/64);
-    ff_fft_init(&sbr->fft, 6, 1);
+    ff_rdft_init(&sbr->rdft, 6, RIDFT);
 }
 
 av_cold void ff_aac_sbr_ctx_close(SpectralBandReplication *sbr)
 {
     ff_mdct_end(&sbr->mdct);
-    ff_fft_end(&sbr->fft);
+    ff_rdft_end(&sbr->rdft);
 }
 
 static int qsort_comparison_function_int16(const void *a, const void *b)
@@ -1125,12 +1125,11 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
  * @param   x       pointer to the beginning of the first sample window
  * @param   W       array of complex-valued samples split into subbands
  */
-static void sbr_qmf_analysis(DSPContext *dsp, FFTContext *fft, const float *in, float *x,
-                             FFTComplex u[64], float z[320], float W[2][32][32][2],
+static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in, float *x,
+                             FFTSample u[128], float z[320], float W[2][32][32][2],
                              float bias, float scale)
 {
     int i, k, l;
-    const uint16_t *revtab = fft->revtab;
     memcpy(W[0], W[1], sizeof(W[0]));
     memcpy(x    , x+1024, (320-32)*sizeof(x[0]));
     for (i = 0; i < 1024; i++)
@@ -1140,13 +1139,19 @@ static void sbr_qmf_analysis(DSPContext *dsp, FFTContext *fft, const float *in, 
         dsp->vector_fmul_reverse(z, sbr_qmf_window_ds, x, 320);
         for (i = 0; i < 64; i++) {
             float f = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
-            u[revtab[i]].re = f * analysis_cos_pre[i];
-            u[revtab[i]].im = f * analysis_sin_pre[i];
+            u[i] = f * 2 * analysis_cos_pre[i];
+            u[i+64] = f;
         }
-        ff_fft_calc(fft, u);
-        for (k = 0; k < 32; k++) {
-            W[1][l][k][0] = u[k].re * analysis_cos_post[k] - u[k].im * analysis_sin_post[k];
-            W[1][l][k][1] = u[k].re * analysis_sin_post[k] + u[k].im * analysis_cos_post[k];
+        ff_rdft_calc(rdft, u);
+        u[0] *= 0.5f;
+        u[1]  = dsp->scalarproduct_float(u+64, analysis_sin_pre, 64);
+        W[1][l][0][0] = u[0] * analysis_cos_post[0] - u[1] * analysis_sin_post[0];
+        W[1][l][0][1] = u[0] * analysis_sin_post[0] + u[1] * analysis_cos_post[0];
+        for (k = 1; k < 32; k++) {
+            u[2*k  ] = u[2*k  ] - u[2*k-2];
+            u[2*k+1] = u[2*k+1] - u[2*k-1];
+            W[1][l][k][0] = u[2*k] * analysis_cos_post[k] - u[2*k+1] * analysis_sin_post[k];
+            W[1][l][k][1] = u[2*k] * analysis_sin_post[k] + u[2*k+1] * analysis_cos_post[k];
         }
         x += 32;
     }
@@ -1687,8 +1692,8 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
     int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
 
     /* decode channel */
-    sbr_qmf_analysis(&ac->dsp, &sbr->fft, in, sbr->data[ch].analysis_filterbank_samples,
-                     (FFTComplex*)sbr->qmf_filter_scratch, sbr->analysis_win_buf,
+    sbr_qmf_analysis(&ac->dsp, &sbr->rdft, in, sbr->data[ch].analysis_filterbank_samples,
+                     (FFTSample*)sbr->qmf_filter_scratch, sbr->analysis_win_buf,
                      sbr->data[ch].W, ac->add_bias, 1/(-1024 * ac->sf_scale));
     sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
     if (sbr->start) {
