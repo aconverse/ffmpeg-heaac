@@ -1616,7 +1616,7 @@ static int decode_dynamic_range(DynamicRangeControl *che_drc,
  * @return Returns number of bytes consumed
  */
 static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
-                                    int id, int tag)
+                                    ChannelElement *che, enum RawDataBlockType elem_type)
 {
     int crc_flag = 0;
     int res = cnt;
@@ -1624,7 +1624,10 @@ static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
     case EXT_SBR_DATA_CRC:
         crc_flag++;
     case EXT_SBR_DATA:
-        if (!ac->m4ac.sbr) {
+        if (!che) {
+            av_log(ac->avccontext, AV_LOG_ERROR, "SBR was found before the first channel element.\n");
+            return res;
+        } else if (!ac->m4ac.sbr) {
             av_log(ac->avccontext, AV_LOG_ERROR, "SBR signaled to be not-present but was found in the bitstream.\n");
             skip_bits_long(gb, 8 * cnt - 4);
             return res;
@@ -1635,7 +1638,7 @@ static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
         } else {
             ac->m4ac.sbr = 1;
         }
-        res = ff_decode_sbr_extension(ac, &ac->che[id][tag]->sbr, gb, crc_flag, cnt, id);
+        res = ff_decode_sbr_extension(ac, &che->sbr, gb, crc_flag, cnt, elem_type);
         break;
     case EXT_DYNAMIC_RANGE:
         res = decode_dynamic_range(&ac->che_drc, gb, cnt);
@@ -1936,10 +1939,10 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     AACContext *ac = avccontext->priv_data;
-    ChannelElement *che = NULL;
+    ChannelElement *che = NULL, *che_prev = NULL;
     GetBitContext gb;
-    enum RawDataBlockType elem_type, elem_type_prev = 0;
-    int err, elem_id, elem_id_prev = 0, data_size_tmp;
+    enum RawDataBlockType elem_type, elem_type_prev;
+    int err, elem_id, data_size_tmp;
     int samples = 1024, multiplier;
 
     init_get_bits(&gb, buf, buf_size * 8);
@@ -2004,7 +2007,7 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
             if (elem_id == 15)
                 elem_id += get_bits(&gb, 8) - 1;
             while (elem_id > 0)
-                elem_id -= decode_extension_payload(ac, &gb, elem_id, elem_type_prev, elem_id_prev);
+                elem_id -= decode_extension_payload(ac, &gb, elem_id, che_prev, elem_type_prev);
             err = 0; /* FIXME */
             break;
 
@@ -2013,8 +2016,8 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
             break;
         }
 
+        che_prev       = che;
         elem_type_prev = elem_type;
-        elem_id_prev   = elem_id;
 
         if (err)
             return err;
