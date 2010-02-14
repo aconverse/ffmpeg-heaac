@@ -87,13 +87,13 @@ av_cold void ff_aac_sbr_init(void)
 
     for (n = 0; n < 64; n++) {
         float pre = M_PI * n / 64;
-        analysis_cos_pre[n] = cos(pre);
-        analysis_sin_pre[n] = sin(pre);
+        analysis_cos_pre[n] = cosf(pre);
+        analysis_sin_pre[n] = sinf(pre);
     }
     for (k = 0; k < 32; k++) {
         float post = M_PI * (k + 0.5) / 128;
-        analysis_cossin_post[k][0] =  2.0 * cos(post);
-        analysis_cossin_post[k][1] = -2.0 * sin(post);
+        analysis_cossin_post[k][0] =  2.0 * cosf(post);
+        analysis_cossin_post[k][1] = -2.0 * sinf(post);
     }
     for (n = 0; n < 320; n++) {
         sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
