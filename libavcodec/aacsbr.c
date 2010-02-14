@@ -597,7 +597,7 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
     case FIXVAR:
         ch_data->bs_var_bord[1] = get_bits(gb, 2);
         ch_data->bs_num_rel[1]  = get_bits(gb, 2);
-        ch_data->bs_num_env[1] = ch_data->bs_num_rel[1] + 1;
+        ch_data->bs_num_env[1]  = ch_data->bs_num_rel[1] + 1;
 
         for (i = 0; i < ch_data->bs_num_rel[1]; i++)
             ch_data->bs_rel_bord[1][i] = 2 * get_bits(gb, 2) + 2;
@@ -680,7 +680,7 @@ static void sbr_dtdf(SpectralBandReplication *sbr, GetBitContext *gb,
     int i;
 
     for (i = 0; i < ch_data->bs_num_env[1]; i++)
-        ch_data->bs_df_env[i] = get_bits1(gb);
+        ch_data->bs_df_env[i]   = get_bits1(gb);
     for (i = 0; i < ch_data->bs_num_noise; i++)
         ch_data->bs_df_noise[i] = get_bits1(gb);
 }
@@ -944,10 +944,11 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
         sbr_reset(ac, sbr);
 
     if (sbr->start)
-    num_sbr_bits  += sbr_data(ac, sbr, gb, id_aac);
-    num_align_bits = ((cnt << 3) - 4 - num_sbr_bits) & 7;
+        num_sbr_bits  += sbr_data(ac, sbr, gb, id_aac);
 
+    num_align_bits = ((cnt << 3) - 4 - num_sbr_bits) & 7;
     bytes_read = ((num_sbr_bits + num_align_bits + 4) >> 3);
+
     if (bytes_read > cnt) {
         av_log(ac->avccontext, AV_LOG_ERROR,
                "Expected to read %d SBR bytes actually read %d.\n", cnt, bytes_read);
@@ -1233,8 +1234,8 @@ static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],
             }
         }
 
-        dk = phi[2][1][0] * phi[1][0][0] -
-               (phi[1][1][0] * phi[1][1][0] + phi[1][1][1] * phi[1][1][1]) / 1.000001f;
+        dk =  phi[2][1][0] * phi[1][0][0] -
+             (phi[1][1][0] * phi[1][1][0] + phi[1][1][1] * phi[1][1][1]) / 1.000001f;
 
         if (!dk) {
             alpha1[k][0] = 0;
