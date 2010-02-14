@@ -1492,7 +1492,7 @@ static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
 
     if (sbr->bs_interpol_freq) {
         for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-            const int env_size = 2 * (ch_data->t_env[l + 1] - ch_data->t_env[l]);
+            const float recip_env_size = 0.5f / (ch_data->t_env[l + 1] - ch_data->t_env[l]);
             int ilb = ch_data->t_env[l]     * 2 + ENVELOPE_ADJUSTMENT_OFFSET;
             int iub = ch_data->t_env[l + 1] * 2 + ENVELOPE_ADJUSTMENT_OFFSET;
 
@@ -1503,7 +1503,7 @@ static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
                     sum += X_high[m + sbr->k[4]][i][0] * X_high[m + sbr->k[4]][i][0] +
                            X_high[m + sbr->k[4]][i][1] * X_high[m + sbr->k[4]][i][1];
                 }
-                e_curr[l][m] = sum / env_size;
+                e_curr[l][m] = sum * recip_env_size;
             }
         }
     } else {
