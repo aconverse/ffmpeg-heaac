@@ -1089,17 +1089,19 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
         for (l = 1; l <= sbr->data[0].bs_num_env[1]; l++) {
             for (k = 0; k < sbr->n[sbr->data[0].bs_freq_res[l]]; k++) {
                 float temp1 = exp2f(sbr->data[0].env_facs[l][k] * alpha + 7.0f);
-                float temp2 = (pan_offset - sbr->data[1].env_facs[l][k]) * alpha;
-                sbr->data[0].env_facs[l][k] = temp1 / (1.0f + exp2f( temp2));
-                sbr->data[1].env_facs[l][k] = temp1 / (1.0f + exp2f(-temp2));
+                float temp2 = exp2f((pan_offset - sbr->data[1].env_facs[l][k]) * alpha);
+                float fac   = temp1 / (1.0f + temp2);
+                sbr->data[0].env_facs[l][k] = fac;
+                sbr->data[1].env_facs[l][k] = fac * temp2;
             }
         }
         for (l = 1; l <= sbr->data[0].bs_num_noise; l++) {
             for (k = 0; k < sbr->n_q; k++) {
                 float temp1 = exp2f(NOISE_FLOOR_OFFSET - sbr->data[0].noise_facs[l][k] + 1);
-                float temp2 = 12 - sbr->data[1].noise_facs[l][k];
-                sbr->data[0].noise_facs[l][k] = temp1 / (1.0f + exp2f( temp2));
-                sbr->data[1].noise_facs[l][k] = temp1 / (1.0f + exp2f(-temp2));
+                float temp2 = exp2f(12 - sbr->data[1].noise_facs[l][k]);
+                float fac   = temp1 / (1.0f + temp2);
+                sbr->data[0].noise_facs[l][k] = fac;
+                sbr->data[1].noise_facs[l][k] = fac * temp2;
             }
         }
     } else { // SCE or one non-coupled CPE
