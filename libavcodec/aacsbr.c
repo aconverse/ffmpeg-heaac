@@ -91,8 +91,8 @@ av_cold void ff_aac_sbr_init(void)
     }
     for (k = 0; k < 32; k++) {
         float post = M_PI * (k + 0.5) / 128;
-        analysis_cossin_post[k][0] =  2.0 * cosf(post);
-        analysis_cossin_post[k][1] = -2.0 * sinf(post);
+        analysis_cossin_post[k][0] =  4.0 * cosf(post);
+        analysis_cossin_post[k][1] = -4.0 * sinf(post);
     }
     for (n = 0; n < 320; n++) {
         sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
@@ -1141,12 +1141,12 @@ static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in
         dsp->vector_fmul_reverse(z, sbr_qmf_window_ds, x, 320);
         for (i = 0; i < 64; i++) {
             float f = z[i] + z[i + 64] + z[i + 128] + z[i + 192] + z[i + 256];
-            z[i] = f * 2 * analysis_cos_pre[i];
+            z[i] = f * analysis_cos_pre[i];
             z[i+64] = f;
         }
         ff_rdft_calc(rdft, z);
         re = z[0] * 0.5f;
-        im = dsp->scalarproduct_float(z+64, analysis_sin_pre, 64);
+        im = 0.5f * dsp->scalarproduct_float(z+64, analysis_sin_pre, 64);
         W[1][l][0][0] = re * analysis_cossin_post[0][0] - im * analysis_cossin_post[0][1];
         W[1][l][0][1] = re * analysis_cossin_post[0][1] + im * analysis_cossin_post[0][0];
         for (k = 1; k < 32; k++) {
