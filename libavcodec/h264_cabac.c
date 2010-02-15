@@ -867,8 +867,8 @@ static int decode_cabac_mb_chroma_pre_mode( H264Context *h) {
 static int decode_cabac_mb_cbp_luma( H264Context *h) {
     int cbp_b, cbp_a, ctx, cbp = 0;
 
-    cbp_a = h->slice_table[h->left_mb_xy[0]] == h->slice_num ? h->left_cbp : -1;
-    cbp_b = h->slice_table[h->top_mb_xy]     == h->slice_num ? h->top_cbp  : -1;
+    cbp_a = h->left_cbp;
+    cbp_b = h->top_cbp;
 
     ctx = !(cbp_a & 0x02) + 2 * !(cbp_b & 0x04);
     cbp |= get_cabac_noinline(&h->cabac, &h->cabac_state[73 + ctx]);
@@ -898,22 +898,7 @@ static int decode_cabac_mb_cbp_chroma( H264Context *h) {
     if( cbp_b == 2 ) ctx += 2;
     return 1 + get_cabac_noinline( &h->cabac, &h->cabac_state[77 + ctx] );
 }
-static int decode_cabac_mb_dqp( H264Context *h) {
-    int   ctx= h->last_qscale_diff != 0;
-    int   val = 0;
 
-    while( get_cabac_noinline( &h->cabac, &h->cabac_state[60 + ctx] ) ) {
-        ctx= 2+(ctx>>1);
-        val++;
-        if(val > 102) //prevent infinite loop
-            return INT_MIN;
-    }
-
-    if( val&0x01 )
-        return   (val + 1)>>1 ;
-    else
-        return -((val + 1)>>1);
-}
 static int decode_cabac_p_mb_sub_type( H264Context *h ) {
     if( get_cabac( &h->cabac, &h->cabac_state[21] ) )
         return 0;   /* 8x8 */
@@ -940,10 +925,6 @@ static int decode_cabac_b_mb_sub_type( H264Context *h ) {
     return type;
 }
 
-static inline int decode_cabac_mb_transform_size( H264Context *h ) {
-    return get_cabac_noinline( &h->cabac, &h->cabac_state[399 + h->neighbor_transform_size] );
-}
-
 static int decode_cabac_mb_ref( H264Context *h, int list, int n ) {
     int refa = h->ref_cache[list][scan8[n] - 1];
     int refb = h->ref_cache[list][scan8[n] - 8];
@@ -951,9 +932,9 @@ static int decode_cabac_mb_ref( H264Context *h, int list, int n ) {
     int ctx  = 0;
 
     if( h->slice_type_nos == FF_B_TYPE) {
-        if( refa > 0 && !h->direct_cache[scan8[n] - 1] )
+        if( refa > 0 && !(h->direct_cache[scan8[n] - 1]&(MB_TYPE_DIRECT2>>1)) )
             ctx++;
-        if( refb > 0 && !h->direct_cache[scan8[n] - 8] )
+        if( refb > 0 && !(h->direct_cache[scan8[n] - 8]&(MB_TYPE_DIRECT2>>1)) )
             ctx += 2;
     } else {
         if( refa > 0 )
@@ -1402,7 +1383,7 @@ decode_intra_mb:
     if( IS_INTRA( mb_type ) ) {
         int i, pred_mode;
         if( IS_INTRA4x4( mb_type ) ) {
-            if( dct8x8_allowed && decode_cabac_mb_transform_size( h ) ) {
+            if( dct8x8_allowed && get_cabac_noinline( &h->cabac, &h->cabac_state[399 + h->neighbor_transform_size] ) ) {
                 mb_type |= MB_TYPE_8x8DCT;
                 for( i = 0; i < 16; i+=4 ) {
                     int pred = pred_intra_mode( h, i );
@@ -1447,11 +1428,8 @@ decode_intra_mb:
                 h->ref_cache[1][scan8[4]] =
                 h->ref_cache[0][scan8[12]] =
                 h->ref_cache[1][scan8[12]] = PART_NOT_AVAILABLE;
-                if( h->ref_count[0] > 1 || h->ref_count[1] > 1 ) {
                     for( i = 0; i < 4; i++ )
-                        if( IS_DIRECT(h->sub_mb_type[i]) )
-                            fill_rectangle( &h->direct_cache[scan8[4*i]], 2, 2, 8, 1, 1 );
-                }
+                        fill_rectangle( &h->direct_cache[scan8[4*i]], 2, 2, 8, (h->sub_mb_type[i]>>1)&0xFF, 1 );
             }
         } else {
             for( i = 0; i < 4; i++ ) {
@@ -1667,15 +1645,13 @@ decode_intra_mb:
     h->cbp_table[mb_xy] = h->cbp = cbp;
 
     if( dct8x8_allowed && (cbp&15) && !IS_INTRA( mb_type ) ) {
-        if( decode_cabac_mb_transform_size( h ) )
-            mb_type |= MB_TYPE_8x8DCT;
+        mb_type |= MB_TYPE_8x8DCT * get_cabac_noinline( &h->cabac, &h->cabac_state[399 + h->neighbor_transform_size] );
     }
     s->current_picture.mb_type[mb_xy]= mb_type;
 
     if( cbp || IS_INTRA16x16( mb_type ) ) {
         const uint8_t *scan, *scan8x8, *dc_scan;
         const uint32_t *qmul;
-        int dqp;
 
         if(IS_INTERLACED(mb_type)){
             scan8x8= s->qscale ? h->field_scan8x8 : h->field_scan8x8_q0;
@@ -1687,18 +1663,34 @@ decode_intra_mb:
             dc_scan= luma_dc_zigzag_scan;
         }
 
-        h->last_qscale_diff = dqp = decode_cabac_mb_dqp( h );
-        if( dqp == INT_MIN ){
-            av_log(h->s.avctx, AV_LOG_ERROR, "cabac decode of qscale diff failed at %d %d\n", s->mb_x, s->mb_y);
-            return -1;
-        }
-        s->qscale += dqp;
-        if(((unsigned)s->qscale) > 51){
-            if(s->qscale<0) s->qscale+= 52;
-            else            s->qscale-= 52;
-        }
-        h->chroma_qp[0] = get_chroma_qp(h, 0, s->qscale);
-        h->chroma_qp[1] = get_chroma_qp(h, 1, s->qscale);
+        // decode_cabac_mb_dqp
+        if(get_cabac_noinline( &h->cabac, &h->cabac_state[60 + (h->last_qscale_diff != 0)])){
+            int val = 1;
+            int ctx= 2;
+
+            while( get_cabac_noinline( &h->cabac, &h->cabac_state[60 + ctx] ) ) {
+                ctx= 3;
+                val++;
+                if(val > 102){ //prevent infinite loop
+                    av_log(h->s.avctx, AV_LOG_ERROR, "cabac decode of qscale diff failed at %d %d\n", s->mb_x, s->mb_y);
+                    return -1;
+                }
+            }
+
+            if( val&0x01 )
+                val=   (val + 1)>>1 ;
+            else
+                val= -((val + 1)>>1);
+            h->last_qscale_diff = val;
+            s->qscale += val;
+            if(((unsigned)s->qscale) > 51){
+                if(s->qscale<0) s->qscale+= 52;
+                else            s->qscale-= 52;
+            }
+            h->chroma_qp[0] = get_chroma_qp(h, 0, s->qscale);
+            h->chroma_qp[1] = get_chroma_qp(h, 1, s->qscale);
+        }else
+            h->last_qscale_diff=0;
 
         if( IS_INTRA16x16( mb_type ) ) {
             int i;

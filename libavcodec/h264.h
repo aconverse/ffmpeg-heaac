@@ -801,6 +801,7 @@ static void fill_decode_caches(H264Context *h, int mb_type){
         left_type[0] = h->slice_table[left_xy[0] ] == h->slice_num ? s->current_picture.mb_type[left_xy[0]] : 0;
         left_type[1] = h->slice_table[left_xy[1] ] == h->slice_num ? s->current_picture.mb_type[left_xy[1]] : 0;
 
+    if(!IS_SKIP(mb_type)){
         if(IS_INTRA(mb_type)){
             int type_mask= h->pps.constrained_intra_pred ? IS_INTRA(-1) : -1;
             h->topleft_samples_available=
@@ -926,17 +927,17 @@ static void fill_decode_caches(H264Context *h, int mb_type){
         if(top_type) {
             h->top_cbp = h->cbp_table[top_xy];
         } else if(IS_INTRA(mb_type)) {
-            h->top_cbp = 0x1C0;
+            h->top_cbp = 0x1CF;
         } else {
-            h->top_cbp = 0;
+            h->top_cbp = 0x00F;
         }
         // left_cbp
         if (left_type[0]) {
             h->left_cbp = h->cbp_table[left_xy[0]] & 0x1f0;
         } else if(IS_INTRA(mb_type)) {
-            h->left_cbp = 0x1C0;
+            h->left_cbp = 0x1CF;
         } else {
-            h->left_cbp = 0;
+            h->left_cbp = 0x00F;
         }
         if (left_type[0]) {
             h->left_cbp |= ((h->cbp_table[left_xy[0]]>>((left_block[0]&(~1))+1))&0x1) << 1;
@@ -945,12 +946,13 @@ static void fill_decode_caches(H264Context *h, int mb_type){
             h->left_cbp |= ((h->cbp_table[left_xy[1]]>>((left_block[2]&(~1))+1))&0x1) << 3;
         }
     }
+    }
 
 #if 1
-    if(IS_INTER(mb_type) || IS_DIRECT(mb_type)){
+    if(IS_INTER(mb_type) || (IS_DIRECT(mb_type) && h->direct_spatial_mv_pred)){
         int list;
         for(list=0; list<h->list_count; list++){
-            if(!USES_LIST(mb_type, list) && !IS_DIRECT(mb_type)){
+            if(!USES_LIST(mb_type, list)){
                 /*if(!h->mv_cache_clean[list]){
                     memset(h->mv_cache [list],  0, 8*5*2*sizeof(int16_t)); //FIXME clean only input? clean at all?
                     memset(h->ref_cache[list], PART_NOT_AVAILABLE, 8*5*sizeof(int8_t));
@@ -958,6 +960,8 @@ static void fill_decode_caches(H264Context *h, int mb_type){
                 }*/
                 continue;
             }
+            assert(!(IS_DIRECT(mb_type) && !h->direct_spatial_mv_pred));
+
             h->mv_cache_clean[list]= 0;
 
             if(USES_LIST(top_type, list)){
@@ -990,9 +994,6 @@ static void fill_decode_caches(H264Context *h, int mb_type){
                 }
             }
 
-            if((IS_DIRECT(mb_type) && !h->direct_spatial_mv_pred))
-                continue;
-
             if(USES_LIST(topleft_type, list)){
                 const int b_xy = h->mb2b_xy[topleft_xy] + 3 + h->b_stride + (topleft_partition & 2*h->b_stride);
                 const int b8_xy= h->mb2b8_xy[topleft_xy] + 1 + (topleft_partition & h->b8_stride);
@@ -1013,9 +1014,10 @@ static void fill_decode_caches(H264Context *h, int mb_type){
                 h->ref_cache[list][scan8[0] + 4 - 1*8]= topright_type ? LIST_NOT_USED : PART_NOT_AVAILABLE;
             }
 
-            if((IS_SKIP(mb_type) || IS_DIRECT(mb_type)) && !FRAME_MBAFF)
+            if((mb_type&(MB_TYPE_SKIP|MB_TYPE_DIRECT2)) && !FRAME_MBAFF)
                 continue;
 
+            if(!(mb_type&(MB_TYPE_SKIP|MB_TYPE_DIRECT2))) {
             h->ref_cache[list][scan8[5 ]+1] =
             h->ref_cache[list][scan8[7 ]+1] =
             h->ref_cache[list][scan8[13]+1] =  //FIXME remove past 3 (init somewhere else)
@@ -1058,34 +1060,34 @@ static void fill_decode_caches(H264Context *h, int mb_type){
                 *(uint32_t*)h->mvd_cache [list][scan8[12]]= 0;
 
                 if(h->slice_type_nos == FF_B_TYPE){
-                    fill_rectangle(&h->direct_cache[scan8[0]], 4, 4, 8, 0, 1);
+                    fill_rectangle(&h->direct_cache[scan8[0]], 4, 4, 8, MB_TYPE_16x16>>1, 1);
 
                     if(IS_DIRECT(top_type)){
-                        *(uint32_t*)&h->direct_cache[scan8[0] - 1*8]= 0x01010101;
+                        *(uint32_t*)&h->direct_cache[scan8[0] - 1*8]= 0x01010101*(MB_TYPE_DIRECT2>>1);
                     }else if(IS_8X8(top_type)){
                         int b8_xy = h->mb2b8_xy[top_xy] + h->b8_stride;
                         h->direct_cache[scan8[0] + 0 - 1*8]= h->direct_table[b8_xy];
                         h->direct_cache[scan8[0] + 2 - 1*8]= h->direct_table[b8_xy + 1];
                     }else{
-                        *(uint32_t*)&h->direct_cache[scan8[0] - 1*8]= 0;
+                        *(uint32_t*)&h->direct_cache[scan8[0] - 1*8]= 0x01010101*(MB_TYPE_16x16>>1);
                     }
 
                     if(IS_DIRECT(left_type[0]))
-                        h->direct_cache[scan8[0] - 1 + 0*8]= 1;
+                        h->direct_cache[scan8[0] - 1 + 0*8]= MB_TYPE_DIRECT2>>1;
                     else if(IS_8X8(left_type[0]))
                         h->direct_cache[scan8[0] - 1 + 0*8]= h->direct_table[h->mb2b8_xy[left_xy[0]] + 1 + h->b8_stride*(left_block[0]>>1)];
                     else
-                        h->direct_cache[scan8[0] - 1 + 0*8]= 0;
+                        h->direct_cache[scan8[0] - 1 + 0*8]= MB_TYPE_16x16>>1;
 
                     if(IS_DIRECT(left_type[1]))
-                        h->direct_cache[scan8[0] - 1 + 2*8]= 1;
+                        h->direct_cache[scan8[0] - 1 + 2*8]= MB_TYPE_DIRECT2>>1;
                     else if(IS_8X8(left_type[1]))
                         h->direct_cache[scan8[0] - 1 + 2*8]= h->direct_table[h->mb2b8_xy[left_xy[1]] + 1 + h->b8_stride*(left_block[2]>>1)];
                     else
-                        h->direct_cache[scan8[0] - 1 + 2*8]= 0;
+                        h->direct_cache[scan8[0] - 1 + 2*8]= MB_TYPE_16x16>>1;
                 }
             }
-
+            }
             if(FRAME_MBAFF){
 #define MAP_MVS\
                     MAP_F2F(scan8[0] - 1 - 1*8, topleft_type)\
@@ -1134,7 +1136,6 @@ static int fill_filter_caches(H264Context *h, int mb_type){
     const int mb_xy= h->mb_xy;
     int top_xy, left_xy[2];
     int top_type, left_type[2];
-    int i;
 
     top_xy     = mb_xy  - (s->mb_stride << MB_FIELD);
 
@@ -1213,7 +1214,7 @@ static int fill_filter_caches(H264Context *h, int mb_type){
                 *(uint32_t*)&h->ref_cache[list][scan8[ 0]] =
                 *(uint32_t*)&h->ref_cache[list][scan8[ 2]] =
                 *(uint32_t*)&h->ref_cache[list][scan8[ 8]] =
-                *(uint32_t*)&h->ref_cache[list][scan8[10]] = ((LIST_NOT_USED)&0xFF)*0x01010101;
+                *(uint32_t*)&h->ref_cache[list][scan8[10]] = ((LIST_NOT_USED)&0xFF)*0x01010101U;
                 continue;
             }
 
@@ -1304,7 +1305,7 @@ static int fill_filter_caches(H264Context *h, int mb_type){
                 h->ref_cache[list][scan8[0] + 3 - 1*8]= ref2frm[list][s->current_picture.ref_index[list][b8_xy + 1]];
             }else{
                 AV_ZERO128(h->mv_cache[list][scan8[0] + 0 - 1*8]);
-                *(uint32_t*)&h->ref_cache[list][scan8[0] + 0 - 1*8]= ((LIST_NOT_USED)&0xFF)*0x01010101;
+                *(uint32_t*)&h->ref_cache[list][scan8[0] + 0 - 1*8]= ((LIST_NOT_USED)&0xFF)*0x01010101U;
             }
 
             if(!IS_INTERLACED(mb_type^left_type[0])){
@@ -1408,9 +1409,9 @@ static inline void write_back_motion(H264Context *h, int mb_type){
     if(h->slice_type_nos == FF_B_TYPE && CABAC){
         if(IS_8X8(mb_type)){
             uint8_t *direct_table = &h->direct_table[b8_xy];
-            direct_table[1+0*h->b8_stride] = IS_DIRECT(h->sub_mb_type[1]) ? 1 : 0;
-            direct_table[0+1*h->b8_stride] = IS_DIRECT(h->sub_mb_type[2]) ? 1 : 0;
-            direct_table[1+1*h->b8_stride] = IS_DIRECT(h->sub_mb_type[3]) ? 1 : 0;
+            direct_table[1+0*h->b8_stride] = h->sub_mb_type[1]>>1;
+            direct_table[0+1*h->b8_stride] = h->sub_mb_type[2]>>1;
+            direct_table[1+1*h->b8_stride] = h->sub_mb_type[3]>>1;
         }
     }
 }
@@ -1450,8 +1451,8 @@ static void decode_mb_skip(H264Context *h){
     if( h->slice_type_nos == FF_B_TYPE )
     {
         // just for fill_caches. pred_direct_motion will set the real mb_type
-        mb_type|= MB_TYPE_P0L0|MB_TYPE_P0L1|MB_TYPE_DIRECT2|MB_TYPE_SKIP;
-
+        mb_type|= MB_TYPE_L0L1|MB_TYPE_DIRECT2|MB_TYPE_SKIP;
+        if(h->direct_spatial_mv_pred)
         fill_decode_caches(h, mb_type); //FIXME check what is needed and what not ...
         ff_h264_pred_direct_motion(h, &mb_type);
         mb_type|= MB_TYPE_SKIP;
