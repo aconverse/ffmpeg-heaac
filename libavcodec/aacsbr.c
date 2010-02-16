@@ -28,6 +28,7 @@
 
 #include "aac.h"
 #include "aacsbr.h"
+#include "aacsbr_internal.h"
 #include "aacsbrdata.h"
 
 #include <stdint.h>
