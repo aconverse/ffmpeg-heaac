@@ -33,6 +33,40 @@
 #include <stdint.h>
 #include <float.h>
 
+#define SBR_INIT_VLC_STATIC(num, size) \
+    INIT_VLC_STATIC(&vlc_sbr[num], 9, sbr_tmp[num].table_size / sbr_tmp[num].elem_size,     \
+                    sbr_tmp[num].sbr_bits ,                      1,                      1, \
+                    sbr_tmp[num].sbr_codes, sbr_tmp[num].elem_size, sbr_tmp[num].elem_size, \
+                    size);
+
+#define ENVELOPE_ADJUSTMENT_OFFSET 2
+
+/**
+ * SBR VLC tables
+ */
+enum {
+    T_HUFFMAN_ENV_1_5DB,
+    F_HUFFMAN_ENV_1_5DB,
+    T_HUFFMAN_ENV_BAL_1_5DB,
+    F_HUFFMAN_ENV_BAL_1_5DB,
+    T_HUFFMAN_ENV_3_0DB,
+    F_HUFFMAN_ENV_3_0DB,
+    T_HUFFMAN_ENV_BAL_3_0DB,
+    F_HUFFMAN_ENV_BAL_3_0DB,
+    T_HUFFMAN_NOISE_3_0DB,
+    T_HUFFMAN_NOISE_BAL_3_0DB,
+};
+
+/**
+ * bs_frame_class - frame class of current SBR frame (14496-3 sp04 p98)
+ */
+enum {
+    FIXFIX,
+    FIXVAR,
+    VARFIX,
+    VARVAR,
+};
+
 static VLC vlc_sbr[10];
 static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
