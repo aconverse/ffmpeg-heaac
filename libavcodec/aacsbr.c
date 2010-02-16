@@ -834,7 +834,7 @@ static void sbr_extension(SpectralBandReplication *sbr, GetBitContext *gb,
         break;
     default:
 */
-        skip_bits(gb, *num_bits_left); // bs_fill_bits
+        skip_bits_long(gb, *num_bits_left); // bs_fill_bits
         *num_bits_left = 0;
 /*
         break;
