@@ -1941,7 +1941,7 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
     AACContext *ac = avccontext->priv_data;
     ChannelElement *che = NULL, *che_prev = NULL;
     GetBitContext gb;
-    enum RawDataBlockType elem_type, elem_type_prev;
+    enum RawDataBlockType elem_type, elem_type_prev = TYPE_END;
     int err, elem_id, data_size_tmp;
     int samples = 1024, multiplier;
 
