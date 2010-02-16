@@ -33,7 +33,7 @@
 #include "avcodec.h"
 #include "dsputil.h"
 #include "mpeg4audio.h"
-#include "aacsbr.h"
+#include "sbr.h"
 
 #include <stdint.h>
 

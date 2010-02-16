@@ -27,8 +27,8 @@
  */
 
 #include "aac.h"
+#include "sbr.h"
 #include "aacsbr.h"
-#include "aacsbr_internal.h"
 #include "aacsbrdata.h"
 
 #include <stdint.h>
