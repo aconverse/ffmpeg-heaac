@@ -68,6 +68,10 @@ enum {
     VARVAR,
 };
 
+enum {
+    EXTENSION_ID_PS = 2,
+};
+
 static VLC vlc_sbr[10];
 static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
@@ -824,22 +828,27 @@ static void sbr_sinusoidal_coding(SpectralBandReplication *sbr,
         ch_data->bs_add_harmonic[i] = get_bits1(gb);
 }
 
-static void sbr_extension(SpectralBandReplication *sbr, GetBitContext *gb,
+static void sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
+                          GetBitContext *gb,
                           int bs_extension_id, int *num_bits_left)
 {
-/* TODO - implement ps_data for parametric stereo parsing
+//TODO - implement ps_data for parametric stereo parsing
     switch (bs_extension_id) {
     case EXTENSION_ID_PS:
+        av_log_missing_feature(ac->avccontext, "Parametric Stereo is", 0);
+#if 0
         num_bits_left -= ps_data(sbr, gb);
-        break;
-    default:
-*/
+#else
         skip_bits_long(gb, *num_bits_left); // bs_fill_bits
         *num_bits_left = 0;
-/*
+#endif
+        break;
+    default:
+        av_log_missing_feature(ac->avccontext, "Reserved SBR extensions are", 1);
+        skip_bits_long(gb, *num_bits_left); // bs_fill_bits
+        *num_bits_left = 0;
         break;
     }
-*/
 }
 
 static void sbr_single_channel_element(AACContext *ac,
@@ -919,7 +928,7 @@ static unsigned int sbr_data(AACContext *ac, SpectralBandReplication *sbr,
         num_bits_left <<= 3;
         while (num_bits_left > 7) {
             num_bits_left -= 2;
-            sbr_extension(sbr, gb, get_bits(gb, 2), &num_bits_left); // bs_extension_id
+            sbr_extension(ac, sbr, gb, get_bits(gb, 2), &num_bits_left); // bs_extension_id
         }
     }
 
