@@ -1633,9 +1633,9 @@ static void sbr_gain_calc(AACContext *ac, SpectralBandReplication *sbr,
             }
             gain_boost = FFMIN(1.584893192, sqrtf((FLT_EPSILON + sum[0]) / (FLT_EPSILON + sum[1])));
             for (m = sbr->f_tablelim[k] - sbr->k[4]; m < sbr->f_tablelim[k + 1] - sbr->k[4]; m++) {
-                sbr->gain[l][m] = sbr->gain[l][m] * gain_boost;
-                sbr->q_m[l][m]  = sbr->q_m[l][m]  * gain_boost;
-                sbr->s_m[l][m]  = sbr->s_m[l][m]  * gain_boost;
+                sbr->gain[l][m] *= gain_boost;
+                sbr->q_m[l][m]  *= gain_boost;
+                sbr->s_m[l][m]  *= gain_boost;
             }
         }
     }
