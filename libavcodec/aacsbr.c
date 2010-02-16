@@ -1670,6 +1670,8 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
     };
     float g_filt[48], q_filt[48];
     float (*g_temp)[48] = ch_data->g_temp, (*q_temp)[48] = ch_data->q_temp;
+    int indexnoise = ch_data->f_indexnoise;
+    int indexsine  = ch_data->f_indexsine;
     memcpy(Y[0], Y[1], sizeof(Y[0]));
 
     if (sbr->reset) {
@@ -1691,6 +1693,8 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = 2 * ch_data->t_env[l]; i < 2 * ch_data->t_env[l + 1]; i++) {
+            int phi_sign = (1 - 2*(sbr->k[4] & 1));
+
             if (h_SL && l != l_a[0] && l != l_a[1]) {
                 for (m = 0; m < sbr->m[1]; m++) {
                     const int idx1 = i + h_SL;
@@ -1719,19 +1723,22 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
             }
 
             for (m = 0; m < sbr->m[1]; m++) {
-                ch_data->f_indexnoise = (ch_data->f_indexnoise + 1) & 0x1ff;
+                indexnoise = (indexnoise + 1) & 0x1ff;
                 Y[1][i][m + sbr->k[4]][0] =
                     X_high[m + sbr->k[4]][i + ENVELOPE_ADJUSTMENT_OFFSET][0] * g_filt[m] +
-                    q_filt[m] * sbr_noise_table[ch_data->f_indexnoise][0] +
-                    sbr->s_m[l][m] * phi[0][ch_data->f_indexsine];
+                    q_filt[m] * sbr_noise_table[indexnoise][0] +
+                    sbr->s_m[l][m] * phi[0][indexsine];
                 Y[1][i][m + sbr->k[4]][1] =
                     X_high[m + sbr->k[4]][i + ENVELOPE_ADJUSTMENT_OFFSET][1] * g_filt[m] +
-                    q_filt[m] * sbr_noise_table[ch_data->f_indexnoise][1] +
-                    sbr->s_m[l][m] * phi[1][ch_data->f_indexsine] * (1 - 2*((m + sbr->k[4]) & 1));
+                    q_filt[m] * sbr_noise_table[indexnoise][1] +
+                    sbr->s_m[l][m] * (phi[1][indexsine] * phi_sign);
+                phi_sign = -phi_sign;
             }
-            ch_data->f_indexsine = (ch_data->f_indexsine + 1) & 3;
+            indexsine = (indexsine + 1) & 3;
         }
     }
+    ch_data->f_indexnoise = indexnoise;
+    ch_data->f_indexsine  = indexsine;
 }
 
 void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
