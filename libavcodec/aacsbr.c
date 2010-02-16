@@ -691,7 +691,7 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
         return -1;
     }
 
-    ch_data->bs_num_noise = ch_data->bs_num_env[1] > 1 ? 2 : 1;
+    ch_data->bs_num_noise = (ch_data->bs_num_env[1] > 1) + 1;
 
     return 0;
 }
@@ -1077,7 +1077,7 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
 static void sbr_env_noise_floors(SpectralBandReplication *sbr, SBRData *ch_data,
                                  int ch)
 {
-    int delta = (ch == 1 && sbr->bs_coupling == 1) ? 2 : 1;
+    int delta = (ch == 1 && sbr->bs_coupling == 1) + 1;
     int i, k, l;
     const int temp = sbr->n[1] & 1;
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
@@ -1150,7 +1150,7 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
             }
         }
     } else { // SCE or one non-coupled CPE
-        for (ch = 0; ch < (id_aac == TYPE_CPE ? 2 : 1); ch++) {
+        for (ch = 0; ch < (id_aac == TYPE_CPE) + 1; ch++) {
             float alpha = sbr->data[ch].bs_amp_res ? 1.0f : 0.5f;
             for (l = 1; l <= sbr->data[ch].bs_num_env[1]; l++)
                 for (k = 0; k < sbr->n[sbr->data[ch].bs_freq_res[l]]; k++)
@@ -1647,7 +1647,7 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
                             int l_a[2])
 {
     int i, j, l, m;
-    const int h_SL = sbr->bs_smoothing_mode ? 0 : 4;
+    const int h_SL = 4 * !sbr->bs_smoothing_mode;
     static const float h_smooth[5] = {
         0.33333333333333,
         0.30150283239582,
@@ -1730,7 +1730,7 @@ void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
     int ch;
 
     if (sbr->start) {
-        for (ch = 0; ch < (id_aac == TYPE_CPE ? 2 : 1); ch++) {
+        for (ch = 0; ch < (id_aac == TYPE_CPE) + 1; ch++) {
             sbr_time_freq_grid(ac, sbr, &sbr->data[ch], ch);
             sbr_env_noise_floors(sbr, &sbr->data[ch], ch);
         }
