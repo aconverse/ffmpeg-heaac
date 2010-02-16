@@ -1248,6 +1248,7 @@ static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
 
 /** High Frequency Generation (14496-3 sp04 p214+) and Inverse Filtering
  * (14496-3 sp04 p214)
+ * Warning: This routine does not seem numerically stable.
  */
 static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],
                                   float X_low[32][40][2], int k0)
