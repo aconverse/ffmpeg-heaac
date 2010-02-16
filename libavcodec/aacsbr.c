@@ -1177,8 +1177,11 @@ static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in
     int i, k, l;
     memcpy(W[0], W[1], sizeof(W[0]));
     memcpy(x    , x+1024, (320-32)*sizeof(x[0]));
+    if (scale != 1.0f || bias != 0.0f)
     for (i = 0; i < 1024; i++)
         x[288 + i] = (in[i] - bias) * scale;
+    else
+        memcpy(x+288, in, 1024*sizeof(*x));
     for (l = 0; l < 32; l++) { // numTimeSlots*RATE = 16*2 as 960 sample frames
                                // are not supported
         float re, im;
@@ -1215,6 +1218,7 @@ static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
 {
     int l, n;
     const float *sbr_qmf_window = div ? sbr_qmf_window_ds : sbr_qmf_window_us;
+    int scale_and_bias = scale != 1.0f || bias != 0.0f;
     for (l = 0; l < 32; l++) {
         memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
         for (n = 1; n < 64 >> div; n+=2) {
@@ -1240,6 +1244,7 @@ static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
         dsp->vector_fmul_add(out, v + ( 960 >> div), sbr_qmf_window + (448 >> div), out   , 64 >> div);
         dsp->vector_fmul_add(out, v + (1024 >> div), sbr_qmf_window + (512 >> div), out   , 64 >> div);
         dsp->vector_fmul_add(out, v + (1216 >> div), sbr_qmf_window + (576 >> div), out   , 64 >> div);
+        if (scale_and_bias)
         for (n = 0; n < 64 >> div; n++)
             out[n] = out[n] * scale + bias;
         out += 64 >> div;
