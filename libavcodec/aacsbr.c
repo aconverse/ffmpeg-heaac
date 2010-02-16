@@ -1230,9 +1230,16 @@ static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
         }
         ff_imdct_half(mdct, mdct_buf[0], X[0][l]);
         ff_imdct_half(mdct, mdct_buf[1], X[1][l]);
-        for (n = 0; n < 64 >> div; n++) {
-            v[               n] = -mdct_buf[0][64-1-(n<<div)    ] + mdct_buf[1][ n<<div     ];
-            v[(128>>div)-1 - n] =  mdct_buf[0][64-1-(n<<div)-div] + mdct_buf[1][(n<<div)+div];
+        if (div) {
+            for (n = 0; n < 32; n++) {
+                v[      n] = -mdct_buf[0][63 - 2*n] + mdct_buf[1][2*n    ];
+                v[ 63 - n] =  mdct_buf[0][62 - 2*n] + mdct_buf[1][2*n + 1];
+            }
+        } else {
+            for (n = 0; n < 64; n++) {
+                v[      n] = -mdct_buf[0][63 -   n] + mdct_buf[1][  n    ];
+                v[127 - n] =  mdct_buf[0][63 -   n] + mdct_buf[1][  n    ];
+            }
         }
         dsp->vector_fmul_add(out, v                , sbr_qmf_window               , zero64, 64 >> div);
         dsp->vector_fmul_add(out, v + ( 192 >> div), sbr_qmf_window + ( 64 >> div), out   , 64 >> div);
