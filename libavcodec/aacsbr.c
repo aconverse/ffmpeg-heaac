@@ -129,7 +129,6 @@ av_cold void ff_aac_sbr_init(void)
     for (n = 0; n < 320; n++) {
         sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
     }
-    memset(zero64, 0, sizeof(zero64));
 }
 
 av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
