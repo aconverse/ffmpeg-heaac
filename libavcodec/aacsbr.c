@@ -81,6 +81,9 @@ static DECLARE_ALIGNED_16(float, zero64)[64];
                     sbr_tmp[num].sbr_codes, sbr_tmp[num].elem_size, sbr_tmp[num].elem_size, \
                     size);
 
+#define SBR_VLC_ROW(name) \
+    { name ## _codes, name ## _bits, sizeof(name ## _codes), sizeof(name ## _codes[0]) }
+
 av_cold void ff_aac_sbr_init(void)
 {
     int n, k;
@@ -88,26 +91,16 @@ av_cold void ff_aac_sbr_init(void)
         const void *sbr_codes, *sbr_bits;
         const unsigned int table_size, elem_size;
     } sbr_tmp[] = {
-        { t_huffman_env_1_5dB_codes,       t_huffman_env_1_5dB_bits,
-            sizeof(t_huffman_env_1_5dB_codes),       sizeof(t_huffman_env_1_5dB_codes[0]) },
-        { f_huffman_env_1_5dB_codes,       f_huffman_env_1_5dB_bits,
-            sizeof(f_huffman_env_1_5dB_codes),       sizeof(f_huffman_env_1_5dB_codes[0]) },
-        { t_huffman_env_bal_1_5dB_codes,   t_huffman_env_bal_1_5dB_bits,
-            sizeof(t_huffman_env_bal_1_5dB_codes),   sizeof(t_huffman_env_bal_1_5dB_codes[0]) },
-        { f_huffman_env_bal_1_5dB_codes,   f_huffman_env_bal_1_5dB_bits,
-            sizeof(f_huffman_env_bal_1_5dB_codes),   sizeof(f_huffman_env_bal_1_5dB_codes[0]) },
-        { t_huffman_env_3_0dB_codes,       t_huffman_env_3_0dB_bits,
-            sizeof(t_huffman_env_3_0dB_codes),       sizeof(t_huffman_env_3_0dB_codes[0]) },
-        { f_huffman_env_3_0dB_codes,       f_huffman_env_3_0dB_bits,
-            sizeof(f_huffman_env_3_0dB_codes),       sizeof(f_huffman_env_3_0dB_codes[0]) },
-        { t_huffman_env_bal_3_0dB_codes,   t_huffman_env_bal_3_0dB_bits,
-            sizeof(t_huffman_env_bal_3_0dB_codes),   sizeof(t_huffman_env_bal_3_0dB_codes[0]) },
-        { f_huffman_env_bal_3_0dB_codes,   f_huffman_env_bal_3_0dB_bits,
-            sizeof(f_huffman_env_bal_3_0dB_codes),   sizeof(f_huffman_env_bal_3_0dB_codes[0]) },
-        { t_huffman_noise_3_0dB_codes,     t_huffman_noise_3_0dB_bits,
-            sizeof(t_huffman_noise_3_0dB_codes),     sizeof(t_huffman_noise_3_0dB_codes[0]) },
-        { t_huffman_noise_bal_3_0dB_codes, t_huffman_noise_bal_3_0dB_bits,
-            sizeof(t_huffman_noise_bal_3_0dB_codes), sizeof(t_huffman_noise_bal_3_0dB_codes[0]) },
+        SBR_VLC_ROW(t_huffman_env_1_5dB),
+        SBR_VLC_ROW(f_huffman_env_1_5dB),
+        SBR_VLC_ROW(t_huffman_env_bal_1_5dB),
+        SBR_VLC_ROW(f_huffman_env_bal_1_5dB),
+        SBR_VLC_ROW(t_huffman_env_3_0dB),
+        SBR_VLC_ROW(f_huffman_env_3_0dB),
+        SBR_VLC_ROW(t_huffman_env_bal_3_0dB),
+        SBR_VLC_ROW(f_huffman_env_bal_3_0dB),
+        SBR_VLC_ROW(t_huffman_noise_3_0dB),
+        SBR_VLC_ROW(t_huffman_noise_bal_3_0dB),
     };
 
     // SBR VLC table initialization
