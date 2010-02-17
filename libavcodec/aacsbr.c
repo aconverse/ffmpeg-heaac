@@ -35,6 +35,7 @@
 #include <float.h>
 
 #define ENVELOPE_ADJUSTMENT_OFFSET 2
+#define NOISE_FLOOR_OFFSET 6.0f
 
 /**
  * SBR VLC tables
@@ -73,7 +74,6 @@ static DECLARE_ALIGNED_16(float, analysis_cos_pre)[64];
 static DECLARE_ALIGNED_16(float, analysis_sin_pre)[64];
 static DECLARE_ALIGNED_16(float, analysis_cossin_post)[32][2];
 static DECLARE_ALIGNED_16(float, zero64)[64];
-#define NOISE_FLOOR_OFFSET 6.0f
 
 #define SBR_INIT_VLC_STATIC(num, size) \
     INIT_VLC_STATIC(&vlc_sbr[num], 9, sbr_tmp[num].table_size / sbr_tmp[num].elem_size,     \
