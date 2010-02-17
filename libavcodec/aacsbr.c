@@ -79,7 +79,7 @@ static DECLARE_ALIGNED_16(float, zero64)[64];
     INIT_VLC_STATIC(&vlc_sbr[num], 9, sbr_tmp[num].table_size / sbr_tmp[num].elem_size,     \
                     sbr_tmp[num].sbr_bits ,                      1,                      1, \
                     sbr_tmp[num].sbr_codes, sbr_tmp[num].elem_size, sbr_tmp[num].elem_size, \
-                    size);
+                    size)
 
 #define SBR_VLC_ROW(name) \
     { name ## _codes, name ## _bits, sizeof(name ## _codes), sizeof(name ## _codes[0]) }
@@ -203,7 +203,7 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
                 remove_table_element_int16(sbr->f_tablelim, &sbr->n_lim, k-1);
             else
                 k++;
-        };
+        }
     } else {
         sbr->f_tablelim[0] = sbr->f_tablelow[0];
         sbr->f_tablelim[1] = sbr->f_tablelow[sbr->n[0]];
