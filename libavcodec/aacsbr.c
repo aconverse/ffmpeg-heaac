@@ -31,6 +31,7 @@
 #include "aacsbr.h"
 #include "aacsbrdata.h"
 #include "fft.h"
+#include "ps.h"
 
 #include <stdint.h>
 #include <float.h>
@@ -133,6 +134,8 @@ av_cold void ff_aac_sbr_init(void)
 
     for (n = 0; n < 320; n++)
         sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
+
+    ff_ps_init();
 }
 
 av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
@@ -895,6 +898,7 @@ static void read_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
                                int bs_extension_id, int *num_bits_left)
 {
 //TODO - implement ps_data for parametric stereo parsing
+//av_log(NULL, AV_LOG_ERROR, "frame %d sbr_extension %d %d\n", ac->avccontext->frame_number, bs_extension_id, *num_bits_left);
     switch (bs_extension_id) {
     case EXTENSION_ID_PS:
         if (!ac->m4ac.ps) {
@@ -902,8 +906,8 @@ static void read_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
             skip_bits_long(gb, *num_bits_left); // bs_fill_bits
             *num_bits_left = 0;
         } else {
-#if 0
-            *num_bits_left -= ff_ps_data(gb, ps);
+#if 1
+            *num_bits_left -= ff_ps_data(gb, &sbr->ps);
 #else
             av_log_missing_feature(ac->avccontext, "Parametric Stereo is", 0);
             skip_bits_long(gb, *num_bits_left); // bs_fill_bits
@@ -1012,6 +1016,12 @@ static unsigned int read_sbr_data(AACContext *ac, SpectralBandReplication *sbr,
             num_bits_left -= 2;
             read_sbr_extension(ac, sbr, gb, get_bits(gb, 2), &num_bits_left); // bs_extension_id
         }
+        if (num_bits_left < 0) {
+            av_log(ac->avccontext, AV_LOG_ERROR, "num_bits_left %d\n", num_bits_left);
+            abort();
+        }
+        if (num_bits_left > 0)
+            skip_bits(gb, num_bits_left);
     }
 
     return get_bits_count(gb) - cnt;
@@ -1046,6 +1056,7 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
     GetBitContext gbc = *gb_host, *gb = &gbc;
     skip_bits_long(gb_host, cnt*8 - 4);
 
+av_log(ac->avccontext, AV_LOG_ERROR, "frame %d\n", ac->avccontext->frame_number);
     sbr->reset = 0;
 
     if (!sbr->sample_rate)
@@ -1170,7 +1181,7 @@ static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in
  * (14496-3 sp04 p206)
  */
 static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
-                              float *out, float X[2][32][64],
+                              float *out, float X[2][38][64],
                               float mdct_buf[2][64],
                               float *v0, int *v_off, const unsigned int div,
                               float bias, float scale)
@@ -1405,7 +1416,7 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
 }
 
 /// Generate the subband filtered lowband
-static int sbr_x_gen(SpectralBandReplication *sbr, float X[2][32][64],
+static int sbr_x_gen(SpectralBandReplication *sbr, float X[2][38][64],
                      const float X_low[32][40][2], const float Y[2][38][64][2],
                      int ch)
 {
@@ -1427,7 +1438,7 @@ static int sbr_x_gen(SpectralBandReplication *sbr, float X[2][32][64],
     }
 
     for (k = 0; k < sbr->kx[1]; k++) {
-        for (i = i_Temp; i < i_f; i++) {
+        for (i = i_Temp; i < 38; i++) {
             X[0][i][k] = X_low[k][i + ENVELOPE_ADJUSTMENT_OFFSET][0];
             X[1][i][k] = X_low[k][i + ENVELOPE_ADJUSTMENT_OFFSET][1];
         }
@@ -1742,8 +1753,14 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
     }
 
     /* synthesis */
-    sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->data[ch].Y, ch);
-    sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out, sbr->X, sbr->qmf_filter_scratch,
+    sbr_x_gen(sbr, sbr->X[0], sbr->X_low, sbr->data[ch].Y, ch);
+
+#if 1
+    if (sbr->start && ch == 0)
+        ff_ps_apply(ac->avccontext, &sbr->ps, sbr->X[0], sbr->X[1]);
+#endif
+
+    sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out, sbr->X[0], sbr->qmf_filter_scratch,
                       sbr->data[ch].synthesis_filterbank_samples,
                       &sbr->data[ch].synthesis_filterbank_samples_offset,
                       downsampled,
