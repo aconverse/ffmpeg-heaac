@@ -1351,7 +1351,7 @@ static void sbr_chirp(SpectralBandReplication *sbr, SBRData *ch_data)
         case 2:
             new_bw = 0.9f;
             break;
-        case 3:
+        default:
             new_bw = 0.98f;
             break;
         }
