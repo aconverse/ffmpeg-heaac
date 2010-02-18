@@ -999,7 +999,7 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
     int abs_bord_lead  =  ch_data->bs_frame_class >= 2 ? ch_data->bs_var_bord[0] : 0;
     // frameLengthFlag ? 15 : 16; 960 sample length frames unsupported; this value is numTimeSlots
     int abs_bord_trail = (ch_data->bs_frame_class & 1 ? ch_data->bs_var_bord[1] : 0) + 16;
-    int n_rel_lead, n_rel_trail;
+    int n_rel_lead;
     int i;
 
     if (ch_data->bs_frame_class == FIXFIX) {
@@ -1013,8 +1013,6 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
                "Invalid bs_frame_class for SBR: %d\n", ch_data->bs_frame_class);
         return -1;
     }
-
-    n_rel_trail = ch_data->bs_frame_class & 1 ? ch_data->bs_num_rel[1] : 0;
 
     ch_data->t_env_num_env_old = ch_data->t_env[ch_data->bs_num_env[0]];
     ch_data->t_env[0]                      = abs_bord_lead;
