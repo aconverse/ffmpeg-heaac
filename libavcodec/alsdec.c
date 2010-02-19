@@ -703,10 +703,14 @@ static int read_var_block_data(ALSDecContext *ctx, ALSBlockData *bd)
         *bd->use_ltp = get_bits1(gb);
 
         if (*bd->use_ltp) {
+            int r, c;
+
             bd->ltp_gain[0]   = decode_rice(gb, 1) << 3;
             bd->ltp_gain[1]   = decode_rice(gb, 2) << 3;
 
-            bd->ltp_gain[2]   = ltp_gain_values[get_unary(gb, 0, 4)][get_bits(gb, 2)];
+            r                 = get_unary(gb, 0, 4);
+            c                 = get_bits(gb, 2);
+            bd->ltp_gain[2]   = ltp_gain_values[r][c];
 
             bd->ltp_gain[3]   = decode_rice(gb, 2) << 3;
             bd->ltp_gain[4]   = decode_rice(gb, 1) << 3;
@@ -1563,8 +1567,8 @@ static av_cold int decode_init(AVCodecContext *avctx)
     // allocate and assign channel data buffer for mcc mode
     if (sconf->mc_coding) {
         ctx->chan_data_buffer  = av_malloc(sizeof(*ctx->chan_data_buffer) *
-                                           num_buffers);
-        ctx->chan_data         = av_malloc(sizeof(ALSChannelData) *
+                                           num_buffers * num_buffers);
+        ctx->chan_data         = av_malloc(sizeof(*ctx->chan_data) *
                                            num_buffers);
         ctx->reverted_channels = av_malloc(sizeof(*ctx->reverted_channels) *
                                            num_buffers);
@@ -1576,7 +1580,7 @@ static av_cold int decode_init(AVCodecContext *avctx)
         }
 
         for (c = 0; c < num_buffers; c++)
-            ctx->chan_data[c] = ctx->chan_data_buffer + c;
+            ctx->chan_data[c] = ctx->chan_data_buffer + c * num_buffers;
     } else {
         ctx->chan_data         = NULL;
         ctx->chan_data_buffer  = NULL;
