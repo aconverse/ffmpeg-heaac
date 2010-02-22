@@ -572,7 +572,7 @@ static int sdp_parse(AVFormatContext *s, const char *content)
 }
 
 /* close and free RTSP streams */
-static void rtsp_close_streams(AVFormatContext *s)
+void rtsp_close_streams(AVFormatContext *s)
 {
     RTSPState *rt = s->priv_data;
     int i;
@@ -582,7 +582,15 @@ static void rtsp_close_streams(AVFormatContext *s)
         rtsp_st = rt->rtsp_streams[i];
         if (rtsp_st) {
             if (rtsp_st->transport_priv) {
-                if (rt->transport == RTSP_TRANSPORT_RDT)
+                if (s->oformat) {
+                    AVFormatContext *rtpctx = rtsp_st->transport_priv;
+                    av_write_trailer(rtpctx);
+                    url_fclose(rtpctx->pb);
+                    av_metadata_free(&rtpctx->streams[0]->metadata);
+                    av_metadata_free(&rtpctx->metadata);
+                    av_free(rtpctx->streams[0]);
+                    av_free(rtpctx);
+                } else if (rt->transport == RTSP_TRANSPORT_RDT)
                     ff_rdt_parse_close(rtsp_st->transport_priv);
                 else
                     rtp_parse_close(rtsp_st->transport_priv);
@@ -602,6 +610,50 @@ static void rtsp_close_streams(AVFormatContext *s)
     av_freep(&rt->auth_b64);
 }
 
+static void *rtsp_rtp_mux_open(AVFormatContext *s, AVStream *st, URLContext *handle) {
+    AVFormatContext *rtpctx;
+    int ret;
+    AVOutputFormat *rtp_format = av_guess_format("rtp", NULL, NULL);
+
+    if (!rtp_format)
+        return NULL;
+
+    /* Allocate an AVFormatContext for each output stream */
+    rtpctx = avformat_alloc_context();
+    if (!rtpctx)
+        return NULL;
+
+    rtpctx->oformat = rtp_format;
+    if (!av_new_stream(rtpctx, 0)) {
+        av_free(rtpctx);
+        return NULL;
+    }
+    /* Copy the max delay setting; the rtp muxer reads this. */
+    rtpctx->max_delay = s->max_delay;
+    /* Copy other stream parameters. */
+    rtpctx->streams[0]->sample_aspect_ratio = st->sample_aspect_ratio;
+
+    /* Remove the local codec, link to the original codec
+     * context instead, to give the rtp muxer access to
+     * codec parameters. */
+    av_free(rtpctx->streams[0]->codec);
+    rtpctx->streams[0]->codec = st->codec;
+
+    url_fdopen(&rtpctx->pb, handle);
+    ret = av_write_header(rtpctx);
+
+    if (ret) {
+        url_fclose(rtpctx->pb);
+        av_free(rtpctx->streams[0]);
+        av_free(rtpctx);
+        return NULL;
+    }
+
+    /* Copy the RTP AVStream timebase back to the original AVStream */
+    st->time_base = rtpctx->streams[0]->time_base;
+    return rtpctx;
+}
+
 static int rtsp_open_transport_ctx(AVFormatContext *s, RTSPStream *rtsp_st)
 {
     RTSPState *rt = s->priv_data;
@@ -613,7 +665,11 @@ static int rtsp_open_transport_ctx(AVFormatContext *s, RTSPStream *rtsp_st)
     if (!st)
         s->ctx_flags |= AVFMTCTX_NOHEADER;
 
-    if (rt->transport == RTSP_TRANSPORT_RDT)
+    if (s->oformat) {
+        rtsp_st->transport_priv = rtsp_rtp_mux_open(s, st, rtsp_st->rtp_handle);
+        /* Ownage of rtp_handle is passed to the rtp mux context */
+        rtsp_st->rtp_handle = NULL;
+    } else if (rt->transport == RTSP_TRANSPORT_RDT)
         rtsp_st->transport_priv = ff_rdt_parse_open(s, st->index,
                                             rtsp_st->dynamic_protocol_context,
                                             rtsp_st->dynamic_handler);
@@ -635,7 +691,7 @@ static int rtsp_open_transport_ctx(AVFormatContext *s, RTSPStream *rtsp_st)
     return 0;
 }
 
-#if CONFIG_RTSP_DEMUXER
+#if CONFIG_RTSP_DEMUXER || CONFIG_RTSP_MUXER
 static int rtsp_probe(AVProbeData *p)
 {
     if (av_strstart(p->filename, "rtsp:", NULL))
@@ -825,30 +881,9 @@ static void rtsp_skip_packet(AVFormatContext *s)
     }
 }
 
-/**
- * Read a RTSP message from the server, or prepare to read data
- * packets if we're reading data interleaved over the TCP/RTSP
- * connection as well.
- *
- * @param s RTSP demuxer context
- * @param reply pointer where the RTSP message header will be stored
- * @param content_ptr pointer where the RTSP message body, if any, will
- *                    be stored (length is in reply)
- * @param return_on_interleaved_data whether the function may return if we
- *                   encounter a data marker ('$'), which precedes data
- *                   packets over interleaved TCP/RTSP connections. If this
- *                   is set, this function will return 1 after encountering
- *                   a '$'. If it is not set, the function will skip any
- *                   data packets (if they are encountered), until a reply
- *                   has been fully parsed. If no more data is available
- *                   without parsing a reply, it will return an error.
- *
- * @returns 1 if a data packets is ready to be received, -1 on error,
- *          and 0 on success.
- */
-static int rtsp_read_reply(AVFormatContext *s, RTSPMessageHeader *reply,
-                           unsigned char **content_ptr,
-                           int return_on_interleaved_data)
+int rtsp_read_reply(AVFormatContext *s, RTSPMessageHeader *reply,
+                    unsigned char **content_ptr,
+                    int return_on_interleaved_data)
 {
     RTSPState *rt = s->priv_data;
     char buf[4096], buf1[1024], *q;
@@ -933,10 +968,10 @@ static int rtsp_read_reply(AVFormatContext *s, RTSPMessageHeader *reply,
     return 0;
 }
 
-static void rtsp_send_cmd_with_content_async(AVFormatContext *s,
-                                             const char *cmd,
-                                             const unsigned char *send_content,
-                                             int send_content_length)
+void rtsp_send_cmd_with_content_async(AVFormatContext *s,
+                                      const char *cmd,
+                                      const unsigned char *send_content,
+                                      int send_content_length)
 {
     RTSPState *rt = s->priv_data;
     char buf[4096], buf1[1024];
@@ -965,26 +1000,26 @@ static void rtsp_send_cmd_with_content_async(AVFormatContext *s,
     rt->last_cmd_time = av_gettime();
 }
 
-static void rtsp_send_cmd_async(AVFormatContext *s, const char *cmd)
+void rtsp_send_cmd_async(AVFormatContext *s, const char *cmd)
 {
     rtsp_send_cmd_with_content_async(s, cmd, NULL, 0);
 }
 
-static void rtsp_send_cmd(AVFormatContext *s,
-                          const char *cmd, RTSPMessageHeader *reply,
-                          unsigned char **content_ptr)
+void rtsp_send_cmd(AVFormatContext *s,
+                   const char *cmd, RTSPMessageHeader *reply,
+                   unsigned char **content_ptr)
 {
     rtsp_send_cmd_async(s, cmd);
 
     rtsp_read_reply(s, reply, content_ptr, 0);
 }
 
-static void rtsp_send_cmd_with_content(AVFormatContext *s,
-                                       const char *cmd,
-                                       RTSPMessageHeader *reply,
-                                       unsigned char **content_ptr,
-                                       const unsigned char *send_content,
-                                       int send_content_length)
+void rtsp_send_cmd_with_content(AVFormatContext *s,
+                                const char *cmd,
+                                RTSPMessageHeader *reply,
+                                unsigned char **content_ptr,
+                                const unsigned char *send_content,
+                                int send_content_length)
 {
     rtsp_send_cmd_with_content_async(s, cmd, send_content, send_content_length);
 
@@ -1112,7 +1147,7 @@ static int make_setup_request(AVFormatContext *s, const char *host, int port,
         if (s->oformat) {
             av_strlcat(transport, ";mode=receive", sizeof(transport));
         } else if (rt->server_type == RTSP_SERVER_REAL ||
-            rt->server_type == RTSP_SERVER_WMS)
+                   rt->server_type == RTSP_SERVER_WMS)
             av_strlcat(transport, ";mode=play", sizeof(transport));
         snprintf(cmd, sizeof(cmd),
                  "SETUP %s RTSP/1.0\r\n"
@@ -1295,7 +1330,55 @@ static int rtsp_setup_input_streams(AVFormatContext *s)
     return 0;
 }
 
-static int rtsp_connect(AVFormatContext *s)
+static int rtsp_setup_output_streams(AVFormatContext *s)
+{
+    RTSPState *rt = s->priv_data;
+    RTSPMessageHeader reply1, *reply = &reply1;
+    char cmd[1024];
+    int i;
+    char *sdp;
+
+    /* Announce the stream */
+    snprintf(cmd, sizeof(cmd),
+             "ANNOUNCE %s RTSP/1.0\r\n"
+             "Content-Type: application/sdp\r\n",
+             s->filename);
+    sdp = av_mallocz(8192);
+    if (sdp == NULL)
+        return AVERROR(ENOMEM);
+    if (avf_sdp_create(&s, 1, sdp, 8192)) {
+        av_free(sdp);
+        return AVERROR_INVALIDDATA;
+    }
+    av_log(s, AV_LOG_INFO, "SDP:\n%s\n", sdp);
+    rtsp_send_cmd_with_content(s, cmd, reply, NULL, sdp, strlen(sdp));
+    av_free(sdp);
+    if (reply->status_code != RTSP_STATUS_OK)
+        return AVERROR_INVALIDDATA;
+
+    /* Set up the RTSPStreams for each AVStream */
+    for (i = 0; i < s->nb_streams; i++) {
+        RTSPStream *rtsp_st;
+        AVStream *st = s->streams[i];
+
+        rtsp_st = av_mallocz(sizeof(RTSPStream));
+        if (!rtsp_st)
+            return AVERROR(ENOMEM);
+        dynarray_add(&rt->rtsp_streams, &rt->nb_rtsp_streams, rtsp_st);
+
+        st->priv_data = rtsp_st;
+        rtsp_st->stream_index = i;
+
+        av_strlcpy(rtsp_st->control_url, s->filename, sizeof(rtsp_st->control_url));
+        /* Note, this must match the relative uri set in the sdp content */
+        av_strlcatf(rtsp_st->control_url, sizeof(rtsp_st->control_url),
+                    "/streamid=%d", i);
+    }
+
+    return 0;
+}
+
+int rtsp_connect(AVFormatContext *s)
 {
     RTSPState *rt = s->priv_data;
     char host[1024], path[1024], tcpname[1024], cmd[2048], auth[128];
@@ -1352,6 +1435,17 @@ redirect:
     if (!lower_transport_mask)
         lower_transport_mask = (1 << RTSP_LOWER_TRANSPORT_NB) - 1;
 
+    if (s->oformat) {
+        /* Only UDP output is supported at the moment. */
+        lower_transport_mask &= 1 << RTSP_LOWER_TRANSPORT_UDP;
+        if (!lower_transport_mask) {
+            av_log(s, AV_LOG_ERROR, "Unsupported lower transport method, "
+                                    "only UDP is supported for output.\n");
+            err = AVERROR(EINVAL);
+            goto fail;
+        }
+    }
+
     /* open the tcp connexion */
     snprintf(tcpname, sizeof(tcpname), "tcp://%s:%d", host, port);
     if (url_open(&rtsp_hd, tcpname, URL_RDWR) < 0) {
@@ -1401,7 +1495,10 @@ redirect:
         break;
     }
 
-    err = rtsp_setup_input_streams(s);
+    if (s->iformat)
+        err = rtsp_setup_input_streams(s);
+    else
+        err = rtsp_setup_output_streams(s);
     if (err)
         goto fail;
 
@@ -1427,7 +1524,7 @@ redirect:
  fail:
     rtsp_close_streams(s);
     url_close(rt->rtsp_hd);
-    if (reply->status_code >=300 && reply->status_code < 400) {
+    if (reply->status_code >=300 && reply->status_code < 400 && s->iformat) {
         av_strlcpy(s->filename, reply->location, sizeof(s->filename));
         av_log(s, AV_LOG_INFO, "Status %d: Redirecting to %s\n",
                reply->status_code,
@@ -1436,7 +1533,9 @@ redirect:
     }
     return err;
 }
+#endif
 
+#if CONFIG_RTSP_DEMUXER
 static int rtsp_read_header(AVFormatContext *s,
                             AVFormatParameters *ap)
 {

@@ -6,6 +6,7 @@ vpath %.texi $(SRC_PATH_BARE)
 
 PROGS-$(CONFIG_FFMPEG)   += ffmpeg
 PROGS-$(CONFIG_FFPLAY)   += ffplay
+PROGS-$(CONFIG_FFPROBE)  += ffprobe
 PROGS-$(CONFIG_FFSERVER) += ffserver
 
 PROGS      := $(addsuffix   $(EXESUF), $(PROGS-yes))
@@ -15,7 +16,7 @@ MANPAGES    = $(addprefix doc/, $(addsuffix .1, $(PROGS-yes)))
 TOOLS       = $(addprefix tools/, $(addsuffix $(EXESUF), cws2fws pktdumper probetest qt-faststart trasher))
 HOSTPROGS   = $(addprefix tests/, audiogen videogen rotozoom tiny_psnr)
 
-BASENAMES   = ffmpeg ffplay ffserver
+BASENAMES   = ffmpeg ffplay ffprobe ffserver
 ALLPROGS    = $(addsuffix   $(EXESUF), $(BASENAMES))
 ALLPROGS_G  = $(addsuffix _g$(EXESUF), $(BASENAMES))
 ALLMANPAGES = $(addsuffix .1, $(BASENAMES))
@@ -87,7 +88,7 @@ cmdutils.o cmdutils.d: version.h
 alltools: $(TOOLS)
 
 documentation: $(addprefix doc/, developer.html faq.html ffmpeg-doc.html \
-                                 ffplay-doc.html ffserver-doc.html       \
+                                 ffplay-doc.html ffprobe-doc.html ffserver-doc.html \
                                  general.html libavfilter.html $(ALLMANPAGES))
 
 doc/%.html: doc/%.texi
@@ -126,19 +127,20 @@ uninstall-man:
 	rm -f $(addprefix "$(MANDIR)/man1/",$(ALLMANPAGES))
 
 testclean:
-	rm -rf tests/vsynth1 tests/vsynth2 tests/data tests/*~
+	rm -rf tests/vsynth1 tests/vsynth2 tests/data
+	rm -f $(addprefix tests/,$(CLEANSUFFIXES))
+	rm -f tests/seek_test$(EXESUF) tests/seek_test.o
+	rm -f $(addprefix tests/,$(addsuffix $(HOSTEXESUF),audiogen videogen rotozoom tiny_psnr))
 
 clean:: testclean
 	rm -f $(ALLPROGS) $(ALLPROGS_G)
 	rm -f $(CLEANSUFFIXES)
 	rm -f doc/*.html doc/*.pod doc/*.1
-	rm -f tests/seek_test$(EXESUF) tests/seek_test.o
-	rm -f $(addprefix tests/,$(addsuffix $(HOSTEXESUF),audiogen videogen rotozoom tiny_psnr))
 	rm -f $(TOOLS)
 
 distclean::
 	rm -f $(DISTCLEANSUFFIXES)
-	rm -f version.h config.*
+	rm -f version.h config.* libavutil/avconfig.h
 
 config:
 	$(SRC_PATH)/configure $(value FFMPEG_CONFIGURATION)

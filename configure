@@ -82,6 +82,7 @@ Configuration options:
   --disable-doc            do not build documentation
   --disable-ffmpeg         disable ffmpeg build
   --disable-ffplay         disable ffplay build
+  --disable-ffprobe        disable ffprobe build
   --disable-ffserver       disable ffserver build
   --disable-avdevice       disable libavdevice build
   --disable-avcodec        disable libavcodec build
@@ -890,6 +891,7 @@ CONFIG_LIST="
     fastdiv
     ffmpeg
     ffplay
+    ffprobe
     ffserver
     fft
     golomb
@@ -1349,6 +1351,8 @@ mxf_d10_muxer_select="mxf_muxer"
 ogg_demuxer_select="golomb"
 psp_muxer_select="mov_muxer"
 rtsp_demuxer_deps="sdp_demuxer"
+rtsp_muxer_deps="sdp_demuxer"
+rtsp_muxer_select="rtp_muxer"
 sdp_demuxer_deps="rtp_protocol mpegts_demuxer"
 spdif_muxer_select="aac_parser"
 tg2_muxer_select="mov_muxer"
@@ -1398,6 +1402,7 @@ avformat_deps="avcodec"
 ffmpeg_deps="avcodec avformat swscale"
 ffplay_deps="avcodec avformat swscale sdl"
 ffplay_select="rdft"
+ffprobe_deps="avcodec avformat"
 ffserver_deps="avformat ffm_muxer rtp_protocol rtsp_demuxer"
 ffserver_extralibs='$ldl'
 
@@ -1449,6 +1454,7 @@ enable doc
 enable fastdiv
 enable ffmpeg
 enable ffplay
+enable ffprobe
 enable ffserver
 enable mpegaudio_hp
 enable network
@@ -2715,7 +2721,7 @@ if enabled icc; then
     # 144, 167, 556: -Wno-pointer-sign
     # 10006: ignoring unknown option -fno-signed-zeros
     # 10156: ignoring option '-W'; no argument required
-    check_cflags -wd144,167,556,1292,10006,10156
+    check_cflags -wd144,167,556,10006,10156
     # 11030: Warning unknown option --as-needed
     # 10156: ignoring option '-export'; no argument required
     check_ldflags -wd10156,11030
@@ -2738,6 +2744,7 @@ elif enabled clang; then
 elif enabled armcc; then
     # 2523: use of inline assembler is deprecated
     add_cflags -Wrvct,--diag_suppress=2523
+    add_cflags -Wrvct,--diag_suppress=1207
 elif enabled tms470; then
     add_cflags -pds=824 -pds=837
 fi

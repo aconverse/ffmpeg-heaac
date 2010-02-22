@@ -51,6 +51,10 @@ OBJS-$(CONFIG_AC3_ENCODER)             += ac3enc.o ac3tab.o ac3.o
 OBJS-$(CONFIG_ALAC_DECODER)            += alac.o
 OBJS-$(CONFIG_ALAC_ENCODER)            += alacenc.o
 OBJS-$(CONFIG_ALS_DECODER)             += alsdec.o bgmc.o mpeg4audio.o
+OBJS-$(CONFIG_AMRNB_DECODER)           += amrnbdec.o celp_filters.o   \
+                                          celp_math.o acelp_filters.o \
+                                          acelp_vectors.o lsp.o       \
+                                          acelp_pitch_delay.o
 OBJS-$(CONFIG_AMV_DECODER)             += sp5xdec.o mjpegdec.o mjpeg.o
 OBJS-$(CONFIG_ANM_DECODER)             += anm.o
 OBJS-$(CONFIG_APE_DECODER)             += apedec.o
@@ -65,6 +69,7 @@ OBJS-$(CONFIG_AURA2_DECODER)           += aura.o
 OBJS-$(CONFIG_AVS_DECODER)             += avs.o
 OBJS-$(CONFIG_BETHSOFTVID_DECODER)     += bethsoftvideo.o
 OBJS-$(CONFIG_BFI_DECODER)             += bfi.o
+OBJS-$(CONFIG_BINK_DECODER)            += bink.o binkidct.o
 OBJS-$(CONFIG_BINKAUDIO_DCT_DECODER)   += binkaudio.o wma.o
 OBJS-$(CONFIG_BINKAUDIO_RDFT_DECODER)  += binkaudio.o wma.o
 OBJS-$(CONFIG_BMP_DECODER)             += bmp.o msrledec.o
@@ -486,7 +491,7 @@ OBJS-$(CONFIG_LIBGSM_MS_ENCODER)          += libgsm.o
 OBJS-$(CONFIG_LIBMP3LAME_ENCODER)         += libmp3lame.o
 OBJS-$(CONFIG_LIBOPENCORE_AMRNB_DECODER)  += libopencore-amr.o
 OBJS-$(CONFIG_LIBOPENCORE_AMRNB_ENCODER)  += libopencore-amr.o
-OBJS-$(CONFIG_LIBOPENCORE_AMRWB_ENCODER)  += libopencore-amr.o
+OBJS-$(CONFIG_LIBOPENCORE_AMRWB_DECODER)  += libopencore-amr.o
 OBJS-$(CONFIG_LIBOPENJPEG_DECODER)        += libopenjpeg.o
 OBJS-$(CONFIG_LIBSCHROEDINGER_DECODER)    += libschroedingerdec.o \
                                              libschroedinger.o    \
@@ -582,11 +587,12 @@ MMX-OBJS-$(CONFIG_VP6_DECODER)         += x86/vp3dsp_mmx.o              \
 MMX-OBJS-$(HAVE_YASM)                  += x86/dsputil_yasm.o            \
                                           $(YASM-OBJS-yes)
 
+MMX-OBJS-$(CONFIG_FFT)                 += x86/fft.o
+
 OBJS-$(HAVE_MMX)                       += x86/cpuid.o                   \
                                           x86/dnxhd_mmx.o               \
                                           x86/dsputil_mmx.o             \
                                           x86/fdct_mmx.o                \
-                                          x86/fft.o                     \
                                           x86/idct_mmx_xvid.o           \
                                           x86/idct_sse2_xvid.o          \
                                           x86/motion_est_mmx.o          \
@@ -635,6 +641,7 @@ NEON-OBJS-$(CONFIG_VP3_DECODER)        += arm/vp3dsp_neon.o
 
 OBJS-$(HAVE_NEON)                      += arm/dsputil_init_neon.o       \
                                           arm/dsputil_neon.o            \
+                                          arm/int_neon.o                \
                                           arm/simple_idct_neon.o        \
                                           $(NEON-OBJS-yes)
 
