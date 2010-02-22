@@ -400,7 +400,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
         }
     } else {
         int half_bands = 7 - spectrum->bs_freq_scale;      // bs_freq_scale  = {1,2,3}
-        unsigned int two_regions, num_bands_0;
+        int two_regions, num_bands_0;
         int vdk0_max, vdk1_min;
         int16_t vk0[49];
 
