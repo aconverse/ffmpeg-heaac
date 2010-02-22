@@ -179,6 +179,7 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
 
         memcpy( sbr->f_tablelim,                  sbr->f_tablelow,
                (sbr->n[0]        + 1) * sizeof(sbr->f_tablelow[0]));
+        if (sbr->num_patches > 1)
         memcpy(&sbr->f_tablelim[sbr->n[0] + 1], &patch_borders[1],
                (sbr->num_patches - 1) * sizeof(patch_borders[0]));
 
