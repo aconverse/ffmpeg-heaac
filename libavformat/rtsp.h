@@ -315,16 +315,13 @@ typedef struct RTSPStream {
     //@}
 } RTSPStream;
 
-void rtsp_parse_line(RTSPMessageHeader *reply, const char *buf);
+void ff_rtsp_parse_line(RTSPMessageHeader *reply, const char *buf);
 
 #if LIBAVFORMAT_VERSION_INT < (53 << 16)
 extern int rtsp_default_protocols;
 #endif
 extern int rtsp_rtp_port_min;
 extern int rtsp_rtp_port_max;
-
-int rtsp_pause(AVFormatContext *s);
-int rtsp_resume(AVFormatContext *s);
 
 /**
  * Send a command to the RTSP server without waiting for the reply.
@@ -335,16 +332,16 @@ int rtsp_resume(AVFormatContext *s);
  * @param send_content_length the length of the send_content data, or 0 if
  *                            send_content is null
  */
-void rtsp_send_cmd_with_content_async(AVFormatContext *s,
-                                      const char *cmd,
-                                      const unsigned char *send_content,
-                                      int send_content_length);
+void ff_rtsp_send_cmd_with_content_async(AVFormatContext *s,
+                                         const char *cmd,
+                                         const unsigned char *send_content,
+                                         int send_content_length);
 /**
  * Send a command to the RTSP server without waiting for the reply.
  *
  * @see rtsp_send_cmd_with_content_async
  */
-void rtsp_send_cmd_async(AVFormatContext *s, const char *cmd);
+void ff_rtsp_send_cmd_async(AVFormatContext *s, const char *cmd);
 
 /**
  * Send a command to the RTSP server and wait for the reply.
@@ -358,20 +355,20 @@ void rtsp_send_cmd_async(AVFormatContext *s, const char *cmd);
  * @param send_content_length the length of the send_content data, or 0 if
  *                            send_content is null
  */
-void rtsp_send_cmd_with_content(AVFormatContext *s,
-                                const char *cmd,
-                                RTSPMessageHeader *reply,
-                                unsigned char **content_ptr,
-                                const unsigned char *send_content,
-                                int send_content_length);
+void ff_rtsp_send_cmd_with_content(AVFormatContext *s,
+                                   const char *cmd,
+                                   RTSPMessageHeader *reply,
+                                   unsigned char **content_ptr,
+                                   const unsigned char *send_content,
+                                   int send_content_length);
 
 /**
  * Send a command to the RTSP server and wait for the reply.
  *
  * @see rtsp_send_cmd_with_content
  */
-void rtsp_send_cmd(AVFormatContext *s, const char *cmd,
-                   RTSPMessageHeader *reply, unsigned char **content_ptr);
+void ff_rtsp_send_cmd(AVFormatContext *s, const char *cmd,
+                      RTSPMessageHeader *reply, unsigned char **content_ptr);
 
 /**
  * Read a RTSP message from the server, or prepare to read data
@@ -394,9 +391,9 @@ void rtsp_send_cmd(AVFormatContext *s, const char *cmd,
  * @returns 1 if a data packets is ready to be received, -1 on error,
  *          and 0 on success.
  */
-int rtsp_read_reply(AVFormatContext *s, RTSPMessageHeader *reply,
-                    unsigned char **content_ptr,
-                    int return_on_interleaved_data);
+int ff_rtsp_read_reply(AVFormatContext *s, RTSPMessageHeader *reply,
+                       unsigned char **content_ptr,
+                       int return_on_interleaved_data);
 
 /**
  * Connect to the RTSP server and set up the individual media streams.
@@ -407,13 +404,13 @@ int rtsp_read_reply(AVFormatContext *s, RTSPMessageHeader *reply,
  * @returns 0 on success, < 0 on error. Cleans up all allocations done
  *          within the function on error.
  */
-int rtsp_connect(AVFormatContext *s);
+int ff_rtsp_connect(AVFormatContext *s);
 
 /**
  * Close and free all streams within the RTSP (de)muxer
  *
  * @param s RTSP (de)muxer context
  */
-void rtsp_close_streams(AVFormatContext *s);
+void ff_rtsp_close_streams(AVFormatContext *s);
 
 #endif /* AVFORMAT_RTSP_H */

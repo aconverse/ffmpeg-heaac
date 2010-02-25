@@ -92,7 +92,7 @@ int ff_ivi_create_huff_from_desc(const IVIHuffDesc *cb, VLC *vlc, int flag)
 void ff_ivi_init_static_vlc()
 {
     int i;
-    static VLC table_data[8192 * 16][2];
+    static VLC_TYPE table_data[8192 * 16][2];
     static int initialized_vlcs = 0;
 
     if (initialized_vlcs)
@@ -208,6 +208,8 @@ void av_cold ff_ivi_free_buffers(IVIPlaneDesc *planes)
             av_freep(&planes[p].bands[b].bufs[1]);
             av_freep(&planes[p].bands[b].bufs[2]);
 
+            if (planes[p].bands[b].blk_vlc_cust.table)
+                free_vlc(&planes[p].bands[b].blk_vlc_cust);
             for (t = 0; t < planes[p].bands[b].num_tiles; t++)
                 av_freep(&planes[p].bands[b].tiles[t].mbs);
             av_freep(&planes[p].bands[b].tiles);

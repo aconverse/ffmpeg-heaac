@@ -184,7 +184,7 @@ static void show_stream(AVFormatContext *fmt_ctx, int stream_idx)
                                                   &stream->time_base));
 
     while ((tag = av_metadata_get(stream->metadata, "", tag, AV_METADATA_IGNORE_SUFFIX)))
-        printf("%s=%s\n", tag->key, tag->value);
+        printf("TAG:%s=%s\n", tag->key, tag->value);
 
     printf("[/STREAM]\n");
 }
@@ -288,11 +288,15 @@ static void opt_format(const char *arg)
     }
 }
 
-static void opt_input_file(const char *filename)
+static void opt_input_file(const char *arg)
 {
-    if (!strcmp(filename, "-"))
-        filename = "pipe:";
-    input_filename = filename;
+    if (input_filename) {
+        fprintf(stderr, "Input filename already specified: %s\n", arg);
+        exit(1);
+    }
+    if (!strcmp(arg, "-"))
+        arg = "pipe:";
+    input_filename = arg;
 }
 
 static void show_help(void)

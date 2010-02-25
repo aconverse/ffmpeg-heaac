@@ -1028,8 +1028,10 @@ HAVE_LIST="
     fork
     getaddrinfo
     gethrtime
+    GetProcessMemoryInfo
     GetProcessTimes
     getrusage
+    struct_rusage_ru_maxrss
     inet_aton
     inline_asm
     isatty
@@ -1263,9 +1265,11 @@ rv20_encoder_select="h263_encoder"
 rv30_decoder_select="golomb"
 rv40_decoder_select="golomb"
 shorten_decoder_select="golomb"
+snow_encoder_select="aandct"
 sonic_decoder_select="golomb"
 sonic_encoder_select="golomb"
 sonic_ls_encoder_select="golomb"
+svq1_encoder_select="aandct"
 svq3_decoder_select="golomb"
 svq3_decoder_suggest="zlib"
 theora_decoder_select="vp3_decoder"
@@ -2497,6 +2501,7 @@ check_func  fork
 check_func  getaddrinfo $network_extralibs
 check_func  gethrtime
 check_func  getrusage
+check_struct "sys/time.h sys/resource.h" "struct rusage" ru_maxrss
 check_func  inet_aton $network_extralibs
 check_func  isatty
 check_func  ${malloc_prefix}memalign            && enable memalign
@@ -2505,6 +2510,7 @@ check_func  ${malloc_prefix}posix_memalign      && enable posix_memalign
 check_func  setrlimit
 check_func_headers io.h setmode
 check_func_headers lzo/lzo1x.h lzo1x_999_compress
+check_lib2 "windows.h psapi.h" GetProcessMemoryInfo -lpsapi
 check_func_headers windows.h GetProcessTimes
 check_func_headers windows.h VirtualAlloc
 
@@ -2693,6 +2699,7 @@ check_cflags -Wcast-qual
 check_cflags -Wwrite-strings
 check_cflags -Wtype-limits
 check_cflags -Wundef
+check_cflags -Wmissing-prototypes
 enabled extra_warnings && check_cflags -Winline
 
 # add some linker flags

@@ -208,9 +208,11 @@ static int frame_height = 0;
 static enum PixelFormat frame_pix_fmt = PIX_FMT_NONE;
 static int audio_disable;
 static int video_disable;
-static int wanted_audio_stream= 0;
-static int wanted_video_stream= 0;
-static int wanted_subtitle_stream= -1;
+static int wanted_stream[CODEC_TYPE_NB]={
+    [CODEC_TYPE_AUDIO]=-1,
+    [CODEC_TYPE_VIDEO]=-1,
+    [CODEC_TYPE_SUBTITLE]=-1,
+};
 static int seek_by_bytes=-1;
 static int display_disable;
 static int show_status = 1;
@@ -1909,6 +1911,7 @@ static void stream_component_close(VideoState *is, int stream_index)
         packet_queue_end(&is->audioq);
         if (is->reformat_ctx)
             av_audio_convert_free(is->reformat_ctx);
+        is->reformat_ctx = NULL;
         break;
     case CODEC_TYPE_VIDEO:
         packet_queue_abort(&is->videoq);
@@ -1976,16 +1979,18 @@ static int decode_thread(void *arg)
 {
     VideoState *is = arg;
     AVFormatContext *ic;
-    int err, i, ret, video_index, audio_index, subtitle_index;
+    int err, i, ret;
+    int st_index[CODEC_TYPE_NB];
+    int st_count[CODEC_TYPE_NB]={0};
+    int st_best_packet_count[CODEC_TYPE_NB];
     AVPacket pkt1, *pkt = &pkt1;
     AVFormatParameters params, *ap = &params;
     int eof=0;
 
     ic = avformat_alloc_context();
 
-    video_index = -1;
-    audio_index = -1;
-    subtitle_index = -1;
+    memset(st_index, -1, sizeof(st_index));
+    memset(st_best_packet_count, -1, sizeof(st_best_packet_count));
     is->video_stream = -1;
     is->audio_stream = -1;
     is->subtitle_stream = -1;
@@ -2042,20 +2047,27 @@ static int decode_thread(void *arg)
     }
 
     for(i = 0; i < ic->nb_streams; i++) {
-        AVCodecContext *avctx = ic->streams[i]->codec;
+        AVStream *st= ic->streams[i];
+        AVCodecContext *avctx = st->codec;
         ic->streams[i]->discard = AVDISCARD_ALL;
+        if(avctx->codec_type >= (unsigned)CODEC_TYPE_NB)
+            exit(1);
+        if(st_count[avctx->codec_type]++ != wanted_stream[avctx->codec_type] && wanted_stream[avctx->codec_type] >= 0)
+            continue;
+
+        if(st_best_packet_count[avctx->codec_type] >= st->codec_info_nb_frames)
+            continue;
+        st_best_packet_count[avctx->codec_type]= st->codec_info_nb_frames;
+
         switch(avctx->codec_type) {
         case CODEC_TYPE_AUDIO:
-            if (wanted_audio_stream-- >= 0 && !audio_disable)
-                audio_index = i;
+            if (!audio_disable)
+                st_index[CODEC_TYPE_AUDIO] = i;
             break;
         case CODEC_TYPE_VIDEO:
-            if (wanted_video_stream-- >= 0 && !video_disable)
-                video_index = i;
-            break;
         case CODEC_TYPE_SUBTITLE:
-            if (wanted_subtitle_stream-- >= 0 && !video_disable)
-                subtitle_index = i;
+            if (!video_disable)
+                st_index[avctx->codec_type] = i;
             break;
         default:
             break;
@@ -2066,13 +2078,13 @@ static int decode_thread(void *arg)
     }
 
     /* open the streams */
-    if (audio_index >= 0) {
-        stream_component_open(is, audio_index);
+    if (st_index[CODEC_TYPE_AUDIO] >= 0) {
+        stream_component_open(is, st_index[CODEC_TYPE_AUDIO]);
     }
 
     ret=-1;
-    if (video_index >= 0) {
-        ret= stream_component_open(is, video_index);
+    if (st_index[CODEC_TYPE_VIDEO] >= 0) {
+        ret= stream_component_open(is, st_index[CODEC_TYPE_VIDEO]);
     }
     if(ret<0) {
         /* add the refresh timer to draw the picture */
@@ -2082,8 +2094,8 @@ static int decode_thread(void *arg)
             is->show_audio = 2;
     }
 
-    if (subtitle_index >= 0) {
-        stream_component_open(is, subtitle_index);
+    if (st_index[CODEC_TYPE_SUBTITLE] >= 0) {
+        stream_component_open(is, st_index[CODEC_TYPE_SUBTITLE]);
     }
 
     if (is->video_stream < 0 && is->audio_stream < 0) {
@@ -2600,9 +2612,9 @@ static const OptionDef options[] = {
     { "fs", OPT_BOOL, {(void*)&is_full_screen}, "force full screen" },
     { "an", OPT_BOOL, {(void*)&audio_disable}, "disable audio" },
     { "vn", OPT_BOOL, {(void*)&video_disable}, "disable video" },
-    { "ast", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&wanted_audio_stream}, "select desired audio stream", "stream_number" },
-    { "vst", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&wanted_video_stream}, "select desired video stream", "stream_number" },
-    { "sst", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&wanted_subtitle_stream}, "select desired subtitle stream", "stream_number" },
+    { "ast", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&wanted_stream[CODEC_TYPE_AUDIO]}, "select desired audio stream", "stream_number" },
+    { "vst", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&wanted_stream[CODEC_TYPE_VIDEO]}, "select desired video stream", "stream_number" },
+    { "sst", OPT_INT | HAS_ARG | OPT_EXPERT, {(void*)&wanted_stream[CODEC_TYPE_SUBTITLE]}, "select desired subtitle stream", "stream_number" },
     { "ss", HAS_ARG | OPT_FUNC2, {(void*)&opt_seek}, "seek to a given position in seconds", "pos" },
     { "bytes", OPT_INT | HAS_ARG, {(void*)&seek_by_bytes}, "seek by bytes 0=off 1=on -1=auto", "val" },
     { "nodisp", OPT_BOOL, {(void*)&display_disable}, "disable graphical display" },
