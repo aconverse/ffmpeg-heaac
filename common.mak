@@ -51,6 +51,13 @@ install: install-libs install-headers
 uninstall: uninstall-libs uninstall-headers
 
 .PHONY: all depend dep *clean install* uninstall* examples testprogs
+
+# Disable suffix rules.  Most of the builtin rules are suffix rules,
+# so this saves some time on slow systems.
+.SUFFIXES:
+
+# Do not delete intermediate files from chains of implicit rules
+.SECONDARY:
 endif
 
 OBJS-$(HAVE_MMX) +=  $(MMX-OBJS-yes)

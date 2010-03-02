@@ -1837,7 +1837,7 @@ static int av_encode(AVFormatContext **output_files,
 
     /* for each output stream, we compute the right encoding parameters */
     for(i=0;i<nb_ostreams;i++) {
-        AVMetadataTag *lang;
+        AVMetadataTag *t = NULL, *lang = NULL;
         ost = ost_table[i];
         os = output_files[ost->file_index];
         ist = ist_table[ost->source_index];
@@ -1845,9 +1845,13 @@ static int av_encode(AVFormatContext **output_files,
         codec = ost->st->codec;
         icodec = ist->st->codec;
 
-        if ((lang=av_metadata_get(ist->st->metadata, "language", NULL, 0))
-            &&   !av_metadata_get(ost->st->metadata, "language", NULL, 0))
-            av_metadata_set(&ost->st->metadata, "language", lang->value);
+        if (av_metadata_get(ist->st->metadata, "language", NULL, 0))
+            lang = av_metadata_get(ost->st->metadata, "language", NULL, 0);
+        while ((t = av_metadata_get(ist->st->metadata, "", t, AV_METADATA_IGNORE_SUFFIX))) {
+            if (lang && !strcmp(t->key, "language"))
+                continue;
+            av_metadata_set2(&ost->st->metadata, t->key, t->value, NULL);
+        }
 
         ost->st->disposition = ist->st->disposition;
         codec->bits_per_raw_sample= icodec->bits_per_raw_sample;
@@ -2305,7 +2309,8 @@ static int av_encode(AVFormatContext **output_files,
         }
 
         /* finish if recording time exhausted */
-        if (av_compare_ts(pkt.pts, ist->st->time_base, recording_time + start_time, (AVRational){1, 1000000}) >= 0) {
+        if (recording_time != INT64_MAX &&
+            av_compare_ts(pkt.pts, ist->st->time_base, recording_time + start_time, (AVRational){1, 1000000}) >= 0) {
             ist->is_past_recording_time = 1;
             goto discard_packet;
         }
@@ -2847,7 +2852,10 @@ static void opt_input_file(const char *filename)
     int64_t timestamp;
 
     if (last_asked_format) {
-        file_iformat = av_find_input_format(last_asked_format);
+        if (!(file_iformat = av_find_input_format(last_asked_format))) {
+            fprintf(stderr, "Unknown input format: '%s'\n", last_asked_format);
+            av_exit(1);
+        }
         last_asked_format = NULL;
     }
 
@@ -3208,6 +3216,7 @@ static void new_video_stream(AVFormatContext *oc)
     video_disable = 0;
     av_freep(&video_codec_name);
     video_stream_copy = 0;
+    frame_pix_fmt = PIX_FMT_NONE;
 }
 
 static void new_audio_stream(AVFormatContext *oc)
