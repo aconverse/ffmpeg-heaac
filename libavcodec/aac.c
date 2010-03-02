@@ -523,12 +523,6 @@ static av_cold int aac_decode_init(AVCodecContext *avccontext)
 
     avccontext->sample_fmt = SAMPLE_FMT_S16;
 
-    /* The container may have "lied" about frame size (and sample rate). Due to
-       SBR the frame size (and sample rate) is unknown until the first frame is
-       decoded. Sample rate is not being zeroed here because we don't want to
-       clobber the real sample rate when the codec is opened again. */
-    avccontext->frame_size = 0;
-
     AAC_INIT_VLC_STATIC( 0, 304);
     AAC_INIT_VLC_STATIC( 1, 270);
     AAC_INIT_VLC_STATIC( 2, 550);
@@ -2056,7 +2050,7 @@ static int aac_decode_frame(AVCodecContext *avccontext, void *data,
     spectral_to_sample(ac);
     multiplier = ac->m4ac.sbr ? ac->m4ac.ext_sample_rate > ac->m4ac.sample_rate : 0;
     samples <<= multiplier;
-    if (!avccontext->frame_size) {
+    if (ac->output_configured < OC_LOCKED) {
         avccontext->sample_rate = ac->m4ac.sample_rate << multiplier;
         avccontext->frame_size = samples;
     }
