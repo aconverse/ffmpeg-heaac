@@ -1648,6 +1648,7 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
 {
     int i, j, l, m;
     const int h_SL = 4 * !sbr->bs_smoothing_mode;
+    const int kx = sbr->k[4];
     static const float h_smooth[5] = {
         0.33333333333333,
         0.30150283239582,
@@ -1684,7 +1685,7 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = 2 * ch_data->t_env[l]; i < 2 * ch_data->t_env[l + 1]; i++) {
-            int phi_sign = (1 - 2*(sbr->k[4] & 1));
+            int phi_sign = (1 - 2*(kx & 1));
 
             if (h_SL && l != l_a[0] && l != l_a[1]) {
                 for (m = 0; m < sbr->m[1]; m++) {
@@ -1715,12 +1716,12 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
 
             for (m = 0; m < sbr->m[1]; m++) {
                 indexnoise = (indexnoise + 1) & 0x1ff;
-                Y[1][i][m + sbr->k[4]][0] =
-                    X_high[m + sbr->k[4]][i + ENVELOPE_ADJUSTMENT_OFFSET][0] * g_filt[m] +
+                Y[1][i][m + kx][0] =
+                    X_high[m + kx][i + ENVELOPE_ADJUSTMENT_OFFSET][0] * g_filt[m] +
                     q_filt[m] * sbr_noise_table[indexnoise][0] +
                     sbr->s_m[l][m] * phi[0][indexsine];
-                Y[1][i][m + sbr->k[4]][1] =
-                    X_high[m + sbr->k[4]][i + ENVELOPE_ADJUSTMENT_OFFSET][1] * g_filt[m] +
+                Y[1][i][m + kx][1] =
+                    X_high[m + kx][i + ENVELOPE_ADJUSTMENT_OFFSET][1] * g_filt[m] +
                     q_filt[m] * sbr_noise_table[indexnoise][1] +
                     sbr->s_m[l][m] * (phi[1][indexsine] * phi_sign);
                 phi_sign = -phi_sign;
