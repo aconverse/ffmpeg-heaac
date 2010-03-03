@@ -1661,7 +1661,6 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
         {  1,  0, -1,  0}, // real
         {  0,  1,  0, -1}, // imaginary
     };
-    float g_filt[48], q_filt[48];
     float (*g_temp)[48] = ch_data->g_temp, (*q_temp)[48] = ch_data->q_temp;
     int indexnoise = ch_data->f_indexnoise;
     int indexsine  = ch_data->f_indexsine;
@@ -1691,41 +1690,58 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
             if (h_SL && l != l_a[0] && l != l_a[1]) {
                 for (m = 0; m < m_max; m++) {
                     const int idx1 = i + h_SL;
-                    g_filt[m] = 0.0f;
+                    float g_filt = 0.0f;
                     for (j = 0; j <= h_SL; j++)
-                        g_filt[m] += g_temp[idx1 - j][m] * h_smooth[j];
+                        g_filt += g_temp[idx1 - j][m] * h_smooth[j];
+                    Y[1][i][m + kx][0] =
+                        X_high[m + kx][i + ENVELOPE_ADJUSTMENT_OFFSET][0] * g_filt;
+                    Y[1][i][m + kx][1] =
+                        X_high[m + kx][i + ENVELOPE_ADJUSTMENT_OFFSET][1] * g_filt;
                 }
             } else {
-                memcpy(g_filt, g_temp[i + h_SL], m_max * sizeof(g_temp[0][0]));
+                for (m = 0; m < m_max; m++) {
+                    const float g_filt = g_temp[i + h_SL][m];
+                    Y[1][i][m + kx][0] =
+                        X_high[m + kx][i + ENVELOPE_ADJUSTMENT_OFFSET][0] * g_filt;
+                    Y[1][i][m + kx][1] =
+                        X_high[m + kx][i + ENVELOPE_ADJUSTMENT_OFFSET][1] * g_filt;
+                }
             }
 
             if (l != l_a[0] && l != l_a[1]) {
                 for (m = 0; m < m_max; m++) {
-                    if (sbr->s_m[l][m])
-                        q_filt[m] = 0.0f;
-                    else if (h_SL) {
-                        const int idx1 = i + h_SL;
-                        q_filt[m] = 0.0f;
-                        for (j = 0; j <= h_SL; j++)
-                            q_filt[m] += q_temp[idx1 - j][m] * h_smooth[j];
-                    } else
-                        q_filt[m] = q_temp[i][m];
+                    indexnoise = (indexnoise + 1) & 0x1ff;
+                    if (sbr->s_m[l][m]) {
+                        Y[1][i][m + kx][0] +=
+                            sbr->s_m[l][m] * phi[0][indexsine];
+                        Y[1][i][m + kx][1] +=
+                            sbr->s_m[l][m] * (phi[1][indexsine] * phi_sign);
+                    } else {
+                        float q_filt;
+                        if (h_SL) {
+                            const int idx1 = i + h_SL;
+                            q_filt = 0.0f;
+                            for (j = 0; j <= h_SL; j++)
+                                q_filt += q_temp[idx1 - j][m] * h_smooth[j];
+                        } else {
+                            q_filt = q_temp[i][m];
+                        }
+                        Y[1][i][m + kx][0] +=
+                            q_filt * sbr_noise_table[indexnoise][0];
+                        Y[1][i][m + kx][1] +=
+                            q_filt * sbr_noise_table[indexnoise][1];
+                    }
+                    phi_sign = -phi_sign;
                 }
             } else {
-                memset(q_filt, 0, m_max * sizeof(q_filt[0]));
-            }
-
-            for (m = 0; m < m_max; m++) {
-                indexnoise = (indexnoise + 1) & 0x1ff;
-                Y[1][i][m + kx][0] =
-                    X_high[m + kx][i + ENVELOPE_ADJUSTMENT_OFFSET][0] * g_filt[m] +
-                    q_filt[m] * sbr_noise_table[indexnoise][0] +
-                    sbr->s_m[l][m] * phi[0][indexsine];
-                Y[1][i][m + kx][1] =
-                    X_high[m + kx][i + ENVELOPE_ADJUSTMENT_OFFSET][1] * g_filt[m] +
-                    q_filt[m] * sbr_noise_table[indexnoise][1] +
-                    sbr->s_m[l][m] * (phi[1][indexsine] * phi_sign);
-                phi_sign = -phi_sign;
+                indexnoise = (indexnoise + m_max) & 0x1ff;
+                for (m = 0; m < m_max; m++) {
+                    Y[1][i][m + kx][0] +=
+                        sbr->s_m[l][m] * phi[0][indexsine];
+                    Y[1][i][m + kx][1] +=
+                        sbr->s_m[l][m] * (phi[1][indexsine] * phi_sign);
+                    phi_sign = -phi_sign;
+                }
             }
             indexsine = (indexsine + 1) & 3;
         }
