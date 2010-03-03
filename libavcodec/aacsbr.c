@@ -134,6 +134,8 @@ av_cold void ff_aac_sbr_init(void)
 av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
 {
     sbr->k[3] = sbr->k[4] = 32; //Typo in spec, kx' inits to 32
+    sbr->data[0].synthesis_filterbank_samples_offset = SBR_SYNTHESIS_BUF_SIZE - (1280 - 128);
+    sbr->data[1].synthesis_filterbank_samples_offset = SBR_SYNTHESIS_BUF_SIZE - (1280 - 128);
     ff_mdct_init(&sbr->mdct, 7, 1, 1.0/64);
     ff_rdft_init(&sbr->rdft, 6, RIDFT);
 }
@@ -1204,14 +1206,22 @@ static void sbr_qmf_analysis(DSPContext *dsp, RDFTContext *rdft, const float *in
 static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
                               float *out, float X[2][32][64],
                               float mdct_buf[2][64],
-                              float *v, const unsigned int div,
+                              float *v0, int *v_off, const unsigned int div,
                               float bias, float scale)
 {
     int l, n;
     const float *sbr_qmf_window = div ? sbr_qmf_window_ds : sbr_qmf_window_us;
     int scale_and_bias = scale != 1.0f || bias != 0.0f;
+    float *v;
     for (l = 0; l < 32; l++) {
-        memmove(&v[128 >> div], v, ((1280 - 128) >> div) * sizeof(float));
+        if (*v_off == 0) {
+            int saved_samples = (1280 - 128) >> div;
+            memcpy(&v0[SBR_SYNTHESIS_BUF_SIZE - saved_samples], v0, saved_samples * sizeof(float));
+            *v_off = SBR_SYNTHESIS_BUF_SIZE - saved_samples - (128 >> div);
+        } else {
+            *v_off -= 128 >> div;
+        }
+        v = v0 + *v_off;
         for (n = 1; n < 64 >> div; n+=2) {
             X[1][l][n] = -X[1][l][n];
         }
@@ -1791,6 +1801,8 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
     /* synthesis */
     sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->data[ch].Y, ch);
     sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out, sbr->X, sbr->qmf_filter_scratch,
-                      sbr->data[ch].synthesis_filterbank_samples, downsampled,
+                      sbr->data[ch].synthesis_filterbank_samples,
+                      &sbr->data[ch].synthesis_filterbank_samples_offset,
+                      downsampled,
                       ac->add_bias, -1024 * ac->sf_scale);
 }
