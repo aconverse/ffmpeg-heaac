@@ -1649,6 +1649,7 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
     int i, j, l, m;
     const int h_SL = 4 * !sbr->bs_smoothing_mode;
     const int kx = sbr->k[4];
+    const int m_max = sbr->m[1];
     static const float h_smooth[5] = {
         0.33333333333333,
         0.30150283239582,
@@ -1668,8 +1669,8 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
 
     if (sbr->reset) {
         for (i = 0; i < h_SL; i++) {
-            memcpy(g_temp[i + 2*ch_data->t_env[0]], sbr->gain[0], sbr->m[1] * sizeof(sbr->gain[0][0]));
-            memcpy(q_temp[i + 2*ch_data->t_env[0]], sbr->q_m[0],  sbr->m[1] * sizeof(sbr->q_m[0][0]));
+            memcpy(g_temp[i + 2*ch_data->t_env[0]], sbr->gain[0], m_max * sizeof(sbr->gain[0][0]));
+            memcpy(q_temp[i + 2*ch_data->t_env[0]], sbr->q_m[0],  m_max * sizeof(sbr->q_m[0][0]));
         }
     } else if (h_SL) {
         memcpy(g_temp[2*ch_data->t_env[0]], g_temp[2*ch_data->t_env_num_env_old], 4*sizeof(g_temp[0]));
@@ -1678,8 +1679,8 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
 
     for (l = 0; l < ch_data->bs_num_env[1]; l++) {
         for (i = 2 * ch_data->t_env[l]; i < 2 * ch_data->t_env[l + 1]; i++) {
-            memcpy(g_temp[h_SL + i], sbr->gain[l], sbr->m[1] * sizeof(sbr->gain[0][0]));
-            memcpy(q_temp[h_SL + i], sbr->q_m[l],  sbr->m[1] * sizeof(sbr->q_m[0][0]));
+            memcpy(g_temp[h_SL + i], sbr->gain[l], m_max * sizeof(sbr->gain[0][0]));
+            memcpy(q_temp[h_SL + i], sbr->q_m[l],  m_max * sizeof(sbr->q_m[0][0]));
         }
     }
 
@@ -1688,18 +1689,18 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
             int phi_sign = (1 - 2*(kx & 1));
 
             if (h_SL && l != l_a[0] && l != l_a[1]) {
-                for (m = 0; m < sbr->m[1]; m++) {
+                for (m = 0; m < m_max; m++) {
                     const int idx1 = i + h_SL;
                     g_filt[m] = 0.0f;
                     for (j = 0; j <= h_SL; j++)
                         g_filt[m] += g_temp[idx1 - j][m] * h_smooth[j];
                 }
             } else {
-                memcpy(g_filt, g_temp[i + h_SL], sbr->m[1] * sizeof(g_temp[0][0]));
+                memcpy(g_filt, g_temp[i + h_SL], m_max * sizeof(g_temp[0][0]));
             }
 
             if (l != l_a[0] && l != l_a[1]) {
-                for (m = 0; m < sbr->m[1]; m++) {
+                for (m = 0; m < m_max; m++) {
                     if (sbr->s_m[l][m])
                         q_filt[m] = 0.0f;
                     else if (h_SL) {
@@ -1711,10 +1712,10 @@ static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
                         q_filt[m] = q_temp[i][m];
                 }
             } else {
-                memset(q_filt, 0, sbr->m[1] * sizeof(q_filt[0]));
+                memset(q_filt, 0, m_max * sizeof(q_filt[0]));
             }
 
-            for (m = 0; m < sbr->m[1]; m++) {
+            for (m = 0; m < m_max; m++) {
                 indexnoise = (indexnoise + 1) & 0x1ff;
                 Y[1][i][m + kx][0] =
                     X_high[m + kx][i + ENVELOPE_ADJUSTMENT_OFFSET][0] * g_filt[m] +
