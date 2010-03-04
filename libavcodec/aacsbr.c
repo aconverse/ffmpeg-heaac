@@ -179,10 +179,10 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
         for (k=1; k <= sbr->num_patches; k++)
             patch_borders[k] = patch_borders[k-1] + sbr->patch_num_subbands[k-1];
 
-        memcpy( sbr->f_tablelim,                  sbr->f_tablelow,
-               (sbr->n[0]        + 1) * sizeof(sbr->f_tablelow[0]));
+        memcpy(sbr->f_tablelim, sbr->f_tablelow,
+               (sbr->n[0] + 1) * sizeof(sbr->f_tablelow[0]));
         if (sbr->num_patches > 1)
-            memcpy(&sbr->f_tablelim[sbr->n[0] + 1], &patch_borders[1],
+            memcpy(sbr->f_tablelim + sbr->n[0] + 1, patch_borders + 1,
                    (sbr->num_patches - 1) * sizeof(patch_borders[0]));
 
         qsort(sbr->f_tablelim, sbr->num_patches + sbr->n[0],
@@ -223,7 +223,7 @@ static unsigned int sbr_header(SpectralBandReplication *sbr, GetBitContext *gb)
     sbr->start = 1;
 
     // Save last spectrum parameters variables to compare to new ones
-    memcpy(&sbr->spectrum_params[0], &sbr->spectrum_params[1], sizeof(SpectrumParameters));
+    memcpy(sbr->spectrum_params, sbr->spectrum_params + 1, sizeof(SpectrumParameters));
 
     sbr->bs_amp_res_header                 = get_bits1(gb);
     sbr->spectrum_params[1].bs_start_freq  = get_bits(gb, 4);
