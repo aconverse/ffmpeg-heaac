@@ -172,7 +172,10 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
 {
     int k;
     if (sbr->bs_limiter_bands > 0) {
-        static const float lim_bands_per_octave[3] = {1.2, 2, 3};
+        static const float bands_warped[3] = { 1.32715174233856803909f,   //2^(0.49/1.2)
+                                               1.18509277094158210129f,   //2^(0.49/2)
+                                               1.11987160404675912501f }; //2^(0.49/3)
+        const float lim_bands_per_octave_warped = bands_warped[sbr->bs_limiter_bands - 1];
         int16_t patch_borders[5];
 
         patch_borders[0] = sbr->k[4];
@@ -193,8 +196,7 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
         sbr->n_lim = sbr->n[0] + sbr->num_patches - 1;
         while (k <= sbr->n_lim) {
             // if ( nOctaves * limBands >= 0.49) ...
-            if (log2(sbr->f_tablelim[k] / (float)sbr->f_tablelim[k-1]) *
-                lim_bands_per_octave[sbr->bs_limiter_bands - 1] >= 0.49) {
+            if (sbr->f_tablelim[k] >= sbr->f_tablelim[k-1] * lim_bands_per_octave_warped) {
                 k++;
                 continue;
             }
