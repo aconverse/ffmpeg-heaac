@@ -73,7 +73,7 @@ static const int8_t vlc_sbr_lav[10] =
 static DECLARE_ALIGNED_16(float, analysis_cos_pre)[64];
 static DECLARE_ALIGNED_16(float, analysis_sin_pre)[64];
 static DECLARE_ALIGNED_16(float, analysis_cossin_post)[32][2];
-static DECLARE_ALIGNED_16(float, zero64)[64];
+static const DECLARE_ALIGNED_16(float, zero64)[64];
 
 #define SBR_INIT_VLC_STATIC(num, size) \
     INIT_VLC_STATIC(&vlc_sbr[num], 9, sbr_tmp[num].table_size / sbr_tmp[num].elem_size,     \
@@ -158,7 +158,7 @@ static inline void remove_table_element_int16(int16_t *table, uint8_t *last_el,
     (*last_el)--;
 }
 
-static inline int in_table_int16(int16_t *table, int last_el, int16_t needle)
+static inline int in_table_int16(const int16_t *table, int last_el, int16_t needle)
 {
     int i;
     for (i = 0; i <= last_el; i++)
@@ -269,7 +269,7 @@ static unsigned int sbr_header(SpectralBandReplication *sbr, GetBitContext *gb)
     return get_bits_count(gb) - cnt;
 }
 
-static int array_min_int16(int16_t *array, int nel)
+static int array_min_int16(const int16_t *array, int nel)
 {
     int i, min = array[0];
     for (i = 1; i < nel; i++)
@@ -1286,7 +1286,7 @@ static void autocorrelate(const float x[40][2], float phi[3][2][2], int lag)
  * Warning: This routine does not seem numerically stable.
  */
 static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],
-                                  float X_low[32][40][2], int k0)
+                                  const float X_low[32][40][2], int k0)
 {
     int k;
     for (k = 0; k < k0; k++) {
@@ -1400,8 +1400,8 @@ static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
 /// High Frequency Generator (14496-3 sp04 p215)
 static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
-                      float X_high[64][40][2], float X_low[32][40][2], float (*alpha0)[2],
-                      float (*alpha1)[2], float bw_array[5], uint8_t *t_env,
+                      float X_high[64][40][2], const float X_low[32][40][2], const float (*alpha0)[2],
+                      const float (*alpha1)[2], const float bw_array[5], const uint8_t *t_env,
                       int bs_num_env)
 {
     int i, x, l;
@@ -1445,7 +1445,7 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
 /// Generate the subband filtered lowband
 static int sbr_x_gen(SpectralBandReplication *sbr,
-                      float X[2][32][64], float X_low[32][40][2], float Y[2][38][64][2], int ch) {
+                     float X[2][32][64], const float X_low[32][40][2], const float Y[2][38][64][2], int ch) {
     int k, l;
     const int l_f = 32;
     const int l_Temp = FFMAX(2*sbr->data[ch].t_env_num_env_old - l_f, 0);
@@ -1591,7 +1591,7 @@ static void sbr_env_estimate(float (*e_curr)[48], float X_high[64][40][2],
  * and Calculation of gain (14496-3 sp04 p219)
  */
 static void sbr_gain_calc(AACContext *ac, SpectralBandReplication *sbr,
-                          SBRData *ch_data, int l_a[2])
+                          SBRData *ch_data, const int l_a[2])
 {
     int k, l, m;
     // max gain limits : -3dB, 0dB, 3dB, inf dB (limiter off)
@@ -1646,9 +1646,9 @@ static void sbr_gain_calc(AACContext *ac, SpectralBandReplication *sbr,
 }
 
 /// Assembling HF Signals (14496-3 sp04 p220)
-static void sbr_hf_assemble(float Y[2][38][64][2], float X_high[64][40][2],
+static void sbr_hf_assemble(float Y[2][38][64][2], const float X_high[64][40][2],
                             SpectralBandReplication *sbr, SBRData *ch_data,
-                            int l_a[2])
+                            const int l_a[2])
 {
     int i, j, l, m;
     const int h_SL = 4 * !sbr->bs_smoothing_mode;
