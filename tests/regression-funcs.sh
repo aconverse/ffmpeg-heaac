@@ -7,16 +7,15 @@
 test="${1#regtest-}"
 test_ref=$2
 raw_src_dir=$3
-outfile_prefix=$4
-target_exec=$5
-target_path=$6
+target_exec=$4
+target_path=$5
 
 datadir="./tests/data"
 target_datadir="${target_path}/${datadir}"
 
 this="$test.$test_ref"
 logfile="$datadir/$this.regression"
-outfile="$datadir/${outfile_prefix}-"
+outfile="$datadir/$test_ref/"
 errfile="$datadir/$this.err"
 
 # various files
@@ -35,6 +34,7 @@ crcfile="$datadir/$this.crc"
 target_crcfile="$target_datadir/$this.crc"
 
 mkdir -p "$datadir"
+mkdir -p "$outfile"
 
 [ "${V-0}" -gt 0 ] && echov=echo || echov=:
 [ "${V-0}" -gt 1 ] || exec 2>$errfile
