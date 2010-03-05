@@ -1368,15 +1368,12 @@ static void sbr_chirp(SpectralBandReplication *sbr, SBRData *ch_data)
             break;
         }
 
-        if (new_bw < ch_data->bw_array[1][i]) {
-            temp_bw = 0.75f    * new_bw + 0.25f    * ch_data->bw_array[1][i];
+        if (new_bw < ch_data->bw_array[i]) {
+            temp_bw = 0.75f    * new_bw + 0.25f    * ch_data->bw_array[i];
         } else
-            temp_bw = 0.90625f * new_bw + 0.09375f * ch_data->bw_array[1][i];
-        ch_data->bw_array[0][i] = temp_bw < 0.015625f ? 0.0f : temp_bw;
+            temp_bw = 0.90625f * new_bw + 0.09375f * ch_data->bw_array[i];
+        ch_data->bw_array[i] = temp_bw < 0.015625f ? 0.0f : temp_bw;
     }
-
-    // update previous bw_array values
-    memcpy(ch_data->bw_array[1], ch_data->bw_array[0], 5 * sizeof(float));
 }
 
 static inline int find_freq_subband(uint16_t *table, int nel, int needle)
@@ -1414,7 +1411,7 @@ static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
 /// High Frequency Generator (14496-3 sp04 p215)
 static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
                       float X_high[64][40][2], float X_low[32][40][2], float (*alpha0)[2],
-                      float (*alpha1)[2], float bw_array[2][5], uint8_t *t_env,
+                      float (*alpha1)[2], float bw_array[5], uint8_t *t_env,
                       int bs_num_env)
 {
     int i, x, l;
@@ -1434,15 +1431,15 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
                 const int idx = l + ENVELOPE_ADJUSTMENT_OFFSET;
                 X_high[k][idx][0] =
                     (X_low[p][idx - 2][0] * alpha1[p][0] -
-                     X_low[p][idx - 2][1] * alpha1[p][1]) * bw_array[0][g] * bw_array[0][g] +
+                     X_low[p][idx - 2][1] * alpha1[p][1]) * bw_array[g] * bw_array[g] +
                     (X_low[p][idx - 1][0] * alpha0[p][0] -
-                     X_low[p][idx - 1][1] * alpha0[p][1]) * bw_array[0][g] +
+                     X_low[p][idx - 1][1] * alpha0[p][1]) * bw_array[g] +
                      X_low[p][idx][0];
                 X_high[k][idx][1] =
                     (X_low[p][idx - 2][1] * alpha1[p][0] +
-                     X_low[p][idx - 2][0] * alpha1[p][1]) * bw_array[0][g] * bw_array[0][g] +
+                     X_low[p][idx - 2][0] * alpha1[p][1]) * bw_array[g] * bw_array[g] +
                     (X_low[p][idx - 1][1] * alpha0[p][0] +
-                     X_low[p][idx - 1][0] * alpha0[p][1]) * bw_array[0][g] +
+                     X_low[p][idx - 1][0] * alpha0[p][1]) * bw_array[g] +
                      X_low[p][idx][1];
             }
         }

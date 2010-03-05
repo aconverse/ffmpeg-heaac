@@ -85,7 +85,7 @@ typedef struct {
     DECLARE_ALIGNED(16, float, analysis_filterbank_samples) [1312];
     int                synthesis_filterbank_samples_offset;
     int                l_a[2];
-    float              bw_array[2][5];
+    float              bw_array[5];
     float              W[2][32][32][2];
     float              Y[2][38][64][2];
     float              g_temp[42][48];
