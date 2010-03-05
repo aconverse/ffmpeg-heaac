@@ -1376,14 +1376,6 @@ static void sbr_chirp(SpectralBandReplication *sbr, SBRData *ch_data)
     }
 }
 
-static inline int find_freq_subband(uint16_t *table, int nel, int needle)
-{
-    int i = 0;
-    while (i < nel && needle >= table[i])
-        i++;
-    return i-1;
-}
-
 /// Generate the subband filtered lowband
 static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
                       float X_low[32][40][2], float W[2][32][32][2]) {
@@ -1413,11 +1405,14 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
                       int bs_num_env)
 {
     int i, x, l;
+    int g = 0;
     int k = sbr->k[4];
     for (i = 0; i < sbr->num_patches; i++) {
         for (x = 0; x < sbr->patch_num_subbands[i]; x++, k++) {
-            const int g = find_freq_subband(sbr->f_tablenoise, sbr->n_q + 1, k);
             const int p = sbr->patch_start_subband[i] + x;
+            while (g <= sbr->n_q && k >= sbr->f_tablenoise[g])
+                g++;
+            g--;
 
             if (g < 0) {
                 av_log(ac->avccontext, AV_LOG_ERROR,
