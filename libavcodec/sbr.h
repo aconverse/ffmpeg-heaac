@@ -133,8 +133,8 @@ typedef struct {
     uint16_t           f_tablenoise[6];
     uint16_t           f_tablelim[29];
     uint8_t            num_patches;
-    uint8_t            patch_num_subbands[5];
-    uint8_t            patch_start_subband[5];
+    uint8_t            patch_num_subbands[6];
+    uint8_t            patch_start_subband[6];
     float              X_low[32][40][2];
     float              X_high[64][40][2];
     DECLARE_ALIGNED(16, float, X)[2][32][64];

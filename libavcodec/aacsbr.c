@@ -542,7 +542,9 @@ static int sbr_hf_calc_npatches(AACContext *ac, SpectralBandReplication *sbr)
     if (sbr->patch_num_subbands[sbr->num_patches-1] < 3 && sbr->num_patches > 1)
         sbr->num_patches--;
 
-    if (sbr->num_patches > 5) { // Requirements (14496-3 sp04 p205)
+    // Requirements (14496-3 sp04 p205) sets the maximum number of patches to 5
+    // However the Coding Technologies decoder check uses 6 patches
+    if (sbr->num_patches > 6) {
         av_log(ac->avccontext, AV_LOG_ERROR, "Too many patches: %d\n", sbr->num_patches);
         return -1;
     }
