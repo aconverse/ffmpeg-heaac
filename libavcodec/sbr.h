@@ -108,7 +108,7 @@ typedef struct {
     int32_t            sample_rate;
     uint8_t            start;
     uint8_t            reset;
-    SpectrumParameters spectrum_params[2];
+    SpectrumParameters spectrum_params;
     uint8_t            bs_amp_res_header;
     /**
      * @defgroup bs_header_extra_2     variables associated with bs_header_extra_2

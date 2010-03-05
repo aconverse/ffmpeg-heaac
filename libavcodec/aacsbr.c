@@ -219,33 +219,34 @@ static unsigned int sbr_header(SpectralBandReplication *sbr, GetBitContext *gb)
     uint8_t bs_header_extra_1;
     uint8_t bs_header_extra_2;
     int old_bs_limiter_bands = sbr->bs_limiter_bands;
+    SpectrumParameters old_spectrum_params;
 
     sbr->start = 1;
 
     // Save last spectrum parameters variables to compare to new ones
-    memcpy(sbr->spectrum_params, sbr->spectrum_params + 1, sizeof(SpectrumParameters));
+    memcpy(&old_spectrum_params, &sbr->spectrum_params, sizeof(SpectrumParameters));
 
     sbr->bs_amp_res_header                 = get_bits1(gb);
-    sbr->spectrum_params[1].bs_start_freq  = get_bits(gb, 4);
-    sbr->spectrum_params[1].bs_stop_freq   = get_bits(gb, 4);
-    sbr->spectrum_params[1].bs_xover_band  = get_bits(gb, 3);
+    sbr->spectrum_params.bs_start_freq  = get_bits(gb, 4);
+    sbr->spectrum_params.bs_stop_freq   = get_bits(gb, 4);
+    sbr->spectrum_params.bs_xover_band  = get_bits(gb, 3);
                                              skip_bits(gb, 2); // bs_reserved
 
     bs_header_extra_1 = get_bits1(gb);
     bs_header_extra_2 = get_bits1(gb);
 
     if (bs_header_extra_1) {
-        sbr->spectrum_params[1].bs_freq_scale  = get_bits(gb, 2);
-        sbr->spectrum_params[1].bs_alter_scale = get_bits1(gb);
-        sbr->spectrum_params[1].bs_noise_bands = get_bits(gb, 2);
+        sbr->spectrum_params.bs_freq_scale  = get_bits(gb, 2);
+        sbr->spectrum_params.bs_alter_scale = get_bits1(gb);
+        sbr->spectrum_params.bs_noise_bands = get_bits(gb, 2);
     } else {
-        sbr->spectrum_params[1].bs_freq_scale  = 2;
-        sbr->spectrum_params[1].bs_alter_scale = 1;
-        sbr->spectrum_params[1].bs_noise_bands = 2;
+        sbr->spectrum_params.bs_freq_scale  = 2;
+        sbr->spectrum_params.bs_alter_scale = 1;
+        sbr->spectrum_params.bs_noise_bands = 2;
     }
 
     // Check if spectrum parameters changed
-    if (memcmp(&sbr->spectrum_params[0], &sbr->spectrum_params[1],
+    if (memcmp(&old_spectrum_params, &sbr->spectrum_params,
                sizeof(SpectrumParameters)))
         sbr->reset = 1;
 
@@ -480,10 +481,10 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
         }
     }
     // Requirements (14496-3 sp04 p205)
-    if (sbr->spectrum_params[1].bs_xover_band >= sbr->n_master) {
+    if (sbr->spectrum_params.bs_xover_band >= sbr->n_master) {
         av_log(ac->avccontext, AV_LOG_ERROR,
                "Invalid bitstream, crossover band index beyond array bounds: %d\n",
-               sbr->spectrum_params[1].bs_xover_band);
+               sbr->spectrum_params.bs_xover_band);
         return -1;
     }
     // temp == max number of QMF subbands
@@ -555,10 +556,10 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
 {
     int k, temp;
 
-    sbr->n[1] = sbr->n_master - sbr->spectrum_params[1].bs_xover_band;
+    sbr->n[1] = sbr->n_master - sbr->spectrum_params.bs_xover_band;
     sbr->n[0] = (sbr->n[1] + 1) >> 1;
 
-    memcpy(sbr->f_tablehigh, &sbr->f_master[sbr->spectrum_params[1].bs_xover_band],
+    memcpy(sbr->f_tablehigh, &sbr->f_master[sbr->spectrum_params.bs_xover_band],
            (sbr->n[1] + 1) * sizeof(sbr->f_master[0]));
     sbr->m[1] = sbr->f_tablehigh[sbr->n[1]] - sbr->f_tablehigh[0];
     sbr->k[4] = sbr->f_tablehigh[0];
@@ -579,7 +580,7 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
     for (k = 1; k <= sbr->n[0]; k++)
         sbr->f_tablelow[k] = sbr->f_tablehigh[2 * k - temp];
 
-    sbr->n_q = FFMAX(1, lrintf(sbr->spectrum_params[1].bs_noise_bands *
+    sbr->n_q = FFMAX(1, lrintf(sbr->spectrum_params.bs_noise_bands *
                                log2f(sbr->k[2] / (float)sbr->k[4]))); // 0 <= bs_noise_bands <= 3
     if (sbr->n_q > 5) {
         av_log(ac->avccontext, AV_LOG_ERROR, "Too many noise floor scale factors: %d\n", sbr->n_q);
@@ -933,7 +934,7 @@ static unsigned int sbr_data(AACContext *ac, SpectralBandReplication *sbr,
 static void sbr_reset(AACContext *ac, SpectralBandReplication *sbr)
 {
     int err;
-    err = sbr_make_f_master(ac, sbr, &sbr->spectrum_params[1]);
+    err = sbr_make_f_master(ac, sbr, &sbr->spectrum_params);
     if (err >= 0)
         err = sbr_make_f_derived(ac, sbr);
     if (err < 0) {
