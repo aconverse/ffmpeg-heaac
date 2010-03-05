@@ -1378,12 +1378,10 @@ static void sbr_chirp(SpectralBandReplication *sbr, SBRData *ch_data)
 
 static inline int find_freq_subband(uint16_t *table, int nel, int needle)
 {
-    int i;
-    for (i = 0; i < nel; i++) {
-        if (needle >= table[i] && needle < table[i + 1])
-            return i;
-    }
-    return -1;
+    int i = 0;
+    while (i < nel && needle >= table[i])
+        i++;
+    return i-1;
 }
 
 /// Generate the subband filtered lowband
