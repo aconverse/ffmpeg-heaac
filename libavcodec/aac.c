@@ -1835,8 +1835,9 @@ static void apply_independent_coupling(AACContext *ac,
     const float bias = ac->add_bias;
     const float *src = cce->ch[0].ret;
     float *dest = target->ret;
+    const int len = 1024 << (ac->m4ac.sbr == 1);
 
-    for (i = 0; i < 2048; i++)
+    for (i = 0; i < len; i++)
         dest[i] += gain * (src[i] - bias);
 }
 
