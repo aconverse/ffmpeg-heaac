@@ -539,7 +539,7 @@ static int sbr_hf_calc_npatches(AACContext *ac, SpectralBandReplication *sbr)
             k = sbr->n_master;
     } while (sb != sbr->k[4] + sbr->m[1]);
 
-    if ((sbr->patch_num_subbands[sbr->num_patches-1] < 3) && (sbr->num_patches > 1))
+    if (sbr->patch_num_subbands[sbr->num_patches-1] < 3 && sbr->num_patches > 1)
         sbr->num_patches--;
 
     if (sbr->num_patches > 5) { // Requirements (14496-3 sp04 p205)
