@@ -357,6 +357,20 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     }
     sbr->k[2] = FFMIN(64, sbr->k[2]);
 
+    // Requirements (14496-3 sp04 p205)
+    if (sbr->sample_rate <= 32000) {
+        max_qmf_subbands = 48;
+    } else if (sbr->sample_rate == 44100) {
+        max_qmf_subbands = 35;
+    } else if (sbr->sample_rate >= 48000)
+        max_qmf_subbands = 32;
+
+    if (sbr->k[2] - sbr->k[0] > max_qmf_subbands) {
+        av_log(ac->avccontext, AV_LOG_ERROR,
+               "Invalid bitstream, too many QMF subbands: %d\n", sbr->k[2] - sbr->k[0]);
+        return -1;
+    }
+
     if (!spectrum->bs_freq_scale) {
         unsigned int dk;
         int k2diff;
@@ -467,18 +481,6 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
         av_log(ac->avccontext, AV_LOG_ERROR,
                "Invalid bitstream, crossover band index beyond array bounds: %d\n",
                sbr->spectrum_params.bs_xover_band);
-        return -1;
-    }
-    if (sbr->sample_rate <= 32000) {
-        max_qmf_subbands = 48;
-    } else if (sbr->sample_rate == 44100) {
-        max_qmf_subbands = 35;
-    } else if (sbr->sample_rate >= 48000)
-        max_qmf_subbands = 32;
-
-    if (sbr->k[2] - sbr->k[0] > max_qmf_subbands) {
-        av_log(ac->avccontext, AV_LOG_ERROR,
-               "Invalid bitstream, too many QMF subbands: %d\n", sbr->k[2] - sbr->k[0]);
         return -1;
     }
 
