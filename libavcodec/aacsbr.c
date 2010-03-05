@@ -196,11 +196,9 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
         sbr->n_lim = sbr->n[0] + sbr->num_patches - 1;
         while (k <= sbr->n_lim) {
             // if ( nOctaves * limBands >= 0.49) ...
-            if (sbr->f_tablelim[k] >= sbr->f_tablelim[k-1] * lim_bands_per_octave_warped) {
+            if (sbr->f_tablelim[k] >= sbr->f_tablelim[k-1] * lim_bands_per_octave_warped)
                 k++;
-                continue;
-            }
-            if (sbr->f_tablelim[k] == sbr->f_tablelim[k-1] ||
+            else if (sbr->f_tablelim[k] == sbr->f_tablelim[k-1] ||
                 !in_table_int16(patch_borders, sbr->num_patches, sbr->f_tablelim[k]))
                 remove_table_element_int16(sbr->f_tablelim, &sbr->n_lim, k);
             else if (!in_table_int16(patch_borders, sbr->num_patches, sbr->f_tablelim[k-1]))
