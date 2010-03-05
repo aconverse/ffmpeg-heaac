@@ -1256,6 +1256,31 @@ static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
     }
 }
 
+static void autocorrelate(const float x[40][2], float phi[3][2][2], int lag)
+{
+    int i;
+    float real_sum = 0.0f;
+    float imag_sum = 0.0f;
+    if (lag) {
+        for (i = 1; i < 38; i++) {
+            real_sum += x[i][0] * x[i+lag][0] + x[i][1] * x[i+lag][1];
+            imag_sum += x[i][0] * x[i+lag][1] - x[i][1] * x[i+lag][0];
+        }
+        phi[2-lag][1][0] = real_sum + x[ 0][0] * x[lag][0] + x[ 0][1] * x[lag][1];
+        phi[2-lag][1][1] = imag_sum + x[ 0][0] * x[lag][1] - x[ 0][1] * x[lag][0];
+        if (lag == 1) {
+            phi[0][0][0] = real_sum + x[38][0] * x[39][0] + x[38][1] * x[39][1];
+            phi[0][0][1] = imag_sum + x[38][0] * x[39][1] - x[38][1] * x[39][0];
+        }
+    } else {
+        for (i = 1; i < 38; i++) {
+            real_sum += x[i][0] * x[i][0] + x[i][1] * x[i][1];
+        }
+        phi[2][1][0] = real_sum + x[ 0][0] * x[ 0][0] + x[ 0][1] * x[ 0][1];
+        phi[1][0][0] = real_sum + x[38][0] * x[38][0] + x[38][1] * x[38][1];
+    }
+}
+
 /** High Frequency Generation (14496-3 sp04 p214+) and Inverse Filtering
  * (14496-3 sp04 p214)
  * Warning: This routine does not seem numerically stable.
@@ -1263,31 +1288,13 @@ static void sbr_qmf_synthesis(DSPContext *dsp, FFTContext *mdct,
 static void sbr_hf_inverse_filter(float (*alpha0)[2], float (*alpha1)[2],
                                   float X_low[32][40][2], int k0)
 {
-    int i, j, k, n;
+    int k;
     for (k = 0; k < k0; k++) {
         float phi[3][2][2], dk;
 
-        for (i = 0; i < 3; i++) {
-            for (j = 0; j < 2; j++) {
-                unsigned int idxtmp1 = ENVELOPE_ADJUSTMENT_OFFSET - i;
-                unsigned int idxtmp2 = ENVELOPE_ADJUSTMENT_OFFSET - (j + 1);
-
-                phi[i][j][0] = 0.0f;
-                phi[i][j][1] = 0.0f;
-
-                if (i <= j + 1)
-                for (n = 0; n < 16 * 2 + 6; n++) {
-                    unsigned int idx1 = n + idxtmp1;
-                    unsigned int idx2 = n + idxtmp2;
-                    phi[i][j][0] += X_low[k][idx1][0] * X_low[k][idx2][0] +
-                                    X_low[k][idx1][1] * X_low[k][idx2][1];
-                    if (i != j + 1) { // imaginary part
-                        phi[i][j][1] += X_low[k][idx1][1] * X_low[k][idx2][0] -
-                                        X_low[k][idx1][0] * X_low[k][idx2][1];
-                    }
-                }
-            }
-        }
+        autocorrelate(X_low[k], phi, 0);
+        autocorrelate(X_low[k], phi, 1);
+        autocorrelate(X_low[k], phi, 2);
 
         dk =  phi[2][1][0] * phi[1][0][0] -
              (phi[1][1][0] * phi[1][1][0] + phi[1][1][1] * phi[1][1][1]) / 1.000001f;
