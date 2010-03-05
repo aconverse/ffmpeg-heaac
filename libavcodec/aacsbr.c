@@ -297,7 +297,7 @@ static void make_bands(int16_t* bands, int start, int stop, int num_bands)
 static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
                              SpectrumParameters *spectrum)
 {
-    unsigned int temp;
+    unsigned int temp, max_qmf_subbands;
     unsigned int start_min, stop_min;
     int k;
     const uint8_t *sbr_offset_ptr;
@@ -469,15 +469,14 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
                sbr->spectrum_params.bs_xover_band);
         return -1;
     }
-    // temp == max number of QMF subbands
     if (sbr->sample_rate <= 32000) {
-        temp = 48;
+        max_qmf_subbands = 48;
     } else if (sbr->sample_rate == 44100) {
-        temp = 35;
+        max_qmf_subbands = 35;
     } else if (sbr->sample_rate >= 48000)
-        temp = 32;
+        max_qmf_subbands = 32;
 
-    if (sbr->k[2] - sbr->k[0] > temp) {
+    if (sbr->k[2] - sbr->k[0] > max_qmf_subbands) {
         av_log(ac->avccontext, AV_LOG_ERROR,
                "Invalid bitstream, too many QMF subbands: %d\n", sbr->k[2] - sbr->k[0]);
         return -1;
