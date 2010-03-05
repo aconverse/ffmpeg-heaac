@@ -1429,17 +1429,17 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
             for (l = 2 * t_env[0]; l < 2 * t_env[bs_num_env]; l++) {
                 const int idx = l + ENVELOPE_ADJUSTMENT_OFFSET;
                 X_high[k][idx][0] =
-                    (X_low[p][idx - 2][0] * alpha[0] -
-                     X_low[p][idx - 2][1] * alpha[1]) +
-                    (X_low[p][idx - 1][0] * alpha[2] -
-                     X_low[p][idx - 1][1] * alpha[3]) +
-                     X_low[p][idx][0];
+                    X_low[p][idx - 2][0] * alpha[0] -
+                    X_low[p][idx - 2][1] * alpha[1] +
+                    X_low[p][idx - 1][0] * alpha[2] -
+                    X_low[p][idx - 1][1] * alpha[3] +
+                    X_low[p][idx][0];
                 X_high[k][idx][1] =
-                    (X_low[p][idx - 2][1] * alpha[0] +
-                     X_low[p][idx - 2][0] * alpha[1]) +
-                    (X_low[p][idx - 1][1] * alpha[2] +
-                     X_low[p][idx - 1][0] * alpha[3]) +
-                     X_low[p][idx][1];
+                    X_low[p][idx - 2][1] * alpha[0] +
+                    X_low[p][idx - 2][0] * alpha[1] +
+                    X_low[p][idx - 1][1] * alpha[2] +
+                    X_low[p][idx - 1][0] * alpha[3] +
+                    X_low[p][idx][1];
             }
         }
     }
