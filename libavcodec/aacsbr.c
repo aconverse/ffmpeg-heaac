@@ -1409,6 +1409,7 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
     int k = sbr->k[4];
     for (i = 0; i < sbr->num_patches; i++) {
         for (x = 0; x < sbr->patch_num_subbands[i]; x++, k++) {
+            float alpha[4];
             const int p = sbr->patch_start_subband[i] + x;
             while (g <= sbr->n_q && k >= sbr->f_tablenoise[g])
                 g++;
@@ -1420,19 +1421,24 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
                 return -1;
             }
 
+            alpha[0] = alpha1[p][0] * bw_array[g] * bw_array[g];
+            alpha[1] = alpha1[p][1] * bw_array[g] * bw_array[g];
+            alpha[2] = alpha0[p][0] * bw_array[g];
+            alpha[3] = alpha0[p][1] * bw_array[g];
+
             for (l = 2 * t_env[0]; l < 2 * t_env[bs_num_env]; l++) {
                 const int idx = l + ENVELOPE_ADJUSTMENT_OFFSET;
                 X_high[k][idx][0] =
-                    (X_low[p][idx - 2][0] * alpha1[p][0] -
-                     X_low[p][idx - 2][1] * alpha1[p][1]) * bw_array[g] * bw_array[g] +
-                    (X_low[p][idx - 1][0] * alpha0[p][0] -
-                     X_low[p][idx - 1][1] * alpha0[p][1]) * bw_array[g] +
+                    (X_low[p][idx - 2][0] * alpha[0] -
+                     X_low[p][idx - 2][1] * alpha[1]) +
+                    (X_low[p][idx - 1][0] * alpha[2] -
+                     X_low[p][idx - 1][1] * alpha[3]) +
                      X_low[p][idx][0];
                 X_high[k][idx][1] =
-                    (X_low[p][idx - 2][1] * alpha1[p][0] +
-                     X_low[p][idx - 2][0] * alpha1[p][1]) * bw_array[g] * bw_array[g] +
-                    (X_low[p][idx - 1][1] * alpha0[p][0] +
-                     X_low[p][idx - 1][0] * alpha0[p][1]) * bw_array[g] +
+                    (X_low[p][idx - 2][1] * alpha[0] +
+                     X_low[p][idx - 2][0] * alpha[1]) +
+                    (X_low[p][idx - 1][1] * alpha[2] +
+                     X_low[p][idx - 1][0] * alpha[3]) +
                      X_low[p][idx][1];
             }
         }
