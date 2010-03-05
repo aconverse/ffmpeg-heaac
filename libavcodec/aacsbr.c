@@ -361,13 +361,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
         unsigned int dk;
         int k2diff;
 
-        if (!spectrum->bs_alter_scale) {
-            dk = 1;
-            sbr->n_master =  (sbr->k[2] - sbr->k[0]) & ~0x01;
-        } else {
-            dk = 2;
-            sbr->n_master = ((sbr->k[2] - sbr->k[0] + 2) >> 2) << 1;
-        }
+        dk = spectrum->bs_alter_scale + 1;
+        sbr->n_master = ((sbr->k[2] - sbr->k[0] + (dk&2)) >> dk) << 1;
 
         for (k = 1; k <= sbr->n_master; k++)
             sbr->f_master[k] = dk;
