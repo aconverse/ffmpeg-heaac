@@ -522,7 +522,7 @@ static int sbr_hf_calc_npatches(AACContext *ac, SpectralBandReplication *sbr)
         int odd = 0;
         for (i = k; i == k || sb > (sbr->k[0] - 1 + msb - odd); i--) {
             sb = sbr->f_master[i];
-            odd = (sb - 2 + sbr->k[0]) & 1;
+            odd = (sb + sbr->k[0]) & 1;
         }
 
         sbr->patch_num_subbands[sbr->num_patches]  = FFMAX(sb - usb, 0);
