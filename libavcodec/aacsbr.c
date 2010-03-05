@@ -606,6 +606,15 @@ static int sbr_make_f_derived(AACContext *ac, SpectralBandReplication *sbr)
     return 0;
 }
 
+static av_always_inline void get_bits1_vector(GetBitContext *gb, uint8_t *vec,
+                                              int elements)
+{
+    int i;
+    for (i = 0; i < elements; i++) {
+        vec[i] = get_bits1(gb);
+    }
+}
+
 /** ceil(log2(index+1)) */
 static const int8_t ceil_log2[] = {
     0, 1, 2, 2, 3, 3,
@@ -653,8 +662,7 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
 
         ch_data->bs_pointer = get_bits(gb, ceil_log2[ch_data->bs_num_env[1]]);
 
-        for (i = 0; i < ch_data->bs_num_env[1]; i++)
-            ch_data->bs_freq_res[i + 1] = get_bits1(gb);
+        get_bits1_vector(gb, ch_data->bs_freq_res + 1, ch_data->bs_num_env[1]);
         break;
     case VARVAR:
         ch_data->bs_var_bord[0] = get_bits(gb, 2);
@@ -670,8 +678,7 @@ static int sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
 
         ch_data->bs_pointer = get_bits(gb, ceil_log2[ch_data->bs_num_env[1]]);
 
-        for (i = 0; i < ch_data->bs_num_env[1]; i++)
-            ch_data->bs_freq_res[i + 1] = get_bits1(gb);
+        get_bits1_vector(gb, ch_data->bs_freq_res + 1, ch_data->bs_num_env[1]);
         break;
     }
 
@@ -714,12 +721,8 @@ static void sbr_grid_copy(SBRData *dst, const SBRData *src) {
 static void sbr_dtdf(SpectralBandReplication *sbr, GetBitContext *gb,
                      SBRData *ch_data)
 {
-    int i;
-
-    for (i = 0; i < ch_data->bs_num_env[1]; i++)
-        ch_data->bs_df_env[i]   = get_bits1(gb);
-    for (i = 0; i < ch_data->bs_num_noise; i++)
-        ch_data->bs_df_noise[i] = get_bits1(gb);
+    get_bits1_vector(gb, ch_data->bs_df_env,   ch_data->bs_num_env[1]);
+    get_bits1_vector(gb, ch_data->bs_df_noise, ch_data->bs_num_noise);
 }
 
 /// Read inverse filtering data
@@ -814,14 +817,6 @@ static void sbr_noise(SpectralBandReplication *sbr, GetBitContext *gb,
     }
 }
 
-static void sbr_sinusoidal_coding(SpectralBandReplication *sbr,
-                                  GetBitContext *gb, SBRData *ch_data)
-{
-    int i;
-    for (i = 0; i < sbr->n[1]; i++)
-        ch_data->bs_add_harmonic[i] = get_bits1(gb);
-}
-
 static void sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
                           GetBitContext *gb,
                           int bs_extension_id, int *num_bits_left)
@@ -859,7 +854,7 @@ static void sbr_single_channel_element(AACContext *ac,
     sbr_noise(sbr, gb, &sbr->data[0], 0);
 
     if ((sbr->data[0].bs_add_harmonic_flag = get_bits1(gb)))
-        sbr_sinusoidal_coding(sbr, gb, &sbr->data[0]);
+        get_bits1_vector(gb, sbr->data[0].bs_add_harmonic, sbr->n[1]);
 }
 
 static void sbr_channel_pair_element(AACContext *ac,
@@ -895,9 +890,9 @@ static void sbr_channel_pair_element(AACContext *ac,
     }
 
     if ((sbr->data[0].bs_add_harmonic_flag = get_bits1(gb)))
-        sbr_sinusoidal_coding(sbr, gb, &sbr->data[0]);
+        get_bits1_vector(gb, sbr->data[0].bs_add_harmonic, sbr->n[1]);
     if ((sbr->data[1].bs_add_harmonic_flag = get_bits1(gb)))
-        sbr_sinusoidal_coding(sbr, gb, &sbr->data[1]);
+        get_bits1_vector(gb, sbr->data[1].bs_add_harmonic, sbr->n[1]);
 }
 
 static unsigned int sbr_data(AACContext *ac, SpectralBandReplication *sbr,
