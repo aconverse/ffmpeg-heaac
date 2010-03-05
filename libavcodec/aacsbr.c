@@ -179,7 +179,7 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
         int16_t patch_borders[5];
 
         patch_borders[0] = sbr->k[4];
-        for (k=1; k <= sbr->num_patches; k++)
+        for (k = 1; k <= sbr->num_patches; k++)
             patch_borders[k] = patch_borders[k-1] + sbr->patch_num_subbands[k-1];
 
         memcpy(sbr->f_tablelim, sbr->f_tablelow,
@@ -226,11 +226,11 @@ static unsigned int read_sbr_header(SpectralBandReplication *sbr, GetBitContext 
     // Save last spectrum parameters variables to compare to new ones
     memcpy(&old_spectrum_params, &sbr->spectrum_params, sizeof(SpectrumParameters));
 
-    sbr->bs_amp_res_header                 = get_bits1(gb);
+    sbr->bs_amp_res_header              = get_bits1(gb);
     sbr->spectrum_params.bs_start_freq  = get_bits(gb, 4);
     sbr->spectrum_params.bs_stop_freq   = get_bits(gb, 4);
     sbr->spectrum_params.bs_xover_band  = get_bits(gb, 3);
-                                             skip_bits(gb, 2); // bs_reserved
+                                          skip_bits(gb, 2); // bs_reserved
 
     bs_header_extra_1 = get_bits1(gb);
     bs_header_extra_2 = get_bits1(gb);
@@ -246,8 +246,7 @@ static unsigned int read_sbr_header(SpectralBandReplication *sbr, GetBitContext 
     }
 
     // Check if spectrum parameters changed
-    if (memcmp(&old_spectrum_params, &sbr->spectrum_params,
-               sizeof(SpectrumParameters)))
+    if (memcmp(&old_spectrum_params, &sbr->spectrum_params, sizeof(SpectrumParameters)))
         sbr->reset = 1;
 
     if (bs_header_extra_2) {
@@ -262,9 +261,8 @@ static unsigned int read_sbr_header(SpectralBandReplication *sbr, GetBitContext 
         sbr->bs_smoothing_mode = 1;
     }
 
-    if (sbr->bs_limiter_bands != old_bs_limiter_bands && !sbr->reset) {
+    if (sbr->bs_limiter_bands != old_bs_limiter_bands && !sbr->reset)
         sbr_make_f_tablelim(sbr);
-    }
 
     return get_bits_count(gb) - cnt;
 }
@@ -621,7 +619,7 @@ static const int8_t ceil_log2[] = {
 };
 
 static int read_sbr_grid(AACContext *ac, SpectralBandReplication *sbr,
-                    GetBitContext *gb, SBRData *ch_data)
+                         GetBitContext *gb, SBRData *ch_data)
 {
     int i;
 
@@ -719,7 +717,7 @@ static void copy_sbr_grid(SBRData *dst, const SBRData *src) {
 
 /// Read how the envelope and noise floor data is delta coded
 static void read_sbr_dtdf(SpectralBandReplication *sbr, GetBitContext *gb,
-                     SBRData *ch_data)
+                          SBRData *ch_data)
 {
     get_bits1_vector(gb, ch_data->bs_df_env,   ch_data->bs_num_env[1]);
     get_bits1_vector(gb, ch_data->bs_df_noise, ch_data->bs_num_noise);
@@ -727,7 +725,7 @@ static void read_sbr_dtdf(SpectralBandReplication *sbr, GetBitContext *gb,
 
 /// Read inverse filtering data
 static void read_sbr_invf(SpectralBandReplication *sbr, GetBitContext *gb,
-                     SBRData *ch_data)
+                          SBRData *ch_data)
 {
     int i;
 
@@ -737,7 +735,7 @@ static void read_sbr_invf(SpectralBandReplication *sbr, GetBitContext *gb,
 }
 
 static void read_sbr_envelope(SpectralBandReplication *sbr, GetBitContext *gb,
-                         SBRData *ch_data, int ch)
+                              SBRData *ch_data, int ch)
 {
     int bits;
     int i, j, k;
@@ -748,13 +746,13 @@ static void read_sbr_envelope(SpectralBandReplication *sbr, GetBitContext *gb,
 
     if (sbr->bs_coupling && ch) {
         if (ch_data->bs_amp_res) {
-            bits = 5;
+            bits   = 5;
             t_huff = vlc_sbr[T_HUFFMAN_ENV_BAL_3_0DB].table;
             t_lav  = vlc_sbr_lav[T_HUFFMAN_ENV_BAL_3_0DB];
             f_huff = vlc_sbr[F_HUFFMAN_ENV_BAL_3_0DB].table;
             f_lav  = vlc_sbr_lav[F_HUFFMAN_ENV_BAL_3_0DB];
         } else {
-            bits = 6;
+            bits   = 6;
             t_huff = vlc_sbr[T_HUFFMAN_ENV_BAL_1_5DB].table;
             t_lav  = vlc_sbr_lav[T_HUFFMAN_ENV_BAL_1_5DB];
             f_huff = vlc_sbr[F_HUFFMAN_ENV_BAL_1_5DB].table;
@@ -762,13 +760,13 @@ static void read_sbr_envelope(SpectralBandReplication *sbr, GetBitContext *gb,
         }
     } else {
         if (ch_data->bs_amp_res) {
-            bits = 6;
+            bits   = 6;
             t_huff = vlc_sbr[T_HUFFMAN_ENV_3_0DB].table;
             t_lav  = vlc_sbr_lav[T_HUFFMAN_ENV_3_0DB];
             f_huff = vlc_sbr[F_HUFFMAN_ENV_3_0DB].table;
             f_lav  = vlc_sbr_lav[F_HUFFMAN_ENV_3_0DB];
         } else {
-            bits = 7;
+            bits   = 7;
             t_huff = vlc_sbr[T_HUFFMAN_ENV_1_5DB].table;
             t_lav  = vlc_sbr_lav[T_HUFFMAN_ENV_1_5DB];
             f_huff = vlc_sbr[F_HUFFMAN_ENV_1_5DB].table;
@@ -806,7 +804,7 @@ static void read_sbr_envelope(SpectralBandReplication *sbr, GetBitContext *gb,
 }
 
 static void read_sbr_noise(SpectralBandReplication *sbr, GetBitContext *gb,
-                      SBRData *ch_data, int ch)
+                           SBRData *ch_data, int ch)
 {
     int i, j;
     VLC_TYPE (*t_huff)[2], (*f_huff)[2];
@@ -842,7 +840,7 @@ static void read_sbr_noise(SpectralBandReplication *sbr, GetBitContext *gb,
 }
 
 static void read_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
-                          GetBitContext *gb,
+                               GetBitContext *gb,
                           int bs_extension_id, int *num_bits_left)
 {
 //TODO - implement ps_data for parametric stereo parsing
@@ -865,8 +863,8 @@ static void read_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
 }
 
 static void read_sbr_single_channel_element(AACContext *ac,
-                                       SpectralBandReplication *sbr,
-                                       GetBitContext *gb)
+                                            SpectralBandReplication *sbr,
+                                            GetBitContext *gb)
 {
     if (get_bits1(gb)) // bs_data_extra
         skip_bits(gb, 4); // bs_reserved
@@ -882,8 +880,8 @@ static void read_sbr_single_channel_element(AACContext *ac,
 }
 
 static void read_sbr_channel_pair_element(AACContext *ac,
-                                     SpectralBandReplication *sbr,
-                                     GetBitContext *gb)
+                                          SpectralBandReplication *sbr,
+                                          GetBitContext *gb)
 {
     if (get_bits1(gb))    // bs_data_extra
         skip_bits(gb, 8); // bs_reserved
@@ -920,7 +918,7 @@ static void read_sbr_channel_pair_element(AACContext *ac,
 }
 
 static unsigned int read_sbr_data(AACContext *ac, SpectralBandReplication *sbr,
-                             GetBitContext *gb, int id_aac)
+                                  GetBitContext *gb, int id_aac)
 {
     unsigned int cnt = get_bits_count(gb);
 
@@ -1092,7 +1090,7 @@ static void sbr_dequant(SpectralBandReplication *sbr, int id_aac)
     int ch;
 
     if (id_aac == TYPE_CPE && sbr->bs_coupling) {
-        float alpha = sbr->data[0].bs_amp_res ? 1.0f : 0.5f;
+        float alpha      = sbr->data[0].bs_amp_res ?  1.0f :  0.5f;
         float pan_offset = sbr->data[0].bs_amp_res ? 12.0f : 24.0f;
         for (l = 1; l <= sbr->data[0].bs_num_env[1]; l++) {
             for (k = 0; k < sbr->n[sbr->data[0].bs_freq_res[l]]; k++) {
@@ -1351,7 +1349,8 @@ static void sbr_chirp(SpectralBandReplication *sbr, SBRData *ch_data)
 
 /// Generate the subband filtered lowband
 static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
-                      float X_low[32][40][2], float W[2][32][32][2]) {
+                      float X_low[32][40][2], const float W[2][32][32][2])
+{
     int k, l;
     const int t_HFGen = 8;
     const int l_f = 32;
@@ -1373,8 +1372,9 @@ static int sbr_lf_gen(AACContext *ac, SpectralBandReplication *sbr,
 
 /// High Frequency Generator (14496-3 sp04 p215)
 static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
-                      float X_high[64][40][2], const float X_low[32][40][2], const float (*alpha0)[2],
-                      const float (*alpha1)[2], const float bw_array[5], const uint8_t *t_env,
+                      float X_high[64][40][2], const float X_low[32][40][2],
+                      const float (*alpha0)[2], const float (*alpha1)[2],
+                      const float bw_array[5], const uint8_t *t_env,
                       int bs_num_env)
 {
     int i, x, l;
@@ -1423,8 +1423,10 @@ static int sbr_hf_gen(AACContext *ac, SpectralBandReplication *sbr,
 }
 
 /// Generate the subband filtered lowband
-static int sbr_x_gen(SpectralBandReplication *sbr,
-                     float X[2][32][64], const float X_low[32][40][2], const float Y[2][38][64][2], int ch) {
+static int sbr_x_gen(SpectralBandReplication *sbr, float X[2][32][64],
+                     const float X_low[32][40][2], const float Y[2][38][64][2],
+                     int ch)
+{
     int k, l;
     const int l_f = 32;
     const int l_Temp = FFMAX(2*sbr->data[ch].t_env_num_env_old - l_f, 0);
@@ -1465,7 +1467,6 @@ static void sbr_mapping(AACContext *ac, SpectralBandReplication *sbr,
 {
     int i, l, m;
 
-    // The following is used for
     l_a[0] = -(l_a[1] != ch_data->bs_num_env[0]); // l_APrev
     l_a[1] = -1;
     if ((ch_data->bs_frame_class & 1) && ch_data->bs_pointer) { // FIXVAR or VARVAR and bs_pointer != 0
@@ -1762,7 +1763,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
                    sbr->data[ch].bw_array, sbr->data[ch].t_env,
                    sbr->data[ch].bs_num_env[1]);
 
-    // hf_adj
+        // hf_adj
         sbr_mapping(ac, sbr, &sbr->data[ch], sbr->data[ch].l_a);
         sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch]);
         sbr_gain_calc(ac, sbr, &sbr->data[ch], sbr->data[ch].l_a);
