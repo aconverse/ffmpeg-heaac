@@ -907,7 +907,8 @@ static unsigned int read_sbr_data(AACContext *ac, SpectralBandReplication *sbr,
     } else {
         av_log(ac->avccontext, AV_LOG_ERROR,
             "Invalid bitstream - cannot apply SBR to element type %d\n", id_aac);
-        return -1;
+        sbr->start = 0;
+        return get_bits_count(gb) - cnt;
     }
     if (get_bits1(gb)) { // bs_extended_data
         int num_bits_left = get_bits(gb, 4); // bs_extension_size
