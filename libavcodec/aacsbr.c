@@ -293,6 +293,22 @@ static void make_bands(int16_t* bands, int start, int stop, int num_bands)
     bands[num_bands-1] = stop - previous;
 }
 
+static int check_n_master(AVCodecContext *avccontext, int n_master, int bs_xover_band)
+{
+    // Requirements (14496-3 sp04 p205)
+    if (n_master <= 0) {
+        av_log(avccontext, AV_LOG_ERROR, "Invalid n_master: %d\n", n_master);
+        return -1;
+    }
+    if (bs_xover_band >= n_master) {
+        av_log(avccontext, AV_LOG_ERROR,
+               "Invalid bitstream, crossover band index beyond array bounds: %d\n",
+               bs_xover_band);
+        return -1;
+    }
+    return 0;
+}
+
 /// Master Frequency Band Table (14496-3 sp04 p194)
 static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
                              SpectrumParameters *spectrum)
@@ -377,6 +393,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         dk = spectrum->bs_alter_scale + 1;
         sbr->n_master = ((sbr->k[2] - sbr->k[0] + (dk&2)) >> dk) << 1;
+        if (check_n_master(ac->avccontext, sbr->n_master, sbr->spectrum_params.bs_xover_band))
+            return -1;
 
         for (k = 1; k <= sbr->n_master; k++)
             sbr->f_master[k] = dk;
@@ -393,11 +411,6 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
         for (k = 1; k <= sbr->n_master; k++)
             sbr->f_master[k] += sbr->f_master[k - 1];
 
-        // Requirements (14496-3 sp04 p205)
-        if (sbr->n_master <= 0) {
-            av_log(ac->avccontext, AV_LOG_ERROR, "Invalid n_master: %d\n", sbr->n_master);
-            return -1;
-        }
     } else {
         int half_bands = 7 - spectrum->bs_freq_scale;      // bs_freq_scale  = {1,2,3}
         int two_regions, num_bands_0;
@@ -466,6 +479,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
             }
 
             sbr->n_master = num_bands_0 + num_bands_1;
+            if (check_n_master(ac->avccontext, sbr->n_master, sbr->spectrum_params.bs_xover_band))
+                return -1;
             memcpy(&sbr->f_master[0],               vk0,
                    (num_bands_0 + 1) * sizeof(sbr->f_master[0]));
             memcpy(&sbr->f_master[num_bands_0 + 1], vk1 + 1,
@@ -473,15 +488,10 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         } else {
             sbr->n_master = num_bands_0;
+            if (check_n_master(ac->avccontext, sbr->n_master, sbr->spectrum_params.bs_xover_band))
+                return -1;
             memcpy(sbr->f_master, vk0, (num_bands_0 + 1) * sizeof(sbr->f_master[0]));
         }
-    }
-    // Requirements (14496-3 sp04 p205)
-    if (sbr->spectrum_params.bs_xover_band >= sbr->n_master) {
-        av_log(ac->avccontext, AV_LOG_ERROR,
-               "Invalid bitstream, crossover band index beyond array bounds: %d\n",
-               sbr->spectrum_params.bs_xover_band);
-        return -1;
     }
 
     return 0;
