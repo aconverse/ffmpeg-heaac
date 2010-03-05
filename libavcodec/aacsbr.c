@@ -708,6 +708,7 @@ static void sbr_grid_copy(SBRData *dst, const SBRData *src) {
     dst->bs_frame_class = src->bs_frame_class;
 }
 
+/// Read how the envelope and noise floor data is delta coded
 static void sbr_dtdf(SpectralBandReplication *sbr, GetBitContext *gb,
                      SBRData *ch_data)
 {
@@ -719,6 +720,7 @@ static void sbr_dtdf(SpectralBandReplication *sbr, GetBitContext *gb,
         ch_data->bs_df_noise[i] = get_bits1(gb);
 }
 
+/// Read inverse filtering data
 static void sbr_invf(SpectralBandReplication *sbr, GetBitContext *gb,
                      SBRData *ch_data)
 {
