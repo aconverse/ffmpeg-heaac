@@ -390,7 +390,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
         int vdk0_max, vdk1_min;
         int16_t vk0[49];
 
-        if (sbr->k[2] / (float)sbr->k[0] > 2.2449f) {
+        if (49 * sbr->k[2] > 110 * sbr->k[0]) {
             two_regions = 1;
             sbr->k[1] = 2 * sbr->k[0];
         } else {
