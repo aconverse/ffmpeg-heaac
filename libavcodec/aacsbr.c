@@ -740,9 +740,11 @@ static void read_sbr_envelope(SpectralBandReplication *sbr, GetBitContext *gb,
                          SBRData *ch_data, int ch)
 {
     int bits;
-    int i, j;
+    int i, j, k;
     VLC_TYPE (*t_huff)[2], (*f_huff)[2];
     int t_lav, f_lav;
+    const int delta = (ch == 1 && sbr->bs_coupling == 1) + 1;
+    const int odd = sbr->n[1] & 1;
 
     if (sbr->bs_coupling && ch) {
         if (ch_data->bs_amp_res) {
@@ -775,15 +777,32 @@ static void read_sbr_envelope(SpectralBandReplication *sbr, GetBitContext *gb,
     }
 
     for (i = 0; i < ch_data->bs_num_env[1]; i++) {
-        if (!ch_data->bs_df_env[i]) {
-            ch_data->bs_data_env[i][0] = get_bits(gb, bits); // bs_env_start_value_balance
-            for (j = 1; j < sbr->n[ch_data->bs_freq_res[i + 1]]; j++)
-                ch_data->bs_data_env[i][j] = get_vlc2(gb, f_huff, 9, 3) - f_lav;
+        if (ch_data->bs_df_env[i]) {
+            // bs_freq_res[0] == bs_freq_res[bs_num_env[1]] from prev frame
+            if (ch_data->bs_freq_res[i + 1] == ch_data->bs_freq_res[i]) {
+                for (j = 0; j < sbr->n[ch_data->bs_freq_res[i + 1]]; j++)
+                    ch_data->env_facs[i + 1][j] = ch_data->env_facs[i][j] + delta * (get_vlc2(gb, t_huff, 9, 3) - t_lav);
+            } else if (ch_data->bs_freq_res[i + 1]) {
+                for (j = 0; j < sbr->n[ch_data->bs_freq_res[i + 1]]; j++) {
+                    k = (j + odd) >> 1; // find k such that f_tablelow[k] <= f_tablehigh[j] < f_tablelow[k + 1]
+                    ch_data->env_facs[i + 1][j] = ch_data->env_facs[i][k] + delta * (get_vlc2(gb, t_huff, 9, 3) - t_lav);
+                }
+            } else {
+                for (j = 0; j < sbr->n[ch_data->bs_freq_res[i + 1]]; j++) {
+                    k = j ? 2*j - odd : 0; // find k such that f_tablehigh[k] == f_tablelow[j]
+                    ch_data->env_facs[i + 1][j] = ch_data->env_facs[i][k] + delta * (get_vlc2(gb, t_huff, 9, 3) - t_lav);
+                }
+            }
         } else {
-            for (j = 0; j < sbr->n[ch_data->bs_freq_res[i + 1]]; j++)
-                ch_data->bs_data_env[i][j] = get_vlc2(gb, t_huff, 9, 3) - t_lav;
+            ch_data->env_facs[i + 1][0] = delta * get_bits(gb, bits); // bs_env_start_value_balance
+            for (j = 1; j < sbr->n[ch_data->bs_freq_res[i + 1]]; j++)
+                ch_data->env_facs[i + 1][j] = ch_data->env_facs[i + 1][j - 1] + delta * (get_vlc2(gb, f_huff, 9, 3) - f_lav);
         }
     }
+
+    //assign 0th elements of env_facs from last elements
+    memcpy(ch_data->env_facs[0], ch_data->env_facs[ch_data->bs_num_env[1]],
+           sizeof(ch_data->env_facs[0]));
 }
 
 static void read_sbr_noise(SpectralBandReplication *sbr, GetBitContext *gb,
@@ -792,6 +811,7 @@ static void read_sbr_noise(SpectralBandReplication *sbr, GetBitContext *gb,
     int i, j;
     VLC_TYPE (*t_huff)[2], (*f_huff)[2];
     int t_lav, f_lav;
+    int delta = (ch == 1 && sbr->bs_coupling == 1) + 1;
 
     if (sbr->bs_coupling && ch) {
         t_huff = vlc_sbr[T_HUFFMAN_NOISE_BAL_3_0DB].table;
@@ -806,15 +826,19 @@ static void read_sbr_noise(SpectralBandReplication *sbr, GetBitContext *gb,
     }
 
     for (i = 0; i < ch_data->bs_num_noise; i++) {
-        if (!ch_data->bs_df_noise[i]) {
-            ch_data->bs_data_noise[i][0] = get_bits(gb, 5); // bs_noise_start_value_balance or bs_noise_start_value_level
-            for (j = 1; j < sbr->n_q; j++)
-                ch_data->bs_data_noise[i][j] = get_vlc2(gb, f_huff, 9, 3) - f_lav;
-        } else {
+        if (ch_data->bs_df_noise[i]) {
             for (j = 0; j < sbr->n_q; j++)
-                ch_data->bs_data_noise[i][j] = get_vlc2(gb, t_huff, 9, 2) - t_lav;
+                ch_data->noise_facs[i + 1][j] = ch_data->noise_facs[i][j] + delta * (get_vlc2(gb, t_huff, 9, 2) - t_lav);
+        } else {
+            ch_data->noise_facs[i + 1][0] = delta * get_bits(gb, 5); // bs_noise_start_value_balance or bs_noise_start_value_level
+            for (j = 1; j < sbr->n_q; j++)
+                ch_data->noise_facs[i + 1][j] = ch_data->noise_facs[i + 1][j - 1] + delta * (get_vlc2(gb, f_huff, 9, 3) - f_lav);
         }
     }
+
+    //assign 0th elements of noise_facs from last elements
+    memcpy(ch_data->noise_facs[0], ch_data->noise_facs[ch_data->bs_num_noise],
+           sizeof(ch_data->noise_facs[0]));
 }
 
 static void read_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
@@ -1059,55 +1083,6 @@ static int sbr_time_freq_grid(AACContext *ac, SpectralBandReplication *sbr,
         ch_data->t_q[1] = ch_data->t_env[ch_data->bs_num_env[1]];
 
     return 0;
-}
-
-/// SBR Envelope and Noise Floor Decoding (14496-3 sp04 p201)
-static void sbr_env_noise_floors(SpectralBandReplication *sbr, SBRData *ch_data,
-                                 int ch)
-{
-    int delta = (ch == 1 && sbr->bs_coupling == 1) + 1;
-    int i, k, l;
-    const int temp = sbr->n[1] & 1;
-    for (l = 0; l < ch_data->bs_num_env[1]; l++) {
-        if (ch_data->bs_df_env[l]) {
-            // bs_freq_res[0] == bs_freq_res[bs_num_env[1]] from prev frame
-            if (ch_data->bs_freq_res[l + 1] == ch_data->bs_freq_res[l]) {
-                for (k = 0; k < sbr->n[ch_data->bs_freq_res[l + 1]]; k++)
-                    ch_data->env_facs[l + 1][k] = ch_data->env_facs[l][k] + delta * ch_data->bs_data_env[l][k];
-            } else if (ch_data->bs_freq_res[l + 1]) {
-                for (k = 0; k < sbr->n[ch_data->bs_freq_res[l + 1]]; k++) {
-                    i = (k + temp) >> 1; // find i such that f_tablelow[i] <= f_tablehigh[k] < f_tablelow[i + 1]
-                    ch_data->env_facs[l + 1][k] = ch_data->env_facs[l][i] + delta * ch_data->bs_data_env[l][k];
-                }
-            } else {
-                for (k = 0; k < sbr->n[ch_data->bs_freq_res[l + 1]]; k++) {
-                    i = k ? 2*k - temp : 0; // find i such that f_tablehigh[i] == f_tablelow[k]
-                    ch_data->env_facs[l + 1][k] = ch_data->env_facs[l][i] + delta * ch_data->bs_data_env[l][k];
-                }
-            }
-        } else {
-            ch_data->env_facs[l + 1][0] = delta * ch_data->bs_data_env[l][0];
-            for (k = 1; k < sbr->n[ch_data->bs_freq_res[l + 1]]; k++)
-                ch_data->env_facs[l + 1][k] = ch_data->env_facs[l + 1][k - 1] + delta * ch_data->bs_data_env[l][k];
-        }
-    }
-
-    for (l = 0; l < ch_data->bs_num_noise; l++) {
-        if (ch_data->bs_df_noise[l])
-            for (k = 0; k < sbr->n_q; k++)
-                ch_data->noise_facs[l + 1][k] = ch_data->noise_facs[l][k] + delta * ch_data->bs_data_noise[l][k];
-        else {
-            ch_data->noise_facs[l + 1][0] = delta * ch_data->bs_data_noise[l][0];
-            for (k = 1; k < sbr->n_q; k++)
-                ch_data->noise_facs[l + 1][k] = ch_data->noise_facs[l + 1][k - 1] + delta * ch_data->bs_data_noise[l][k];
-        }
-    }
-
-    //assign 0th elements of (env|noise)_facs from last elements
-    memcpy(  ch_data->env_facs[0],   ch_data->env_facs[ch_data->bs_num_env[1]],
-           sizeof(  ch_data->env_facs[0]));
-    memcpy(ch_data->noise_facs[0], ch_data->noise_facs[ch_data->bs_num_noise ],
-           sizeof(ch_data->noise_facs[0]));
 }
 
 /// Dequantization and stereo decoding (14496-3 sp04 p203)
@@ -1765,7 +1740,6 @@ void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
     if (sbr->start) {
         for (ch = 0; ch < (id_aac == TYPE_CPE) + 1; ch++) {
             sbr_time_freq_grid(ac, sbr, &sbr->data[ch], ch);
-            sbr_env_noise_floors(sbr, &sbr->data[ch], ch);
         }
         sbr_dequant(sbr, id_aac);
     }
