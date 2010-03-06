@@ -19,11 +19,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config.h"
+
 #undef HAVE_AV_CONFIG_H
 #include "libavformat/avformat.h"
 #include "libavcodec/avcodec.h"
 #include "libavcodec/opt.h"
 #include "libavutil/pixdesc.h"
+#include "libavdevice/avdevice.h"
 #include "cmdutils.h"
 
 const char program_name[] = "FFprobe";
@@ -318,8 +321,8 @@ static void opt_pretty(void)
 static const OptionDef options[] = {
 #include "cmdutils_common_opts.h"
     { "f", HAS_ARG, {(void*)opt_format}, "force format", "format" },
-    { "unit",          OPT_BOOL, {(void*)&show_value_unit},   "show unit of the displayed values" },
-    { "prefix",        OPT_BOOL, {(void*)&use_value_prefix}, "use SI prefixes for the displayed values"  },
+    { "unit", OPT_BOOL, {(void*)&show_value_unit}, "show unit of the displayed values" },
+    { "prefix", OPT_BOOL, {(void*)&use_value_prefix}, "use SI prefixes for the displayed values" },
     { "byte_binary_prefix", OPT_BOOL, {(void*)&use_byte_value_binary_prefix},
       "use binary prefixes for byte units" },
     { "sexagesimal", OPT_BOOL,  {(void*)&use_value_sexagesimal_format},
@@ -327,13 +330,16 @@ static const OptionDef options[] = {
     { "pretty", 0, {(void*)&opt_pretty},
       "prettify the format of displayed values, make it more human readable" },
     { "show_format",  OPT_BOOL, {(void*)&do_show_format} , "show format/container info" },
-    { "show_streams", OPT_BOOL, {(void*)&do_show_streams}, "show streams info"          },
+    { "show_streams", OPT_BOOL, {(void*)&do_show_streams}, "show streams info" },
     { NULL, },
 };
 
 int main(int argc, char **argv)
 {
     av_register_all();
+#if CONFIG_AVDEVICE
+    avdevice_register_all();
+#endif
 
     show_banner();
     parse_options(argc, argv, options, opt_input_file);

@@ -32,6 +32,8 @@
 #define ALT_BITSTREAM_READER_LE
 #include "get_bits.h"
 #include "dsputil.h"
+#include "fft.h"
+
 extern const uint16_t ff_wma_critical_freqs[25];
 
 #define MAX_CHANNELS 2
@@ -49,8 +51,8 @@ typedef struct {
     int num_bands;
     unsigned int *bands;
     float root;
-    DECLARE_ALIGNED_16(FFTSample, coeffs)[BINK_BLOCK_MAX_SIZE];
-    DECLARE_ALIGNED_16(short, previous)[BINK_BLOCK_MAX_SIZE / 16];  ///< coeffs from previous audio block
+    DECLARE_ALIGNED(16, FFTSample, coeffs)[BINK_BLOCK_MAX_SIZE];
+    DECLARE_ALIGNED(16, short, previous)[BINK_BLOCK_MAX_SIZE / 16];  ///< coeffs from previous audio block
     float *coeffs_ptr[MAX_CHANNELS]; ///< pointers to the coeffs arrays for float_to_int16_interleave
     union {
         RDFTContext rdft;

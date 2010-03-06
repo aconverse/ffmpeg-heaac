@@ -70,10 +70,10 @@ enum {
 static VLC vlc_sbr[10];
 static const int8_t vlc_sbr_lav[10] =
     { 60, 60, 24, 24, 31, 31, 12, 12, 31, 12 };
-static DECLARE_ALIGNED_16(float, analysis_cos_pre)[64];
-static DECLARE_ALIGNED_16(float, analysis_sin_pre)[64];
-static DECLARE_ALIGNED_16(float, analysis_cossin_post)[32][2];
-static const DECLARE_ALIGNED_16(float, zero64)[64];
+static DECLARE_ALIGNED(16, float, analysis_cos_pre)[64];
+static DECLARE_ALIGNED(16, float, analysis_sin_pre)[64];
+static DECLARE_ALIGNED(16, float, analysis_cossin_post)[32][2];
+static const DECLARE_ALIGNED(16, float, zero64)[64];
 
 #define SBR_INIT_VLC_STATIC(num, size) \
     INIT_VLC_STATIC(&vlc_sbr[num], 9, sbr_tmp[num].table_size / sbr_tmp[num].elem_size,     \
