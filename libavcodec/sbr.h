@@ -30,6 +30,7 @@
 #define AVCODEC_SBR_H
 
 #include <stdint.h>
+#include "fft.h"
 
 /**
  * Spectral Band Replication header - spectrum parameters that invoke a reset if they differ from the previous header.
