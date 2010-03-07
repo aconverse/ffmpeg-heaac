@@ -83,7 +83,7 @@ typedef struct {
     DECLARE_ALIGNED(16, float, synthesis_filterbank_samples)[SBR_SYNTHESIS_BUF_SIZE];
     DECLARE_ALIGNED(16, float, analysis_filterbank_samples) [1312];
     int                synthesis_filterbank_samples_offset;
-    int                l_a[2];
+    int                e_a[2];
     float              bw_array[5];
     float              W[2][32][32][2];
     float              Y[2][38][64][2];
