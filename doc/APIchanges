@@ -12,6 +12,12 @@ libavutil:   2009-03-08
 
 API changes, most recent first:
 
+2010-03-07 - r22291 - lavc 52.56.0 - avfft.h
+  Add public FFT interface.
+
+2010-03-06 - r22251 - lavu 50.11.0 - av_stristr()
+  Add av_stristr().
+
 2010-03-03 - r22174 - lavu 50.10.0 - av_tree_enumerate()
   Add av_tree_enumerate().
 

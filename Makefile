@@ -49,7 +49,7 @@ INSTALL_PROGS_TARGETS-$(CONFIG_SHARED) = install-libs
 all: $(FF_DEP_LIBS) $(PROGS) $(ALL_TARGETS-yes)
 
 $(PROGS): %$(EXESUF): %_g$(EXESUF)
-	cp -p $< $@
+	$(CP) $< $@
 	$(STRIP) $@
 
 SUBDIR_VARS := OBJS FFLIBS CLEANFILES DIRS TESTPROGS EXAMPLES SKIPHEADERS \
@@ -104,16 +104,16 @@ doc/%.1: doc/%.pod
 install: $(INSTALL_TARGETS-yes)
 
 install-progs: $(PROGS) $(INSTALL_PROGS_TARGETS-yes)
-	install -d "$(BINDIR)"
-	install -c -m 755 $(PROGS) "$(BINDIR)"
+	$(Q)mkdir -p "$(BINDIR)"
+	$(INSTALL) -c -m 755 $(PROGS) "$(BINDIR)"
 
 install-data: $(DATA_FILES)
-	install -d "$(DATADIR)"
-	install -m 644 $(DATA_FILES) "$(DATADIR)"
+	$(Q)mkdir -p "$(DATADIR)"
+	$(INSTALL) -m 644 $(DATA_FILES) "$(DATADIR)"
 
 install-man: $(MANPAGES)
-	install -d "$(MANDIR)/man1"
-	install -m 644 $(MANPAGES) "$(MANDIR)/man1"
+	$(Q)mkdir -p "$(MANDIR)/man1"
+	$(INSTALL) -m 644 $(MANPAGES) "$(MANDIR)/man1"
 
 uninstall: uninstall-progs uninstall-data uninstall-man
 

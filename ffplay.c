@@ -30,7 +30,7 @@
 #include "libavcodec/audioconvert.h"
 #include "libavcodec/colorspace.h"
 #include "libavcodec/opt.h"
-#include "libavcodec/fft.h"
+#include "libavcodec/avfft.h"
 
 #if CONFIG_AVFILTER
 # include "libavfilter/avfilter.h"
@@ -165,7 +165,7 @@ typedef struct VideoState {
     int16_t sample_array[SAMPLE_ARRAY_SIZE];
     int sample_array_index;
     int last_i_start;
-    RDFTContext rdft;
+    RDFTContext *rdft;
     int rdft_bits;
     int xpos;
 
@@ -905,8 +905,8 @@ static void video_audio_display(VideoState *s)
     }else{
         nb_display_channels= FFMIN(nb_display_channels, 2);
         if(rdft_bits != s->rdft_bits){
-            ff_rdft_end(&s->rdft);
-            ff_rdft_init(&s->rdft, rdft_bits, RDFT);
+            av_rdft_end(s->rdft);
+            s->rdft = av_rdft_init(rdft_bits, DFT_R2C);
             s->rdft_bits= rdft_bits;
         }
         {
@@ -920,7 +920,7 @@ static void video_audio_display(VideoState *s)
                     if (i >= SAMPLE_ARRAY_SIZE)
                         i -= SAMPLE_ARRAY_SIZE;
                 }
-                ff_rdft_calc(&s->rdft, data[ch]);
+                av_rdft_calc(s->rdft, data[ch]);
             }
             //least efficient way to do this, we should of course directly access it but its more than fast enough
             for(y=0; y<s->height; y++){
@@ -1442,17 +1442,8 @@ static int output_picture2(VideoState *is, AVFrame *src_frame, double pts1, int6
     is->video_clock += frame_delay;
 
 #if defined(DEBUG_SYNC) && 0
-    {
-        int ftype;
-        if (src_frame->pict_type == FF_B_TYPE)
-            ftype = 'B';
-        else if (src_frame->pict_type == FF_I_TYPE)
-            ftype = 'I';
-        else
-            ftype = 'P';
-        printf("frame_type=%c clock=%0.3f pts=%0.3f\n",
-               ftype, pts, pts1);
-    }
+    printf("frame_type=%c clock=%0.3f pts=%0.3f\n",
+           av_get_pict_type_char(src_frame->pict_type), pts, pts1);
 #endif
     return queue_picture(is, src_frame, pts, pos);
 }

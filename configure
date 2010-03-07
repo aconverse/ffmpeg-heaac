@@ -1486,7 +1486,7 @@ SLIBSUF=".so"
 SLIBNAME='$(SLIBPREF)$(FULLNAME)$(SLIBSUF)'
 SLIBNAME_WITH_VERSION='$(SLIBNAME).$(LIBVERSION)'
 SLIBNAME_WITH_MAJOR='$(SLIBNAME).$(LIBMAJOR)'
-LIB_INSTALL_EXTRA_CMD='$(RANLIB) "$(LIBDIR)/$(LIBNAME)"'
+LIB_INSTALL_EXTRA_CMD='$$(RANLIB) "$(LIBDIR)/$(LIBNAME)"'
 
 CC_O='-o $@'
 
@@ -1862,8 +1862,8 @@ if test -n "$sysroot"; then
             add_ldflags  --sysroot="$sysroot"
         ;;
         clang)
-            add_cppflags -isysroot="$sysroot"
-            add_ldflags -isysroot="$sysroot"
+            add_cppflags -isysroot "$sysroot"
+            add_ldflags -isysroot "$sysroot"
         ;;
     esac
 fi
@@ -2751,6 +2751,7 @@ elif enabled ccc; then
     add_cflags -msg_disable unreachcode
 elif enabled gcc; then
     check_cflags -fno-tree-vectorize
+    check_cflags -Werror=implicit
 elif enabled clang; then
     check_cflags -Qunused-arguments
 elif enabled armcc; then
@@ -2966,8 +2967,10 @@ AS=$as
 LD=$ld
 DEPCC=$dep_cc
 YASM=$yasmexe
+YASMDEP=$yasmexe
 AR=$ar
 RANLIB=$ranlib
+CP=cp -p
 LN_S=$ln_s
 STRIP=$strip
 CPPFLAGS=$CPPFLAGS
@@ -3003,6 +3006,7 @@ SDL_LIBS=$sdl_libs
 SDL_CFLAGS=$sdl_cflags
 LIB_INSTALL_EXTRA_CMD=$LIB_INSTALL_EXTRA_CMD
 EXTRALIBS=$extralibs
+INSTALL=install
 EOF
 
 get_version(){

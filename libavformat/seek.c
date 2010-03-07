@@ -22,10 +22,10 @@
 
 #include "seek.h"
 #include "libavutil/mem.h"
+#include "internal.h"
 
 // NOTE: implementation should be moved here in another patch, to keep patches
 // separated.
-extern void av_read_frame_flush(AVFormatContext *s);
 
 /**
  * helper structure describing keyframe search state of one stream
