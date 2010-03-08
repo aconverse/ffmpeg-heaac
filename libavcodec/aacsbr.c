@@ -115,7 +115,6 @@ av_cold void ff_aac_sbr_init(void)
     SBR_INIT_VLC_STATIC(8, 592);
     SBR_INIT_VLC_STATIC(9, 512);
 
-
     for (n = 0; n < 64; n++) {
         float pre = M_PI * n / 64;
         analysis_cos_pre[n] = cosf(pre);
@@ -131,9 +130,8 @@ av_cold void ff_aac_sbr_init(void)
     sbr_qmf_window_us[384] = -sbr_qmf_window_us[384];
     sbr_qmf_window_us[512] = -sbr_qmf_window_us[512];
 
-    for (n = 0; n < 320; n++) {
+    for (n = 0; n < 320; n++)
         sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
-    }
 }
 
 av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
