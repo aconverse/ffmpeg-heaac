@@ -703,8 +703,8 @@ static void copy_sbr_grid(SBRData *dst, const SBRData *src) {
     dst->bs_num_env[0]  = dst->bs_num_env[1];
 
     //These variables are read from the bitstream and therefore copied
-    memcpy(dst->bs_freq_res+1, src->bs_freq_res+1, sizeof(dst->bs_freq_res)-1);
-    memcpy(dst->bs_num_env+1,  src->bs_num_env+1,  sizeof(dst->bs_num_env)-1);
+    memcpy(dst->bs_freq_res+1, src->bs_freq_res+1, sizeof(dst->bs_freq_res)-sizeof(*dst->bs_freq_res));
+    memcpy(dst->bs_num_env+1,  src->bs_num_env+1,  sizeof(dst->bs_num_env)- sizeof(*dst->bs_num_env));
     memcpy(dst->bs_var_bord,   src->bs_var_bord,   sizeof(dst->bs_var_bord));
     memcpy(dst->bs_rel_bord,   src->bs_rel_bord,   sizeof(dst->bs_rel_bord));
     memcpy(dst->bs_num_rel,    src->bs_num_rel,    sizeof(dst->bs_rel_bord));
