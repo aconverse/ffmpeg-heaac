@@ -453,8 +453,8 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
 
         if (two_regions) {
             int16_t vk1[49];
-            float invwarp = spectrum->bs_alter_scale ? 0.76923076923076923077
-                                                     : 1.0; // bs_alter_scale = {0,1}
+            float invwarp = spectrum->bs_alter_scale ? 0.76923076923076923077f
+                                                     : 1.0f; // bs_alter_scale = {0,1}
             int num_bands_1 = lrintf(half_bands * invwarp *
                                      log2f(sbr->k[2] / (float)sbr->k[1])) * 2;
 
