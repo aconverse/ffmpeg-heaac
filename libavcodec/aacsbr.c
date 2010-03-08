@@ -154,13 +154,6 @@ static int qsort_comparison_function_int16(const void *a, const void *b)
     return *(const int16_t *)a - *(const int16_t *)b;
 }
 
-static inline void remove_table_element_int16(int16_t *table, unsigned *last_el,
-                                        int el)
-{
-    memmove(table + el, table + el + 1, (*last_el - el)*sizeof(int16_t));
-    (*last_el)--;
-}
-
 static inline int in_table_int16(const int16_t *table, int last_el, int16_t needle)
 {
     int i;
@@ -180,6 +173,7 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
                                                1.11987160404675912501f }; //2^(0.49/3)
         const float lim_bands_per_octave_warped = bands_warped[sbr->bs_limiter_bands - 1];
         int16_t patch_borders[5];
+        uint16_t *in = sbr->f_tablelim + 1, *out = sbr->f_tablelim;
 
         patch_borders[0] = sbr->kx[1];
         for (k = 1; k <= sbr->num_patches; k++)
@@ -195,19 +189,20 @@ static void sbr_make_f_tablelim(SpectralBandReplication *sbr)
               sizeof(sbr->f_tablelim[0]),
               qsort_comparison_function_int16);
 
-        k = 1;
         sbr->n_lim = sbr->n[0] + sbr->num_patches - 1;
-        while (k <= sbr->n_lim) {
-            // if ( nOctaves * limBands >= 0.49) ...
-            if (sbr->f_tablelim[k] >= sbr->f_tablelim[k-1] * lim_bands_per_octave_warped)
-                k++;
-            else if (sbr->f_tablelim[k] == sbr->f_tablelim[k-1] ||
-                !in_table_int16(patch_borders, sbr->num_patches, sbr->f_tablelim[k]))
-                remove_table_element_int16(sbr->f_tablelim, &sbr->n_lim, k);
-            else if (!in_table_int16(patch_borders, sbr->num_patches, sbr->f_tablelim[k-1]))
-                remove_table_element_int16(sbr->f_tablelim, &sbr->n_lim, k-1);
-            else
-                k++;
+        while (out < sbr->f_tablelim + sbr->n_lim) {
+            if (*in >= *out * lim_bands_per_octave_warped) {
+                *++out = *in++;
+            } else if (*in == *out ||
+                !in_table_int16(patch_borders, sbr->num_patches, *in)) {
+                in++;
+                sbr->n_lim--;
+            } else if (!in_table_int16(patch_borders, sbr->num_patches, *out)) {
+                *out = *in++;
+                sbr->n_lim--;
+            } else {
+                *++out = *in++;
+            }
         }
     } else {
         sbr->f_tablelim[0] = sbr->f_tablelow[0];
