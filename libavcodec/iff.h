@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2002 Michael Niedermayer
+ * IFF PBM/ILBM bitmap decoder
+ * Copyright (c) 2010 Peter Ross <pross@xvid.org>
  *
  * This file is part of FFmpeg.
  *
@@ -18,21 +19,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavcodec/avcodec.h"
-#include "libavcodec/dsputil.h"
-#include "libavcodec/mpegvideo.h"
-#include "mpegvideo_arm.h"
+#ifndef AVCODEC_IFF_H
+#define AVCODEC_IFF_H
 
-void MPV_common_init_arm(MpegEncContext *s)
-{
-    /* IWMMXT support is a superset of armv5te, so
-     * allow optimized functions for armv5te unless
-     * a better iwmmxt function exists
-     */
-#if HAVE_ARMV5TE
-    MPV_common_init_armv5te(s);
-#endif
-#if HAVE_IWMMXT
-    MPV_common_init_iwmmxt(s);
-#endif
-}
+#include <stdint.h>
+#include "avcodec.h"
+
+int ff_cmap_read_palette(AVCodecContext *avctx, uint32_t *pal);
+
+#endif /* AVCODEC_IFF_H */
