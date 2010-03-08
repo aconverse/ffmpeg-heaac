@@ -319,7 +319,7 @@ static int sbr_make_f_master(AACContext *ac, SpectralBandReplication *sbr,
     unsigned int temp, max_qmf_subbands;
     unsigned int start_min, stop_min;
     int k;
-    const uint8_t *sbr_offset_ptr;
+    const int8_t *sbr_offset_ptr;
     int16_t stop_dk[13];
 
     if (sbr->sample_rate < 32000) {

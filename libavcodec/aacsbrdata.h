@@ -256,7 +256,7 @@ static const uint8_t t_huffman_noise_bal_3_0dB_codes[25] = {
     0xff,
 };
 
-static const uint8_t sbr_offset[6][16] = {
+static const int8_t sbr_offset[6][16] = {
     {-8, -7, -6, -5, -4, -3, -2, -1,  0,  1,  2,  3,  4,  5,  6,  7}, //             fs_sbr  = 16000 Hz
     {-5, -4, -3, -2, -1,  0,  1,  2,  3,  4,  5,  6,  7,  9, 11, 13}, //             fs_sbr  = 22050 Hz
     {-5, -3, -2, -1,  0,  1,  2,  3,  4,  5,  6,  7,  9, 11, 13, 16}, //             fs_sbr  = 24000 Hz
