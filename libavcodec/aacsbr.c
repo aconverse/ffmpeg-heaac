@@ -126,6 +126,11 @@ av_cold void ff_aac_sbr_init(void)
         analysis_cossin_post[k][0] =  4.0 * cosf(post);
         analysis_cossin_post[k][1] = -4.0 * sinf(post);
     }
+    for (n = 1; n < 320; n++)
+        sbr_qmf_window_us[320 + n] = sbr_qmf_window_us[320 - n];
+    sbr_qmf_window_us[384] = -sbr_qmf_window_us[384];
+    sbr_qmf_window_us[512] = -sbr_qmf_window_us[512];
+
     for (n = 0; n < 320; n++) {
         sbr_qmf_window_ds[n] = sbr_qmf_window_us[2*n];
     }
