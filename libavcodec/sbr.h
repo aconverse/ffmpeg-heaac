@@ -119,7 +119,8 @@ typedef struct {
     unsigned           bs_smoothing_mode;
     /** @} */
     unsigned           bs_coupling;
-    unsigned           k[5]; ///< k0, k1, k2, kx', and kx respectively
+    unsigned           k[5]; ///< k0, k1, k2
+    unsigned           kx[2];///< kx', and kx respectively
     unsigned           m[2]; ///< M' and M respectively
     unsigned           n_master;
     SBRData            data[2];
