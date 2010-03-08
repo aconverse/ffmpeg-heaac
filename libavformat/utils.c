@@ -465,12 +465,71 @@ int av_open_input_stream(AVFormatContext **ic_ptr,
 #define PROBE_BUF_MIN 2048
 #define PROBE_BUF_MAX (1<<20)
 
+int ff_probe_input_buffer(ByteIOContext **pb, AVInputFormat **fmt,
+                          const char *filename, void *logctx,
+                          unsigned int offset, unsigned int max_probe_size)
+{
+    AVProbeData pd = { filename ? filename : "", NULL, -offset };
+    unsigned char *buf = NULL;
+    int probe_size;
+
+    if (!max_probe_size) {
+        max_probe_size = PROBE_BUF_MAX;
+    } else if (max_probe_size > PROBE_BUF_MAX) {
+        max_probe_size = PROBE_BUF_MAX;
+    } else if (max_probe_size < PROBE_BUF_MIN) {
+        return AVERROR(EINVAL);
+    }
+
+    if (offset >= max_probe_size) {
+        return AVERROR(EINVAL);
+    }
+
+    for(probe_size= PROBE_BUF_MIN; probe_size<=max_probe_size && !*fmt; probe_size<<=1){
+        int ret, score = probe_size < max_probe_size ? AVPROBE_SCORE_MAX/4 : 0;
+        int buf_offset = (probe_size == PROBE_BUF_MIN) ? 0 : probe_size>>1;
+
+        if (probe_size < offset) {
+            continue;
+        }
+
+        /* read probe data */
+        buf = av_realloc(buf, probe_size + AVPROBE_PADDING_SIZE);
+        if ((ret = get_buffer(*pb, buf + buf_offset, probe_size - buf_offset)) < 0) {
+            av_free(buf);
+            return ret;
+        }
+        pd.buf_size += ret;
+        pd.buf = &buf[offset];
+
+        memset(pd.buf + pd.buf_size, 0, AVPROBE_PADDING_SIZE);
+
+        /* guess file format */
+        *fmt = av_probe_input_format2(&pd, 1, &score);
+        if(*fmt){
+            if(score <= AVPROBE_SCORE_MAX/4){ //this can only be true in the last iteration
+                av_log(logctx, AV_LOG_WARNING, "Format detected only with low score of %d, misdetection possible!\n", score);
+            }else
+                av_log(logctx, AV_LOG_DEBUG, "Probed with size=%d and score=%d\n", probe_size, score);
+        }
+    }
+
+    av_free(buf);
+    if (url_fseek(*pb, 0, SEEK_SET) < 0) {
+        url_fclose(*pb);
+        if (url_fopen(pb, filename, URL_RDONLY) < 0)
+            return AVERROR(EIO);
+    }
+
+    return 0;
+}
+
 int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
                        AVInputFormat *fmt,
                        int buf_size,
                        AVFormatParameters *ap)
 {
-    int err, probe_size;
+    int err;
     AVProbeData probe_data, *pd = &probe_data;
     ByteIOContext *pb = NULL;
     void *logctx= ap && ap->prealloced_context ? *ic_ptr : NULL;
@@ -496,37 +555,9 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
         if (buf_size > 0) {
             url_setbufsize(pb, buf_size);
         }
-
-        for(probe_size= PROBE_BUF_MIN; probe_size<=PROBE_BUF_MAX && !fmt; probe_size<<=1){
-            int score= probe_size < PROBE_BUF_MAX ? AVPROBE_SCORE_MAX/4 : 0;
-            /* read probe data */
-            pd->buf= av_realloc(pd->buf, probe_size + AVPROBE_PADDING_SIZE);
-            pd->buf_size = get_buffer(pb, pd->buf, probe_size);
-
-            if ((int)pd->buf_size < 0) {
-                err = pd->buf_size;
-                goto fail;
-            }
-
-            memset(pd->buf+pd->buf_size, 0, AVPROBE_PADDING_SIZE);
-            if (url_fseek(pb, 0, SEEK_SET) < 0) {
-                url_fclose(pb);
-                if (url_fopen(&pb, filename, URL_RDONLY) < 0) {
-                    pb = NULL;
-                    err = AVERROR(EIO);
-                    goto fail;
-                }
-            }
-            /* guess file format */
-            fmt = av_probe_input_format2(pd, 1, &score);
-            if(fmt){
-                if(score <= AVPROBE_SCORE_MAX/4){ //this can only be true in the last iteration
-                    av_log(logctx, AV_LOG_WARNING, "Format detected only with low score of %d, misdetection possible!\n", score);
-                }else
-                    av_log(logctx, AV_LOG_DEBUG, "Probed with size=%d and score=%d\n", probe_size, score);
-            }
+        if ((err = ff_probe_input_buffer(&pb, &fmt, filename, logctx, 0, 0)) < 0) {
+            goto fail;
         }
-        av_freep(&pd->buf);
     }
 
     /* if still no format found, error */
@@ -2085,6 +2116,11 @@ int av_find_stream_info(AVFormatContext *ic)
 
     for(i=0;i<ic->nb_streams;i++) {
         st = ic->streams[i];
+        if (st->codec->codec_id == CODEC_ID_AAC) {
+            st->codec->sample_rate = 0;
+            st->codec->frame_size = 0;
+            st->codec->channels = 0;
+        }
         if(st->codec->codec_type == CODEC_TYPE_VIDEO){
 /*            if(!st->time_base.num)
                 st->time_base= */
@@ -2664,7 +2700,7 @@ static int compute_pkt_fields2(AVFormatContext *s, AVStream *st, AVPacket *pkt){
     if(pkt->pts != AV_NOPTS_VALUE && pkt->dts == AV_NOPTS_VALUE && delay <= MAX_REORDER_DELAY){
         st->pts_buffer[0]= pkt->pts;
         for(i=1; i<delay+1 && st->pts_buffer[i] == AV_NOPTS_VALUE; i++)
-            st->pts_buffer[i]= (i-delay-1) * pkt->duration;
+            st->pts_buffer[i]= pkt->pts + (i-delay-1) * pkt->duration;
         for(i=0; i<delay && st->pts_buffer[i] > st->pts_buffer[i+1]; i++)
             FFSWAP(int64_t, st->pts_buffer[i], st->pts_buffer[i+1]);
 
