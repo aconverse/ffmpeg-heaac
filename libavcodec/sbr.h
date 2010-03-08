@@ -60,20 +60,20 @@ typedef struct {
      * @defgroup bitstream     Main bitstream data variables
      * @{
      */
-    uint8_t            bs_frame_class;
-    uint8_t            bs_add_harmonic_flag;
-    uint8_t            bs_num_env[2];
+    unsigned           bs_frame_class;
+    unsigned           bs_add_harmonic_flag;
+    unsigned           bs_num_env[2];
     uint8_t            bs_freq_res[7];
     uint8_t            bs_var_bord[2];
     uint8_t            bs_num_rel[2];
     uint8_t            bs_rel_bord[2][3];
-    uint8_t            bs_pointer;
-    uint8_t            bs_num_noise;
+    unsigned           bs_pointer;
+    unsigned           bs_num_noise;
     uint8_t            bs_df_env[5];
     uint8_t            bs_df_noise[2];
     uint8_t            bs_invf_mode[2][5];
     uint8_t            bs_add_harmonic[48];
-    uint8_t            bs_amp_res;
+    unsigned           bs_amp_res;
     /** @} */
 
     /**
@@ -95,8 +95,8 @@ typedef struct {
     uint8_t            t_env[8];
     uint8_t            t_env_num_env_old;
     uint8_t            t_q[3];
-    uint16_t           f_indexnoise;
-    uint8_t            f_indexsine;
+    unsigned           f_indexnoise;
+    unsigned           f_indexsine;
     /** @} */
 } SBRData;
 
@@ -104,34 +104,34 @@ typedef struct {
  * Spectral Band Replication
  */
 typedef struct {
-    int32_t            sample_rate;
-    uint8_t            start;
-    uint8_t            reset;
+    int                sample_rate;
+    int                start;
+    int                reset;
     SpectrumParameters spectrum_params;
-    uint8_t            bs_amp_res_header;
+    int                bs_amp_res_header;
     /**
      * @defgroup bs_header_extra_2     variables associated with bs_header_extra_2
      * @{
      */
-    uint8_t            bs_limiter_bands;
-    uint8_t            bs_limiter_gains;
-    uint8_t            bs_interpol_freq;
-    uint8_t            bs_smoothing_mode;
+    unsigned           bs_limiter_bands;
+    unsigned           bs_limiter_gains;
+    unsigned           bs_interpol_freq;
+    unsigned           bs_smoothing_mode;
     /** @} */
-    uint8_t            bs_coupling;
-    uint8_t            k[5]; ///< k0, k1, k2, kx', and kx respectively
-    uint8_t            m[2]; ///< M' and M respectively
-    uint8_t            n_master;
+    unsigned           bs_coupling;
+    unsigned           k[5]; ///< k0, k1, k2, kx', and kx respectively
+    unsigned           m[2]; ///< M' and M respectively
+    unsigned           n_master;
     SBRData            data[2];
-    uint8_t            n[2]; ///< n_low and n_high respectively
-    uint8_t            n_q;
-    uint8_t            n_lim;
+    unsigned           n[2]; ///< n_low and n_high respectively
+    unsigned           n_q;
+    unsigned           n_lim;
     uint16_t           f_master[49];
     uint16_t           f_tablelow[25];
     uint16_t           f_tablehigh[49];
     uint16_t           f_tablenoise[6];
     uint16_t           f_tablelim[29];
-    uint8_t            num_patches;
+    unsigned           num_patches;
     uint8_t            patch_num_subbands[6];
     uint8_t            patch_start_subband[6];
     float              X_low[32][40][2];

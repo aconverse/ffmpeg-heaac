@@ -154,7 +154,7 @@ static int qsort_comparison_function_int16(const void *a, const void *b)
     return *(const int16_t *)a - *(const int16_t *)b;
 }
 
-static inline void remove_table_element_int16(int16_t *table, uint8_t *last_el,
+static inline void remove_table_element_int16(int16_t *table, unsigned *last_el,
                                         int el)
 {
     memmove(table + el, table + el + 1, (*last_el - el)*sizeof(int16_t));
