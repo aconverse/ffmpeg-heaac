@@ -33,6 +33,8 @@
 #define NO_OPT __attribute__((optimize(0)))
 #endif
 
+#define PS_BASELINE 1
+
 #define numQMFSlots 32 //numTimeSlots * RATE
 
 static int8_t num_env_tab[2][4] = {
@@ -260,7 +262,7 @@ av_log(NULL, AV_LOG_ERROR, "header %d iid %d %d icc %d %d\n", header, ps->enable
     }
 
     //Baseline
-    ps->enable_ipdopd = 0;
+    ps->enable_ipdopd &= !PS_BASELINE;
 
 //av_log(NULL, AV_LOG_ERROR, "bits consumed %d\n", get_bits_count(gb) - bit_count_start);
     return get_bits_count(gb) - bit_count_start;
@@ -672,7 +674,7 @@ av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
         for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
             float c = iid_par_dequant[ps->iid_quant][ps->iid_par[e][b] + 7 + 8 * ps->iid_quant]; //<Linear Inter-channel Intensity Difference
             float h11, h12, h21, h22;
-            if (1) { //if R_a, always r_A for baseline
+            if (PS_BASELINE || ps->icc_mode < 3) {
                 float c1 = (float)M_SQRT2 / sqrtf(1.0f + c*c);
                 float c2 = c * c1;
                 float alpha = 0.5f * acos_icc_invq[ps->icc_par[e][b]];
@@ -684,9 +686,11 @@ av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
                 h22 = c1 * sinf(beta - alpha);
             } else {
                 //TODO FIXME
+                abort();
             }
             if (ps->enable_ipdopd) {
                 //TODO FIXME
+                abort();
             } else {
                 //Interpolation
                 float h11_step = (h11 - H11[b][ne_prev]) / (ne - ne_prev);
@@ -778,7 +782,7 @@ int NO_OPT ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64],
    float Rout[64][32][2];
    float Lbuf[91][32][2];
    float Rbuf[91][32][2];
-   int is34 = 0;
+   int is34 = !PS_BASELINE && (ps->nr_icc_par == 34 || ps->nr_iid_par == 34);
    const int len = 32;
 
    transpose_in(ps->in_buf, L);
