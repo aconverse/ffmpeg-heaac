@@ -343,14 +343,19 @@ static const float g2_Q4[] = {
     -0.05908211155639f
 };
 
-static float f20_0_8[8][13][2];
+static float f20_0_8 [ 8][13][2];
+static float f34_0_12[12][13][2];
+static float f34_1_8 [ 8][13][2];
+static float f34_2_4 [ 4][13][2];
+static float f34_3_4 [ 4][13][2];
+static float f34_4_4 [ 4][13][2];
 
-static void make_filters_from_proto(float (*filter)[13][2], const float *proto, int bands)
+static void make_filters_from_proto(float (*filter)[13][2], const float *proto, int bands, int ssb_start)
 {
     int q, n;
     for (q = 0; q < bands; q++) {
         for (n = 0; n < 13; n++) {
-            float theta = 2 * M_PI * (q + 0.5) * (n - 6) / bands;
+            float theta = 2 * M_PI * (q + ssb_start + 0.5) * (n - 6) / bands;
             filter[q][n][0] = proto[n] *  cosf(theta);
             filter[q][n][1] = proto[n] * -sinf(theta); //FIXME specbug? convolution?
         }
@@ -415,13 +420,39 @@ static void NO_OPT hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (
     }
 }
 
+static void NO_OPT hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[13][2], int N, int len)
+{
+    int i, j, ssb;
+
+    for (i = 0; i < len; i++) {
+        for (ssb = 0; ssb < N; ssb++) {
+            //FIXME filter is conjugate symmetric
+            //filter[6] is real
+            float sum_re = 0.0f, sum_im = 0.0f;
+            for (j = 0; j < 13; j++) {
+                float in_re = in[i+j][0];
+                float in_im = in[i+j][1];
+                sum_re += filter[ssb][j][0] * in_re - filter[ssb][j][1] * in_im;
+                sum_im += filter[ssb][j][0] * in_im + filter[ssb][j][1] * in_re;
+            }
+            out[ssb][i][0] = sum_re;
+            out[ssb][i][1] = sum_im;
+        }
+    }
+}
+
 static void NO_OPT hybrid_analysis(float out[91][32][2], float in[64][44][2], int is34, int len)
 {
     int i;
     if(is34) {
-        //XXX TODO
-        av_log(NULL, AV_LOG_ERROR, "hybrid34!\n");
-        abort();
+        hybrid4_8_12_cx(in[0], out,    f34_0_12, 12, len);
+        hybrid4_8_12_cx(in[1], out+12, f34_1_8,   8, len);
+        hybrid4_8_12_cx(in[2], out+20, f34_2_4,   4, len);
+        hybrid4_8_12_cx(in[3], out+24, f34_3_4,   4, len);
+        hybrid4_8_12_cx(in[4], out+28, f34_4_4,   4, len);
+        for (i = 0; i < 59; i++) {
+            memcpy(out[32 + i], in[5 + i]+6, len * sizeof(in[0][0]));
+        }
     } else {
         hybrid6_cx(in[0], out, f20_0_8, len);
         hybrid2_re(in[1], out+6, g1_Q2, len, 1);
@@ -440,7 +471,28 @@ static void hybrid_synthesis(float out[64][32][2], float in[91][32][2], int is34
 {
     int i, n;
     if(is34) {
-        //XXX TODO
+        memset(out, 0, 5*sizeof(out[0]));
+        for (n = 0; n < len; n++) {
+            for(i = 0; i < 12; i++) {
+                out[0][n][0] += in[   i][n][0];
+                out[0][n][1] += in[   i][n][1];
+            }
+            for(i = 0; i < 8; i++) {
+                out[1][n][0] += in[12+i][n][0];
+                out[1][n][1] += in[12+i][n][1];
+            }
+            for(i = 0; i < 4; i++) {
+                out[2][n][0] += in[20+i][n][0];
+                out[2][n][1] += in[20+i][n][1];
+                out[3][n][0] += in[24+i][n][0];
+                out[3][n][1] += in[24+i][n][1];
+                out[4][n][0] += in[28+i][n][0];
+                out[4][n][1] += in[28+i][n][1];
+            }
+        }
+        for (i = 0; i < 59; i++) {
+            memcpy(out[5 + i], in[32 + i], len * sizeof(in[0][0]));
+        }
     } else {
         for (n = 0; n < len; n++) {
             out[0][n][0] = in[0][n][0] + in[1][n][0] + in[2][n][0] +
@@ -484,7 +536,40 @@ static int av_const map_k_to_i(int k, int is34)
 {
     if (is34) {
         //TODO FIXME Table 8.49
-        return k;
+        if (k <= 6)
+            return k;
+        else if (k <= 8)
+            return k - 1;
+        else if (k <= 11)
+            return 11 - k;
+        else if (k <= 22)
+            return k - 10;
+        else if (k <= 23)
+            return 9;
+        else if (k <= 24)
+            return 14;
+        else if (k <= 30)
+            return k - 14;
+        else if (k <= 31)
+            return 12;
+        else if (k <= 37)
+            return k - 16;
+        else if (k <= 47)
+            return (k >> 1) + 3;
+        else if (k <= 50)
+            return 27;
+        else if (k <= 53)
+            return 28;
+        else if (k <= 56)
+            return 29;
+        else if (k <= 59)
+            return 30;
+        else if (k <= 63)
+            return 31;
+        else if (k <= 67)
+            return 32;
+        else
+            return 33;
     } else {
         //Table 8.48
         if (k <= 1) {
@@ -510,36 +595,100 @@ static int av_const map_k_to_i(int k, int is34)
 #define IS_CONJ(k, is34) ((is34) && (k) <= 13 && (k) >= 9 || (!is34) && (k) <= 1)
 
 /** Table 8.46 */
-static void map_10_to_20(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
-{
-    int b;
-    for (b = 9; b >= 0; b--) {
-        par[e][2*b+1] = par[e][2*b] = par[e][b];
+#define MAP_GENERIC_10_TO_20 \
+    int b;                                        \
+    for (b = 9; b >= 0; b--) {                    \
+        par[e][2*b+1] = par[e][2*b] = par[e][b];  \
     }
-}
-/** Table 8.46 */
-static void map_34_to_20(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+
+static void map_idx_10_to_20(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
 {
-    par[e][ 0] = (2*par[e][ 0] +   par[e][ 1]) / 3;
-    par[e][ 1] = (  par[e][ 1] + 2*par[e][ 2]) / 3;
-    par[e][ 2] = (2*par[e][ 3] +   par[e][ 4]) / 3;
-    par[e][ 3] = (  par[e][ 4] + 2*par[e][ 5]) / 3;
-    par[e][ 4] = (  par[e][ 6] +   par[e][ 7]) / 2;
-    par[e][ 5] = (  par[e][ 8] +   par[e][ 9]) / 2;
-    par[e][ 6] =    par[e][10];
-    par[e][ 7] =    par[e][11];
-    par[e][ 8] = (  par[e][12] +   par[e][13]) / 2;
-    par[e][ 9] = (  par[e][14] +   par[e][15]) / 2;
-    par[e][10] =    par[e][16];
-    par[e][11] =    par[e][17];
-    par[e][12] =    par[e][18];
-    par[e][13] =    par[e][19];
-    par[e][14] = (  par[e][20] +   par[e][21]) / 2;
-    par[e][15] = (  par[e][22] +   par[e][23]) / 2;
-    par[e][16] = (  par[e][24] +   par[e][25]) / 2;
-    par[e][17] = (  par[e][26] +   par[e][27]) / 2;
-    par[e][18] = (  par[e][28] +   par[e][29] +   par[e][30] +   par[e][31]) / 4;
+    MAP_GENERIC_10_TO_20
+}
+
+static void map_val_10_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+{
+    MAP_GENERIC_10_TO_20
+}
+
+/** Table 8.46 */
+#define MAP_GENERIC_34_TO_20 \
+    par[e][ 0] = (2*par[e][ 0] +   par[e][ 1]) / 3;                               \
+    par[e][ 1] = (  par[e][ 1] + 2*par[e][ 2]) / 3;                               \
+    par[e][ 2] = (2*par[e][ 3] +   par[e][ 4]) / 3;                               \
+    par[e][ 3] = (  par[e][ 4] + 2*par[e][ 5]) / 3;                               \
+    par[e][ 4] = (  par[e][ 6] +   par[e][ 7]) / 2;                               \
+    par[e][ 5] = (  par[e][ 8] +   par[e][ 9]) / 2;                               \
+    par[e][ 6] =    par[e][10];                                                   \
+    par[e][ 7] =    par[e][11];                                                   \
+    par[e][ 8] = (  par[e][12] +   par[e][13]) / 2;                               \
+    par[e][ 9] = (  par[e][14] +   par[e][15]) / 2;                               \
+    par[e][10] =    par[e][16];                                                   \
+    par[e][11] =    par[e][17];                                                   \
+    par[e][12] =    par[e][18];                                                   \
+    par[e][13] =    par[e][19];                                                   \
+    par[e][14] = (  par[e][20] +   par[e][21]) / 2;                               \
+    par[e][15] = (  par[e][22] +   par[e][23]) / 2;                               \
+    par[e][16] = (  par[e][24] +   par[e][25]) / 2;                               \
+    par[e][17] = (  par[e][26] +   par[e][27]) / 2;                               \
+    par[e][18] = (  par[e][28] +   par[e][29] +   par[e][30] +   par[e][31]) / 4; \
     par[e][19] = (  par[e][32] +   par[e][33]) / 2;
+
+static void map_idx_34_to_20(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+{
+    MAP_GENERIC_34_TO_20
+}
+
+static void map_val_34_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+{
+    MAP_GENERIC_34_TO_20
+}
+
+
+#define MAP_GENERIC_20_TO_34 \
+    par[e][33] =  par[e][19];                     \
+    par[e][32] =  par[e][19];                     \
+    par[e][31] =  par[e][18];                     \
+    par[e][30] =  par[e][18];                     \
+    par[e][29] =  par[e][18];                     \
+    par[e][28] =  par[e][18];                     \
+    par[e][27] =  par[e][17];                     \
+    par[e][26] =  par[e][17];                     \
+    par[e][25] =  par[e][16];                     \
+    par[e][24] =  par[e][16];                     \
+    par[e][23] =  par[e][15];                     \
+    par[e][22] =  par[e][15];                     \
+    par[e][21] =  par[e][14];                     \
+    par[e][20] =  par[e][14];                     \
+    par[e][19] =  par[e][13];                     \
+    par[e][18] =  par[e][12];                     \
+    par[e][17] =  par[e][11];                     \
+    par[e][16] =  par[e][10];                     \
+    par[e][15] =  par[e][ 9];                     \
+    par[e][14] =  par[e][ 9];                     \
+    par[e][13] =  par[e][ 8];                     \
+    par[e][12] =  par[e][ 8];                     \
+    par[e][11] =  par[e][ 7];                     \
+    par[e][10] =  par[e][ 6];                     \
+    par[e][ 9] =  par[e][ 5];                     \
+    par[e][ 8] =  par[e][ 5];                     \
+    par[e][ 7] =  par[e][ 4];                     \
+    par[e][ 6] =  par[e][ 4];                     \
+    par[e][ 5] =  par[e][ 3];                     \
+    par[e][ 4] = (par[e][ 2] + par[e][ 3]) / 2;   \
+    par[e][ 3] =  par[e][ 2];                     \
+    par[e][ 2] =  par[e][ 1];                     \
+    par[e][ 1] = (par[e][ 0] + par[e][ 1]) / 2;   \
+    par[e][ 0] =  par[e][ 0];
+
+static void map_idx_20_to_34(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+{
+    MAP_GENERIC_20_TO_34
+}
+
+static void map_val_20_to_34(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+{
+    MAP_GENERIC_20_TO_34
 }
 
 static void NO_OPT decorrelation(float (*out)[32][2], const float (*s)[32][2], int is34)
@@ -681,10 +830,10 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
 {
     int e, b, k, n;
 
-    static float H11[PS_MAX_NR_IIDICC][PS_MAX_NUM_ENV+1][2]; //TODO
-    static float H12[PS_MAX_NR_IIDICC][PS_MAX_NUM_ENV+1][2]; //make me a context var, or atleast my first row
-    static float H21[PS_MAX_NR_IIDICC][PS_MAX_NUM_ENV+1][2]; //deal 20-34 changes
-    static float H22[PS_MAX_NR_IIDICC][PS_MAX_NUM_ENV+1][2];
+    static float H11[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC]; //TODO
+    static float H12[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC]; //make me a context var, or atleast my first row
+    static float H21[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC]; //deal 20-34 changes
+    static float H22[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC];
     static float opd_smooth[PS_MAX_NR_IIDICC][2][2];
     static float ipd_smooth[PS_MAX_NR_IIDICC][2][2];
       //Table 8.28, Quantization grid for ICC
@@ -696,14 +845,14 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     };
 
     for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
-        H11[b][0][0] = H11[b][ps->num_env_old][0];
-        H12[b][0][0] = H12[b][ps->num_env_old][0];
-        H21[b][0][0] = H21[b][ps->num_env_old][0];
-        H22[b][0][0] = H22[b][ps->num_env_old][0];
-        H11[b][0][1] = H11[b][ps->num_env_old][1];
-        H12[b][0][1] = H12[b][ps->num_env_old][1];
-        H21[b][0][1] = H21[b][ps->num_env_old][1];
-        H22[b][0][1] = H22[b][ps->num_env_old][1];
+        H11[0][0][b] = H11[0][ps->num_env_old][b];
+        H12[0][0][b] = H12[0][ps->num_env_old][b];
+        H21[0][0][b] = H21[0][ps->num_env_old][b];
+        H22[0][0][b] = H22[0][ps->num_env_old][b];
+        H11[1][0][b] = H11[1][ps->num_env_old][b];
+        H12[1][0][b] = H12[1][ps->num_env_old][b];
+        H21[1][0][b] = H21[1][ps->num_env_old][b];
+        H22[1][0][b] = H22[1][ps->num_env_old][b];
     }
     //mixing
     //av_log(NULL, AV_LOG_ERROR, "num_env %d\n", ps->num_env);
@@ -711,16 +860,53 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     //av_log(NULL, AV_LOG_ERROR, "nr_icc_par %d\n", ps->nr_icc_par);
     av_log(NULL, AV_LOG_ERROR, "nr_ipdopd_par %d\n", ps->nr_ipdopd_par);
     av_log(NULL, AV_LOG_ERROR, "enable_ipdopd %d\n", ps->enable_ipdopd);
-    for (e = 0; e < ps->num_env; e++) {
-        if (ps->nr_icc_par == 34 && !is34)
-            map_34_to_20(ps->icc_par, e);
-        else if (ps->nr_icc_par == 10 && !is34)
-            map_10_to_20(ps->icc_par, e);
-        if (ps->nr_iid_par == 34 && !is34)
-            map_34_to_20(ps->iid_par, e);
-        else if (ps->nr_iid_par == 10 && !is34)
-            map_10_to_20(ps->iid_par, e);
+    if (is34) {
+        for (e = 0; e < ps->num_env; e++) {
+            if (ps->nr_icc_par == 20)
+                map_idx_20_to_34(ps->icc_par, e);
+            else if (ps->nr_icc_par == 10) {
+                map_idx_10_to_20(ps->icc_par, e);
+                map_idx_20_to_34(ps->icc_par, e);
+            }
+            if (ps->nr_iid_par == 20)
+                map_idx_20_to_34(ps->iid_par, e);
+            else if (ps->nr_ipdopd_par && ps->nr_iid_par == 10) {
+                map_idx_10_to_20(ps->iid_par, e);
+                map_idx_20_to_34(ps->iid_par, e);
+            }
+            if (ps->enable_ipdopd && ps->nr_ipdopd_par != 17) {
+                av_log(NULL, AV_LOG_ERROR, "ipd/opd remapping unsupported!\n");
+                abort();
+            }
+        }
+        if (!ps->is34bands_old) {
+            map_val_20_to_34(H11[0], 0);
+            map_val_20_to_34(H11[1], 0);
+            map_val_20_to_34(H12[0], 0);
+            map_val_20_to_34(H12[1], 0);
+            map_val_20_to_34(H21[0], 0);
+            map_val_20_to_34(H21[1], 0);
+            map_val_20_to_34(H22[0], 0);
+            map_val_20_to_34(H22[1], 0);
+        }
+    } else {
+        for (e = 0; e < ps->num_env; e++) {
+            if (ps->nr_icc_par == 34)
+                map_idx_34_to_20(ps->icc_par, e);
+            else if (ps->nr_icc_par == 10)
+                map_idx_10_to_20(ps->icc_par, e);
+            if (ps->nr_iid_par == 34)
+                map_idx_34_to_20(ps->iid_par, e);
+            else if (ps->nr_iid_par == 10)
+                map_idx_10_to_20(ps->iid_par, e);
+            if (ps->enable_ipdopd && ps->nr_ipdopd_par != 11) {
+                av_log(NULL, AV_LOG_ERROR, "ipd/opd remapping unsupported!\n");
+                abort();
+            }
+        }
+    }
 
+    for (e = 0; e < ps->num_env; e++) {
         for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
             float c = iid_par_dequant[ps->iid_quant][ps->iid_par[e][b] + 7 + 8 * ps->iid_quant]; //<Linear Inter-channel Intensity Difference
             float h11, h12, h21, h22;
@@ -781,15 +967,15 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 h21  = h21 * cos(phi_opd);
                 h22i = h22 * sin(phi_ipd);
                 h22  = h22 * cos(phi_ipd);
-                H11[b][e+1][1] = h11i;
-                H12[b][e+1][1] = h12i;
-                H21[b][e+1][1] = h21i;
-                H22[b][e+1][1] = h22i;
+                H11[1][e+1][b] = h11i;
+                H12[1][e+1][b] = h12i;
+                H21[1][e+1][b] = h21i;
+                H22[1][e+1][b] = h22i;
             }
-            H11[b][e+1][0] = h11;
-            H12[b][e+1][0] = h12;
-            H21[b][e+1][0] = h21;
-            H22[b][e+1][0] = h22;
+            H11[0][e+1][b] = h11;
+            H12[0][e+1][b] = h12;
+            H21[0][e+1][b] = h21;
+            H22[0][e+1][b] = h22;
         }
         for (k = 0; k < NR_BANDS[is34]; k++) {
             //av_log(NULL, AV_LOG_ERROR, "k %d\n", k);
@@ -806,32 +992,32 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
             h22r = 0;
             h11i = h12i = h21i = h22i = 0;
 #else
-            h11r = H11[b][e][0];
-            h12r = H12[b][e][0];
-            h21r = H21[b][e][0];
-            h22r = H22[b][e][0];
+            h11r = H11[0][e][b];
+            h12r = H12[0][e][b];
+            h21r = H21[0][e][b];
+            h22r = H22[0][e][b];
             //Is this necessary? ps_04_new seems unchanged
             if (IS_CONJ(k, is34)) {
-                h11i = -H11[b][e][1];
-                h12i = -H12[b][e][1];
-                h21i = -H21[b][e][1];
-                h22i = -H22[b][e][1];
+                h11i = -H11[1][e][b];
+                h12i = -H12[1][e][b];
+                h21i = -H21[1][e][b];
+                h22i = -H22[1][e][b];
             } else {
-                h11i = H11[b][e][1];
-                h12i = H12[b][e][1];
-                h21i = H21[b][e][1];
-                h22i = H22[b][e][1];
+                h11i = H11[1][e][b];
+                h12i = H12[1][e][b];
+                h21i = H21[1][e][b];
+                h22i = H22[1][e][b];
             }
 #endif
             //Interpolation
-            float h11r_step = (H11[b][e+1][0] - h11r) * width;
-            float h12r_step = (H12[b][e+1][0] - h12r) * width;
-            float h21r_step = (H21[b][e+1][0] - h21r) * width;
-            float h22r_step = (H22[b][e+1][0] - h22r) * width;
-            float h11i_step = (H11[b][e+1][1] - h11i) * width;
-            float h12i_step = (H12[b][e+1][1] - h12i) * width;
-            float h21i_step = (H21[b][e+1][1] - h21i) * width;
-            float h22i_step = (H22[b][e+1][1] - h22i) * width;
+            float h11r_step = (H11[0][e+1][b] - h11r) * width;
+            float h12r_step = (H12[0][e+1][b] - h12r) * width;
+            float h21r_step = (H21[0][e+1][b] - h21r) * width;
+            float h22r_step = (H22[0][e+1][b] - h22r) * width;
+            float h11i_step = (H11[1][e+1][b] - h11i) * width;
+            float h12i_step = (H12[1][e+1][b] - h12i) * width;
+            float h21i_step = (H21[1][e+1][b] - h21i) * width;
+            float h22i_step = (H22[1][e+1][b] - h22i) * width;
             for (n = start + 1; n <= stop; n++) {
                 //l is s, r is d
                 float l_re = l[k][n][0];
@@ -882,8 +1068,10 @@ int NO_OPT ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64],
    float Rout[64][32][2];
    float Lbuf[91][32][2];
    float Rbuf[91][32][2];
-   int is34 = !PS_BASELINE && (ps->nr_icc_par == 34 || ps->nr_iid_par == 34);
    const int len = 32;
+   int is34;
+   ps->is34bands_old = ps->is34bands;
+   is34 = ps->is34bands = !PS_BASELINE && (ps->nr_icc_par == 34 || ps->nr_iid_par == 34);
 
 av_log(NULL, AV_LOG_ERROR, "is34 %d\n", is34);
    transpose_in(ps->in_buf, L);
@@ -948,7 +1136,12 @@ static av_cold void ps_init_dec()
         phi_fract[1][k][0] = cosf(theta);
         phi_fract[1][k][1] = sinf(theta);
     }
-    make_filters_from_proto(f20_0_8, g0_Q8, 8);
+    make_filters_from_proto(f20_0_8,  g0_Q8,   8,  0);
+    make_filters_from_proto(f34_0_12, g0_Q12, 12,  0);
+    make_filters_from_proto(f34_1_8,  g1_Q8,   8, 12);
+    make_filters_from_proto(f34_2_4,  g2_Q4,   4, 20);
+    make_filters_from_proto(f34_3_4,  g2_Q4,   4, 24);
+    make_filters_from_proto(f34_4_4,  g2_Q4,   4, 28);
 }
 
 av_cold void ff_ps_init(void) {

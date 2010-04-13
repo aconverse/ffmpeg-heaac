@@ -51,6 +51,8 @@ typedef struct {
     int8_t ipd_par[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD]; //<Inter-channel Phase Difference Parameters
     int8_t opd_dt [PS_MAX_NUM_ENV];
     int8_t opd_par[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD]; //<Overall Phase Difference Parameters
+    int    is34bands;
+    int    is34bands_old;
 
     float  in_buf[64][44][2];
 } PSContext;
