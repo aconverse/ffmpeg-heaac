@@ -287,6 +287,10 @@ av_log(NULL, AV_LOG_ERROR, "header %d iid %d %d icc %d %d\n", header, ps->enable
 
     //Baseline
     ps->enable_ipdopd &= !PS_BASELINE;
+    if (!ps->enable_ipdopd) {
+        memset(ps->ipd_par, 0, sizeof(ps->ipd_par));
+        memset(ps->opd_par, 0, sizeof(ps->opd_par));
+    }
 
 //av_log(NULL, AV_LOG_ERROR, "bits consumed %d\n", get_bits_count(gb) - bit_count_start);
     return get_bits_count(gb) - bit_count_start;
@@ -491,6 +495,8 @@ static int av_const map_k_to_i(int k, int is34)
     }
 }
 
+#define IS_CONJ(k, is34) ((is34) && (k) <= 13 && (k) >= 9 || (!is34) && (k) <= 1)
+
 /** Table 8.46 */
 static void map_10_to_20(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
 {
@@ -662,10 +668,12 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
 {
     int e, b, k, n;
 
-    static float H11[PS_MAX_NR_IIDICC][numQMFSlots]; //TODO
-    static float H12[PS_MAX_NR_IIDICC][numQMFSlots]; //make me a context var, or atleast my first row
-    static float H21[PS_MAX_NR_IIDICC][numQMFSlots]; //deal 20-34 changes
-    static float H22[PS_MAX_NR_IIDICC][numQMFSlots];
+    static float H11[PS_MAX_NR_IIDICC+3][numQMFSlots][2]; //TODO
+    static float H12[PS_MAX_NR_IIDICC+3][numQMFSlots][2]; //make me a context var, or atleast my first row
+    static float H21[PS_MAX_NR_IIDICC+3][numQMFSlots][2]; //deal 20-34 changes
+    static float H22[PS_MAX_NR_IIDICC+3][numQMFSlots][2];
+    static float opd_smooth[PS_MAX_NR_IIDICC][2][2];
+    static float ipd_smooth[PS_MAX_NR_IIDICC][2][2];
       //Table 8.28, Quantization grid for ICC
     static const float icc_invq[] = {
         1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
@@ -676,16 +684,22 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
 
     int ne_prev = 0; //TODO value from the last frame
 
-    for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
-        H11[b][0] = H11[b][63];
-        H12[b][0] = H12[b][63];
-        H21[b][0] = H21[b][63];
-        H22[b][0] = H22[b][63];
+    for (b = 0; b < PS_MAX_NR_IIDICC+3; b++) {
+        H11[b][0][0] = H11[b][63][0];
+        H12[b][0][0] = H12[b][63][0];
+        H21[b][0][0] = H21[b][63][0];
+        H22[b][0][0] = H22[b][63][0];
+        H11[b][0][1] = H11[b][63][1];
+        H12[b][0][1] = H12[b][63][1];
+        H21[b][0][1] = H21[b][63][1];
+        H22[b][0][1] = H22[b][63][1];
     }
     //mixing
     //av_log(NULL, AV_LOG_ERROR, "num_env %d\n", ps->num_env);
     //av_log(NULL, AV_LOG_ERROR, "nr_iid_par %d\n", ps->nr_iid_par);
     //av_log(NULL, AV_LOG_ERROR, "nr_icc_par %d\n", ps->nr_icc_par);
+    av_log(NULL, AV_LOG_ERROR, "nr_ipdopd_par %d\n", ps->nr_ipdopd_par);
+    av_log(NULL, AV_LOG_ERROR, "enable_ipdopd %d\n", ps->enable_ipdopd);
     for (e = 0; e < ps->num_env; e++) {
         int ne = ps->border_position[e]; //TODO Spec says n[e+1] but that seems very dubious
 av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
@@ -724,40 +738,94 @@ av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
                 h21 = -M_SQRT2 * sinf(alpha) * sinf(gamma);
                 h22 =  M_SQRT2 * cosf(alpha) * sinf(gamma);
             }
-            if (ps->enable_ipdopd) {
-                //TODO FIXME
-                abort();
-            } else {
+            if (ps->enable_ipdopd && b < ps->nr_ipdopd_par) { //FIXME
+                //Smoothing
+                float h11i, h12i, h21i, h22i;
+                float opd_ar = ps->opd_par[e][b] * M_PI/4;
+                float opd_re = cosf(opd_ar);
+                float opd_im = sinf(opd_ar);
+                float ipd_ar = ps->ipd_par[e][b] * M_PI/4;
+                float ipd_re = cosf(ipd_ar);
+                float ipd_im = sinf(ipd_ar);
+                //TODO leave these in terms of sin and cos
+                float phi_opd = atan2(0.25f * sin(opd_smooth[b][0][1]) + 0.5f * sin(opd_smooth[b][1][1]) + opd_im,
+                                      0.25f * cos(opd_smooth[b][0][0]) + 0.5f * cos(opd_smooth[b][1][0]) + opd_re);
+                float phi_ipd = atan2(0.25f * sin(ipd_smooth[b][0][1]) + 0.5f * sin(ipd_smooth[b][1][1]) + ipd_im,
+                                      0.25f * cos(ipd_smooth[b][0][0]) + 0.5f * cos(ipd_smooth[b][1][0]) + ipd_re);
+                opd_smooth[b][0][0] = opd_smooth[b][1][0];
+                opd_smooth[b][0][1] = opd_smooth[b][1][1];
+                opd_smooth[b][1][0] = opd_ar;
+                opd_smooth[b][1][1] = opd_ar;
+                ipd_smooth[b][0][0] = ipd_smooth[b][1][0];
+                ipd_smooth[b][0][1] = ipd_smooth[b][1][1];
+                ipd_smooth[b][1][0] = ipd_ar;
+                ipd_smooth[b][1][1] = ipd_ar;
+                av_log(NULL, AV_LOG_ERROR, "phi_ipd %f, phi_opd %f\n", phi_ipd, phi_opd);
+                phi_ipd = phi_opd - phi_ipd;
+//phi_ipd = 0; phi_opd = 0;
+                //rotation
+                h11i = h11 * sin(phi_opd);
+                h11  = h11 * cos(phi_opd);
+                h12i = h12 * sin(phi_ipd);
+                h12  = h12 * cos(phi_ipd);
+                h21i = h21 * sin(phi_opd);
+                h21  = h21 * cos(phi_opd);
+                h22i = h22 * sin(phi_ipd);
+                h22  = h22 * cos(phi_ipd);
                 //Interpolation
-                float h11_step = (h11 - H11[b][ne_prev]) / (ne - ne_prev);
-                float h12_step = (h12 - H12[b][ne_prev]) / (ne - ne_prev);
-                float h21_step = (h21 - H21[b][ne_prev]) / (ne - ne_prev);
-                float h22_step = (h22 - H22[b][ne_prev]) / (ne - ne_prev);
+                float h11i_step = (h11i - H11[b][ne_prev][1]) / (ne - ne_prev);
+                float h12i_step = (h12i - H12[b][ne_prev][1]) / (ne - ne_prev);
+                float h21i_step = (h21i - H21[b][ne_prev][1]) / (ne - ne_prev);
+                float h22i_step = (h22i - H22[b][ne_prev][1]) / (ne - ne_prev);
                 for (n = ne_prev + 1; n < ne; n++) { //TODO optimize out the multiply with an iterative add
-                    H11[b][n] = H11[b][ne_prev] + (n-ne_prev) * h11_step;
-                    H12[b][n] = H12[b][ne_prev] + (n-ne_prev) * h12_step;
-                    H21[b][n] = H21[b][ne_prev] + (n-ne_prev) * h21_step;
-                    H22[b][n] = H22[b][ne_prev] + (n-ne_prev) * h22_step;
+                    H11[b][n][1] = H11[b][ne_prev][1] + (n-ne_prev) * h11i_step;
+                    H12[b][n][1] = H12[b][ne_prev][1] + (n-ne_prev) * h12i_step;
+                    H21[b][n][1] = H21[b][ne_prev][1] + (n-ne_prev) * h21i_step;
+                    H22[b][n][1] = H22[b][ne_prev][1] + (n-ne_prev) * h22i_step;
                 }
-                H11[b][ne] = h11;
-                H12[b][ne] = h12;
-                H21[b][ne] = h21;
-                H22[b][ne] = h22;
+                H11[b][ne][1] = h11i;
+                H12[b][ne][1] = h12i;
+                H21[b][ne][1] = h21i;
+                H22[b][ne][1] = h22i;
+                if(conj)
             }
+                //Interpolation
+                float h11_step = (h11 - H11[b][ne_prev][0]) / (ne - ne_prev);
+                float h12_step = (h12 - H12[b][ne_prev][0]) / (ne - ne_prev);
+                float h21_step = (h21 - H21[b][ne_prev][0]) / (ne - ne_prev);
+                float h22_step = (h22 - H22[b][ne_prev][0]) / (ne - ne_prev);
+                for (n = ne_prev + 1; n < ne; n++) { //TODO optimize out the multiply with an iterative add
+                    H11[b][n][0] = H11[b][ne_prev][0] + (n-ne_prev) * h11_step;
+                    H12[b][n][0] = H12[b][ne_prev][0] + (n-ne_prev) * h12_step;
+                    H21[b][n][0] = H21[b][ne_prev][0] + (n-ne_prev) * h21_step;
+                    H22[b][n][0] = H22[b][ne_prev][0] + (n-ne_prev) * h22_step;
+                }
+                H11[b][ne][0] = h11;
+                H12[b][ne][0] = h12;
+                H21[b][ne][0] = h21;
+                H22[b][ne][0] = h22;
         }
         ne_prev = ne;
     }
     //fill out the rest of the frame
     for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
-        float h11 = H11[b][ne_prev];
-        float h12 = H12[b][ne_prev];
-        float h21 = H21[b][ne_prev];
-        float h22 = H22[b][ne_prev];
+        float h11r = H11[b][ne_prev][0];
+        float h12r = H12[b][ne_prev][0];
+        float h21r = H21[b][ne_prev][0];
+        float h22r = H22[b][ne_prev][0];
+        float h11i = H11[b][ne_prev][1];
+        float h12i = H12[b][ne_prev][1];
+        float h21i = H21[b][ne_prev][1];
+        float h22i = H22[b][ne_prev][1];
         for (n = ne_prev + 1; n < numQMFSlots; n++) {
-            H11[b][n] = h11;
-            H12[b][n] = h12;
-            H21[b][n] = h21;
-            H22[b][n] = h22;
+            H11[b][n][0] = h11r;
+            H12[b][n][0] = h12r;
+            H21[b][n][0] = h21r;
+            H22[b][n][0] = h22r;
+            H11[b][n][1] = h11i;
+            H12[b][n][1] = h12i;
+            H21[b][n][1] = h21i;
+            H22[b][n][1] = h22i;
         }
     }
     for (n = 0; n < numQMFSlots; n++) {
@@ -767,23 +835,29 @@ av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
             float l_im = l[k][n][1];
             float r_re = r[k][n][0];
             float r_im = r[k][n][1];
-            float h11, h12, h21, h22;
+            float h11r, h12r, h21r, h22r;
+            float h11i, h12i, h21i, h22i;
             b = map_k_to_i(k, is34);
 #if 0
-            h11 = 0;
-            h12 = 1;
-            h21 = 1;
-            h22 = 0;
+            h11r = 0;
+            h12r = 1;
+            h21r = 1;
+            h22r = 0;
+            h11i = h12i = h21i = h22i = 0;
 #else
-            h11 = H11[b][n];
-            h12 = H12[b][n];
-            h21 = H21[b][n];
-            h22 = H22[b][n];
+            h11r = H11[b][n][0];
+            h12r = H12[b][n][0];
+            h21r = H21[b][n][0];
+            h22r = H22[b][n][0];
+            h11i = H11[b][n][1];
+            h12i = H12[b][n][1];
+            h21i = H21[b][n][1];
+            h22i = H22[b][n][1];
 #endif
-            l[k][n][0] = h11*l_re + h21*r_re;
-            l[k][n][1] = h11*l_im + h21*r_im;
-            r[k][n][0] = h12*l_re + h22*r_re;
-            r[k][n][1] = h12*l_im + h22*r_im;
+            l[k][n][0] = h11r*l_re + h21r*r_re - h11i*l_im - h21i*r_im;
+            l[k][n][1] = h11r*l_im + h21r*r_im + h11i*l_re + h21i*r_re;
+            r[k][n][0] = h12r*l_re + h22r*r_re - h12i*l_im - h22i*r_im;
+            r[k][n][1] = h12r*l_im + h22r*r_im + h12i*l_re + h22i*r_re;
             //if (n==31) av_log(NULL, AV_LOG_ERROR, "ssb %2d parameter %2d h %f %f %f %f\n",
             //       k, b, h11, h21, h12, h22);
         }
