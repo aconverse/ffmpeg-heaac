@@ -150,8 +150,20 @@ static void ipd_data(GetBitContext *gb, PSContext *ps, int e)
     int b;
     int table_idx = ps->ipd_dt[e] ? huff_ipd_dt : huff_ipd_df;
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
-    for (b = 0; b < ps->nr_ipdopd_par; b++)
-        ps->ipd_par[e][b] = get_vlc2(gb, vlc_table, 9, 1);
+    if (ps->ipd_dt[e]) {
+        int e_prev = e ? e - 1 : ps->num_env_old - 1;
+        e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
+        for (b = 0; b < ps->nr_ipdopd_par; b++) {
+            ps->ipd_par[e][b] = (ps->ipd_par[e_prev][b] + get_vlc2(gb, vlc_table, 9, 1)) & 0x07;
+        }
+    } else {
+        int prev = 0;
+        for (b = 0; b < ps->nr_ipdopd_par; b++) {
+            prev += get_vlc2(gb, vlc_table, 9, 3);
+            prev &= 0x07;
+            ps->ipd_par[e][b] = prev;
+        }
+    }
 }
 
 static void opd_data(GetBitContext *gb, PSContext *ps, int e)
@@ -159,8 +171,20 @@ static void opd_data(GetBitContext *gb, PSContext *ps, int e)
     int b;
     int table_idx = ps->opd_dt[e] ? huff_opd_dt : huff_opd_df;
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
-    for (b = 0; b < ps->nr_ipdopd_par; b++)
-        ps->opd_par[e][b] = get_vlc2(gb, vlc_table, 9, 1);
+    if (ps->opd_dt[e]) {
+        int e_prev = e ? e - 1 : ps->num_env_old - 1;
+        e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
+        for (b = 0; b < ps->nr_ipdopd_par; b++) {
+            ps->opd_par[e][b] = (ps->opd_par[e_prev][b] + get_vlc2(gb, vlc_table, 9, 1)) & 0x07;
+        }
+    } else {
+        int prev = 0;
+        for (b = 0; b < ps->nr_ipdopd_par; b++) {
+            prev += get_vlc2(gb, vlc_table, 9, 3);
+            prev &= 0x07;
+            ps->opd_par[e][b] = prev;
+        }
+    }
 }
 
 static int ps_extension(GetBitContext *gb, PSContext *ps, int ps_extension_id)
