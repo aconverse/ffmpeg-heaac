@@ -908,7 +908,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
 
     for (e = 0; e < ps->num_env; e++) {
         for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
-            float c = iid_par_dequant[ps->iid_quant][ps->iid_par[e][b] + 7 + 8 * ps->iid_quant]; //<Linear Inter-channel Intensity Difference
+            float c = iid_par_dequant[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant]; //<Linear Inter-channel Intensity Difference
             float h11, h12, h21, h22;
             if (PS_BASELINE || ps->icc_mode < 3) {
                 float c1 = (float)M_SQRT2 / sqrtf(1.0f + c*c);
