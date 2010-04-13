@@ -33,7 +33,7 @@
 #define NO_OPT __attribute__((optimize(0)))
 #endif
 
-#define PS_BASELINE 1
+#define PS_BASELINE 0
 
 #define numQMFSlots 32 //numTimeSlots * RATE
 
@@ -380,6 +380,8 @@ static void NO_OPT hybrid_analysis(float out[91][32][2], float in[64][44][2], in
     int i;
     if(is34) {
         //XXX TODO
+        av_log(NULL, AV_LOG_ERROR, "hybrid34!\n");
+        abort();
     } else {
         hybrid6_cx(in[0], out, f20_0_8, len);
         hybrid2_re(in[1], out+6, g1_Q2, len, 1);
@@ -640,10 +642,11 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     static float H12[PS_MAX_NR_IIDICC][numQMFSlots]; //make me a context var, or atleast my first row
     static float H21[PS_MAX_NR_IIDICC][numQMFSlots]; //deal 20-34 changes
     static float H22[PS_MAX_NR_IIDICC][numQMFSlots];
-    static const float acos_icc_invq[] = {
       //Table 8.28, Quantization grid for ICC
-      //1, 0.937,    , 0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
-      //acos(^)
+    static const float icc_invq[] = {
+        1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
+    };
+    static const float acos_icc_invq[] = {
         0, 0.35685527, 0.57133466, 0.92614472, 1.1943263, M_PI/2, 2.2006171, M_PI
     };
 
@@ -685,8 +688,17 @@ av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
                 h21 = c2 * sinf(beta + alpha);
                 h22 = c1 * sinf(beta - alpha);
             } else {
-                //TODO FIXME
-                abort();
+                float rho = FFMAX(icc_invq[ps->icc_par[e][b]], 0.05f);
+                float alpha = 0.5f * atan2f(2.0f * c * rho, c*c - 1.0f);
+                float mu = c + 1.0f / c;
+                mu = sqrtf(1 + (4 * rho * rho - 4)/(mu * mu));
+                float gamma = atanf(sqrtf((1.0f - mu)/(1.0f + mu)));
+                if (alpha < 0) alpha += M_PI/2;
+                //av_log(NULL, AV_LOG_ERROR, "alpha %f gamma %f\n", alpha, gamma);
+                h11 =  M_SQRT2 * cosf(alpha) * cosf(gamma);
+                h12 =  M_SQRT2 * sinf(alpha) * cosf(gamma);
+                h21 = -M_SQRT2 * sinf(alpha) * sinf(gamma);
+                h22 =  M_SQRT2 * cosf(alpha) * sinf(gamma);
             }
             if (ps->enable_ipdopd) {
                 //TODO FIXME
@@ -785,6 +797,7 @@ int NO_OPT ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64],
    int is34 = !PS_BASELINE && (ps->nr_icc_par == 34 || ps->nr_iid_par == 34);
    const int len = 32;
 
+av_log(NULL, AV_LOG_ERROR, "is34 %d\n", is34);
    transpose_in(ps->in_buf, L);
 
    memset(Lbuf, -1, sizeof(Lbuf));
