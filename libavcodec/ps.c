@@ -463,6 +463,39 @@ static int av_const map_k_to_i(int k, int is34)
     }
 }
 
+/** Table 8.46 */
+static void map_10_to_20(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+{
+    int b;
+    for (b = 9; b >= 0; b--) {
+        par[e][2*b+1] = par[e][2*b] = par[e][b];
+    }
+}
+/** Table 8.46 */
+static void map_34_to_20(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+{
+    par[e][ 0] = (2*par[e][ 0] +   par[e][ 1]) / 3;
+    par[e][ 1] = (  par[e][ 1] + 2*par[e][ 2]) / 3;
+    par[e][ 2] = (2*par[e][ 3] +   par[e][ 4]) / 3;
+    par[e][ 3] = (  par[e][ 4] + 2*par[e][ 5]) / 3;
+    par[e][ 4] = (  par[e][ 6] +   par[e][ 7]) / 2;
+    par[e][ 5] = (  par[e][ 8] +   par[e][ 9]) / 2;
+    par[e][ 6] =    par[e][10];
+    par[e][ 7] =    par[e][11];
+    par[e][ 8] = (  par[e][12] +   par[e][13]) / 2;
+    par[e][ 9] = (  par[e][14] +   par[e][15]) / 2;
+    par[e][10] =    par[e][16];
+    par[e][11] =    par[e][17];
+    par[e][12] =    par[e][18];
+    par[e][13] =    par[e][19];
+    par[e][14] = (  par[e][20] +   par[e][21]) / 2;
+    par[e][15] = (  par[e][22] +   par[e][23]) / 2;
+    par[e][16] = (  par[e][24] +   par[e][25]) / 2;
+    par[e][17] = (  par[e][26] +   par[e][27]) / 2;
+    par[e][18] = (  par[e][28] +   par[e][29] +   par[e][30] +   par[e][31]) / 4;
+    par[e][19] = (  par[e][32] +   par[e][33]) / 2;
+}
+
 static void NO_OPT decorrelation(float (*out)[32][2], const float (*s)[32][2], int is34)
 {
     static float power[34][32]; //[f][t]
@@ -621,11 +654,21 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
         H22[b][0] = H22[b][63];
     }
     //mixing
-    av_log(NULL, AV_LOG_ERROR, "num_env %d\n", ps->num_env);
+    //av_log(NULL, AV_LOG_ERROR, "num_env %d\n", ps->num_env);
     //av_log(NULL, AV_LOG_ERROR, "nr_iid_par %d\n", ps->nr_iid_par);
+    //av_log(NULL, AV_LOG_ERROR, "nr_icc_par %d\n", ps->nr_icc_par);
     for (e = 0; e < ps->num_env; e++) {
         int ne = ps->border_position[e]; //TODO Spec says n[e+1] but that seems very dubious
 av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
+        if (ps->nr_icc_par == 34 && !is34)
+            map_34_to_20(ps->icc_par, e);
+        else if (ps->nr_icc_par == 10 && !is34)
+            map_10_to_20(ps->icc_par, e);
+        if (ps->nr_iid_par == 34 && !is34)
+            map_34_to_20(ps->iid_par, e);
+        else if (ps->nr_iid_par == 10 && !is34)
+            map_10_to_20(ps->iid_par, e);
+
         for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
             float c = iid_par_dequant[ps->iid_quant][ps->iid_par[e][b] + 7 + 8 * ps->iid_quant]; //<Linear Inter-channel Intensity Difference
             float h11, h12, h21, h22;
