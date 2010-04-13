@@ -245,12 +245,24 @@ av_log(NULL, AV_LOG_ERROR, "header %d iid %d %d icc %d %d\n", header, ps->enable
     ps->num_env_old = ps->num_env;
     ps->num_env     = num_env_tab[ps->frame_class][get_bits(gb, 2)];
 
-    if (ps->frame_class)
-        for (e = 0; e < ps->num_env; e++)
+av_log(NULL, AV_LOG_ERROR, "frame class %d\n", ps->frame_class);
+    ps->border_position[0] = -1;
+    if (ps->frame_class) {
+        for (e = 1; e <= ps->num_env; e++)
+{
             ps->border_position[e] = get_bits(gb, 5);
-    else
-        for (e = 0; e < ps->num_env; e++)
-            ps->border_position[e] = (e + 1) * numQMFSlots / ps->num_env - 1;
+av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
+}
+        if (ps->border_position[ps->num_env] != numQMFSlots - 1) {
+            av_log(NULL, AV_LOG_ERROR, "Unhandled case last envelope missing\n");
+            abort();
+        }
+    } else
+        for (e = 1; e <= ps->num_env; e++)
+{
+            ps->border_position[e] = e * numQMFSlots / ps->num_env - 1;
+av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
+}
 
     if (ps->enable_iid)
         for (e = 0; e < ps->num_env; e++) {
@@ -664,14 +676,15 @@ memset(out+k, 0, (NR_BANDS[is34]-NR_ALLPASS_BANDS[is34])*sizeof(out[0]));
 #endif
 }
 
+#if 1
 static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2], int is34)
 {
     int e, b, k, n;
 
-    static float H11[PS_MAX_NR_IIDICC+3][numQMFSlots][2]; //TODO
-    static float H12[PS_MAX_NR_IIDICC+3][numQMFSlots][2]; //make me a context var, or atleast my first row
-    static float H21[PS_MAX_NR_IIDICC+3][numQMFSlots][2]; //deal 20-34 changes
-    static float H22[PS_MAX_NR_IIDICC+3][numQMFSlots][2];
+    static float H11[PS_MAX_NR_IIDICC][PS_MAX_NUM_ENV+1][2]; //TODO
+    static float H12[PS_MAX_NR_IIDICC][PS_MAX_NUM_ENV+1][2]; //make me a context var, or atleast my first row
+    static float H21[PS_MAX_NR_IIDICC][PS_MAX_NUM_ENV+1][2]; //deal 20-34 changes
+    static float H22[PS_MAX_NR_IIDICC][PS_MAX_NUM_ENV+1][2];
     static float opd_smooth[PS_MAX_NR_IIDICC][2][2];
     static float ipd_smooth[PS_MAX_NR_IIDICC][2][2];
       //Table 8.28, Quantization grid for ICC
@@ -682,17 +695,15 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
         0, 0.35685527, 0.57133466, 0.92614472, 1.1943263, M_PI/2, 2.2006171, M_PI
     };
 
-    int ne_prev = 0; //TODO value from the last frame
-
-    for (b = 0; b < PS_MAX_NR_IIDICC+3; b++) {
-        H11[b][0][0] = H11[b][63][0];
-        H12[b][0][0] = H12[b][63][0];
-        H21[b][0][0] = H21[b][63][0];
-        H22[b][0][0] = H22[b][63][0];
-        H11[b][0][1] = H11[b][63][1];
-        H12[b][0][1] = H12[b][63][1];
-        H21[b][0][1] = H21[b][63][1];
-        H22[b][0][1] = H22[b][63][1];
+    for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
+        H11[b][0][0] = H11[b][ps->num_env_old][0];
+        H12[b][0][0] = H12[b][ps->num_env_old][0];
+        H21[b][0][0] = H21[b][ps->num_env_old][0];
+        H22[b][0][0] = H22[b][ps->num_env_old][0];
+        H11[b][0][1] = H11[b][ps->num_env_old][1];
+        H12[b][0][1] = H12[b][ps->num_env_old][1];
+        H21[b][0][1] = H21[b][ps->num_env_old][1];
+        H22[b][0][1] = H22[b][ps->num_env_old][1];
     }
     //mixing
     //av_log(NULL, AV_LOG_ERROR, "num_env %d\n", ps->num_env);
@@ -701,8 +712,6 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     av_log(NULL, AV_LOG_ERROR, "nr_ipdopd_par %d\n", ps->nr_ipdopd_par);
     av_log(NULL, AV_LOG_ERROR, "enable_ipdopd %d\n", ps->enable_ipdopd);
     for (e = 0; e < ps->num_env; e++) {
-        int ne = ps->border_position[e]; //TODO Spec says n[e+1] but that seems very dubious
-av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
         if (ps->nr_icc_par == 34 && !is34)
             map_34_to_20(ps->icc_par, e);
         else if (ps->nr_icc_par == 10 && !is34)
@@ -772,71 +781,23 @@ av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
                 h21  = h21 * cos(phi_opd);
                 h22i = h22 * sin(phi_ipd);
                 h22  = h22 * cos(phi_ipd);
-                //Interpolation
-                float h11i_step = (h11i - H11[b][ne_prev][1]) / (ne - ne_prev);
-                float h12i_step = (h12i - H12[b][ne_prev][1]) / (ne - ne_prev);
-                float h21i_step = (h21i - H21[b][ne_prev][1]) / (ne - ne_prev);
-                float h22i_step = (h22i - H22[b][ne_prev][1]) / (ne - ne_prev);
-                for (n = ne_prev + 1; n < ne; n++) { //TODO optimize out the multiply with an iterative add
-                    H11[b][n][1] = H11[b][ne_prev][1] + (n-ne_prev) * h11i_step;
-                    H12[b][n][1] = H12[b][ne_prev][1] + (n-ne_prev) * h12i_step;
-                    H21[b][n][1] = H21[b][ne_prev][1] + (n-ne_prev) * h21i_step;
-                    H22[b][n][1] = H22[b][ne_prev][1] + (n-ne_prev) * h22i_step;
-                }
-                H11[b][ne][1] = h11i;
-                H12[b][ne][1] = h12i;
-                H21[b][ne][1] = h21i;
-                H22[b][ne][1] = h22i;
-                if(conj)
+                H11[b][e+1][1] = h11i;
+                H12[b][e+1][1] = h12i;
+                H21[b][e+1][1] = h21i;
+                H22[b][e+1][1] = h22i;
             }
-                //Interpolation
-                float h11_step = (h11 - H11[b][ne_prev][0]) / (ne - ne_prev);
-                float h12_step = (h12 - H12[b][ne_prev][0]) / (ne - ne_prev);
-                float h21_step = (h21 - H21[b][ne_prev][0]) / (ne - ne_prev);
-                float h22_step = (h22 - H22[b][ne_prev][0]) / (ne - ne_prev);
-                for (n = ne_prev + 1; n < ne; n++) { //TODO optimize out the multiply with an iterative add
-                    H11[b][n][0] = H11[b][ne_prev][0] + (n-ne_prev) * h11_step;
-                    H12[b][n][0] = H12[b][ne_prev][0] + (n-ne_prev) * h12_step;
-                    H21[b][n][0] = H21[b][ne_prev][0] + (n-ne_prev) * h21_step;
-                    H22[b][n][0] = H22[b][ne_prev][0] + (n-ne_prev) * h22_step;
-                }
-                H11[b][ne][0] = h11;
-                H12[b][ne][0] = h12;
-                H21[b][ne][0] = h21;
-                H22[b][ne][0] = h22;
+            H11[b][e+1][0] = h11;
+            H12[b][e+1][0] = h12;
+            H21[b][e+1][0] = h21;
+            H22[b][e+1][0] = h22;
         }
-        ne_prev = ne;
-    }
-    //fill out the rest of the frame
-    for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
-        float h11r = H11[b][ne_prev][0];
-        float h12r = H12[b][ne_prev][0];
-        float h21r = H21[b][ne_prev][0];
-        float h22r = H22[b][ne_prev][0];
-        float h11i = H11[b][ne_prev][1];
-        float h12i = H12[b][ne_prev][1];
-        float h21i = H21[b][ne_prev][1];
-        float h22i = H22[b][ne_prev][1];
-        for (n = ne_prev + 1; n < numQMFSlots; n++) {
-            H11[b][n][0] = h11r;
-            H12[b][n][0] = h12r;
-            H21[b][n][0] = h21r;
-            H22[b][n][0] = h22r;
-            H11[b][n][1] = h11i;
-            H12[b][n][1] = h12i;
-            H21[b][n][1] = h21i;
-            H22[b][n][1] = h22i;
-        }
-    }
-    for (n = 0; n < numQMFSlots; n++) {
         for (k = 0; k < NR_BANDS[is34]; k++) {
-            //l is s, r is d
-            float l_re = l[k][n][0];
-            float l_im = l[k][n][1];
-            float r_re = r[k][n][0];
-            float r_im = r[k][n][1];
+            //av_log(NULL, AV_LOG_ERROR, "k %d\n", k);
             float h11r, h12r, h21r, h22r;
             float h11i, h12i, h21i, h22i;
+            int start = ps->border_position[e];
+            int stop  = ps->border_position[e+1];
+            float width = 1.f / (stop - start);
             b = map_k_to_i(k, is34);
 #if 0
             h11r = 0;
@@ -845,24 +806,53 @@ av_log(NULL, AV_LOG_ERROR, "e %d border %d\n", e, ne);
             h22r = 0;
             h11i = h12i = h21i = h22i = 0;
 #else
-            h11r = H11[b][n][0];
-            h12r = H12[b][n][0];
-            h21r = H21[b][n][0];
-            h22r = H22[b][n][0];
-            h11i = H11[b][n][1];
-            h12i = H12[b][n][1];
-            h21i = H21[b][n][1];
-            h22i = H22[b][n][1];
+            h11r = H11[b][e][0];
+            h12r = H12[b][e][0];
+            h21r = H21[b][e][0];
+            h22r = H22[b][e][0];
+            //Is this necessary? ps_04_new seems unchanged
+            if (IS_CONJ(k, is34)) {
+                h11i = -H11[b][e][1];
+                h12i = -H12[b][e][1];
+                h21i = -H21[b][e][1];
+                h22i = -H22[b][e][1];
+            } else {
+                h11i = H11[b][e][1];
+                h12i = H12[b][e][1];
+                h21i = H21[b][e][1];
+                h22i = H22[b][e][1];
+            }
 #endif
-            l[k][n][0] = h11r*l_re + h21r*r_re - h11i*l_im - h21i*r_im;
-            l[k][n][1] = h11r*l_im + h21r*r_im + h11i*l_re + h21i*r_re;
-            r[k][n][0] = h12r*l_re + h22r*r_re - h12i*l_im - h22i*r_im;
-            r[k][n][1] = h12r*l_im + h22r*r_im + h12i*l_re + h22i*r_re;
-            //if (n==31) av_log(NULL, AV_LOG_ERROR, "ssb %2d parameter %2d h %f %f %f %f\n",
-            //       k, b, h11, h21, h12, h22);
+            //Interpolation
+            float h11r_step = (H11[b][e+1][0] - h11r) * width;
+            float h12r_step = (H12[b][e+1][0] - h12r) * width;
+            float h21r_step = (H21[b][e+1][0] - h21r) * width;
+            float h22r_step = (H22[b][e+1][0] - h22r) * width;
+            float h11i_step = (H11[b][e+1][1] - h11i) * width;
+            float h12i_step = (H12[b][e+1][1] - h12i) * width;
+            float h21i_step = (H21[b][e+1][1] - h21i) * width;
+            float h22i_step = (H22[b][e+1][1] - h22i) * width;
+            for (n = start + 1; n <= stop; n++) {
+                //l is s, r is d
+                float l_re = l[k][n][0];
+                float l_im = l[k][n][1];
+                float r_re = r[k][n][0];
+                float r_im = r[k][n][1];
+                h11r += h11r_step; h11i += h11i_step;
+                h12r += h12r_step; h12i += h12i_step;
+                h21r += h21r_step; h21i += h21i_step;
+                h22r += h22r_step; h22i += h22i_step;
+                l[k][n][0] = h11r*l_re + h21r*r_re - h11i*l_im - h21i*r_im;
+                l[k][n][1] = h11r*l_im + h21r*r_im + h11i*l_re + h21i*r_re;
+                r[k][n][0] = h12r*l_re + h22r*r_re - h12i*l_im - h22i*r_im;
+                r[k][n][1] = h12r*l_im + h22r*r_im + h12i*l_re + h22i*r_re;
+                //av_log(NULL, AV_LOG_ERROR, "e %d k %d n %d %f %f %f %f %f %f %f %f\n",
+                //e, k, n, h11r, h21r, h11i, h21i, h12r, h22r, h12i, h22i);
+            }
         }
     }
 }
+#endif
 
 static void transpose_in(float Ltrans[64][44][2], float L[2][38][64])
 {
