@@ -1019,61 +1019,61 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
 
 static void transpose_in(float Ltrans[64][44][2], float L[2][38][64])
 {
-   int i, j;
-   for (i = 0; i < 64; i++) {
-       for (j = 0; j < 38; j++) {
-           Ltrans[i][j+6][0] = L[0][j][i];
-           Ltrans[i][j+6][1] = L[1][j][i];
-       }
-   }
+    int i, j;
+    for (i = 0; i < 64; i++) {
+        for (j = 0; j < 38; j++) {
+            Ltrans[i][j+6][0] = L[0][j][i];
+            Ltrans[i][j+6][1] = L[1][j][i];
+        }
+    }
 }
 
 static void transpose_out(float in[64][32][2], float out[2][38][64])
 {
-   int i, j;
-   for (i = 0; i < 64; i++) {
-       for (j = 0; j < 32; j++) {
-           out[0][j][i] = in[i][j][0];
-           out[1][j][i] = in[i][j][1];
-       }
-   }
+    int i, j;
+    for (i = 0; i < 64; i++) {
+        for (j = 0; j < 32; j++) {
+            out[0][j][i] = in[i][j][0];
+            out[1][j][i] = in[i][j][1];
+        }
+    }
 }
 
 int NO_OPT ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float R[2][38][64], int top)
 {
-   float Lout[64][32][2];
-   float Rout[64][32][2];
-   float Lbuf[91][32][2];
-   float Rbuf[91][32][2];
-   const int len = 32;
-   int is34;
-   ps->is34bands_old = ps->is34bands;
-   is34 = ps->is34bands = !PS_BASELINE && (ps->nr_icc_par == 34 || ps->nr_iid_par == 34);
+    float Lout[64][32][2];
+    float Rout[64][32][2];
+    float Lbuf[91][32][2];
+    float Rbuf[91][32][2];
+    const int len = 32;
+    int is34;
+    ps->is34bands_old = ps->is34bands;
+    is34 = ps->is34bands = !PS_BASELINE && (ps->nr_icc_par == 34 || ps->nr_iid_par == 34);
 
 av_log(NULL, AV_LOG_ERROR, "is34 %d\n", is34);
 av_log(NULL, AV_LOG_ERROR, "top %d\n", top);
 
-   top += NR_BANDS[is34] - 64;
-   memset(ps->delay+top, 0, (NR_BANDS[is34] - top)*sizeof(ps->delay[0]));
-   if (top < NR_ALLPASS_BANDS[is34])
-       memset(ps->ap_delay + top, 0, (NR_ALLPASS_BANDS[is34] - top)*sizeof(ps->ap_delay[0]));
+    top += NR_BANDS[is34] - 64;
+    memset(ps->delay+top, 0, (NR_BANDS[is34] - top)*sizeof(ps->delay[0]));
+    if (top < NR_ALLPASS_BANDS[is34])
+        memset(ps->ap_delay + top, 0, (NR_ALLPASS_BANDS[is34] - top)*sizeof(ps->ap_delay[0]));
 
-   transpose_in(ps->in_buf, L);
+    transpose_in(ps->in_buf, L);
 
-   memset(Lbuf, -1, sizeof(Lbuf));
-   memset(Lout, -1, sizeof(Lout));
-   hybrid_analysis(Lbuf, ps->in_buf, is34, len);
+    memset(Lbuf, -1, sizeof(Lbuf));
+    memset(Lout, -1, sizeof(Lout));
+    hybrid_analysis(Lbuf, ps->in_buf, is34, len);
 #if 1
-   decorrelation(ps, Rbuf, Lbuf, is34);
-   stereo_processing(ps, Lbuf, Rbuf, is34);
+    decorrelation(ps, Rbuf, Lbuf, is34);
+    stereo_processing(ps, Lbuf, Rbuf, is34);
 #endif
-   hybrid_synthesis(Lout, Lbuf, is34, len);
-   hybrid_synthesis(Rout, Rbuf, is34, len);
+    hybrid_synthesis(Lout, Lbuf, is34, len);
+    hybrid_synthesis(Rout, Rbuf, is34, len);
 
-   transpose_out(Lout, L);
-   transpose_out(Rout, R);
+    transpose_out(Lout, L);
+    transpose_out(Rout, R);
 
-   return 0;
+    return 0;
 }
 
 static av_cold void ps_init_dec()
