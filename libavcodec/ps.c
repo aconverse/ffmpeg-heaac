@@ -694,7 +694,7 @@ static void map_val_20_to_34(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
 static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
 {
     static float power[34][32]; //[f][t]
-    static float peak_decay_nrg[34][32];
+    static float peak_decay_nrg[34];
     float transient_gain[34][32];
     const float peak_decay_factor = 0.76592833836465f;
     const float transient_impact  = 1.5f;
@@ -716,18 +716,12 @@ static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float
     }
 
     //Transient detection
-    for (i = 0; i < NR_PAR_BANDS[is34]; i++) {
-        float decayed_peak = peak_decay_factor * peak_decay_nrg[i][nL - 1];
-        peak_decay_nrg[i][n0] = (decayed_peak < power[i][n0]) ? power[i][n0] : decayed_peak;
-        for (n = n0 + 1; n < nL; n++) {
-            decayed_peak = peak_decay_factor * peak_decay_nrg[i][n - 1];
-            peak_decay_nrg[i][n] = (decayed_peak < power[i][n]) ? power[i][n] : decayed_peak;
-        }
-    }
     static float power_smooth[34];
     static float peak_decay_diff_smooth[34];
     for (i = 0; i < NR_PAR_BANDS[is34]; i++) {
         for (n = n0; n < nL; n++) {
+            float decayed_peak = peak_decay_factor * peak_decay_nrg[i];
+            peak_decay_nrg[i] = (decayed_peak < power[i][n]) ? power[i][n] : decayed_peak;
             power_smooth[i] = a_smooth * power[i][n] + (1.0f - a_smooth) * power_smooth[i];
             if (!isfinite(power_smooth[i])) {
                 av_log(NULL, AV_LOG_ERROR, "%d %d\n", i, n);
@@ -735,7 +729,7 @@ static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float
                 av_log(NULL, AV_LOG_ERROR, "%f\n", power_smooth[i]);
                 abort();
             }
-            peak_decay_diff_smooth[i] = a_smooth * (peak_decay_nrg[i][n] - power[i][n]) +
+            peak_decay_diff_smooth[i] = a_smooth * (peak_decay_nrg[i] - power[i][n]) +
                                          (1.0f - a_smooth) * peak_decay_diff_smooth[i];
             transient_gain[i][n]   = (transient_impact * peak_decay_diff_smooth[i] > power_smooth[i]) ?
                                          power_smooth[i] / (transient_impact * peak_decay_diff_smooth[i]) : 1.0f;
