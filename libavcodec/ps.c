@@ -985,13 +985,6 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
             int stop  = ps->border_position[e+1];
             float width = 1.f / (stop - start);
             b = map_k_to_i(k, is34);
-#if 0
-            h11r = 0;
-            h12r = 1;
-            h21r = 1;
-            h22r = 0;
-            h11i = h12i = h21i = h22i = 0;
-#else
             h11r = H11[0][e][b];
             h12r = H12[0][e][b];
             h21r = H21[0][e][b];
@@ -1008,7 +1001,6 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 h21i = H21[1][e][b];
                 h22i = H22[1][e][b];
             }
-#endif
             //Interpolation
             float h11r_step = (H11[0][e+1][b] - h11r) * width;
             float h12r_step = (H12[0][e+1][b] - h12r) * width;
@@ -1028,6 +1020,13 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 h12r += h12r_step; h12i += h12i_step;
                 h21r += h21r_step; h21i += h21i_step;
                 h22r += h22r_step; h22i += h22i_step;
+#if 0
+            h11r = 0;
+            h12r = 1;
+            h21r = 1;
+            h22r = 0;
+            h11i = h12i = h21i = h22i = 0;
+#endif
                 l[k][n][0] = h11r*l_re + h21r*r_re - h11i*l_im - h21i*r_im;
                 l[k][n][1] = h11r*l_im + h21r*r_im + h11i*l_re + h21i*r_re;
                 r[k][n][0] = h12r*l_re + h22r*r_re - h12i*l_im - h22i*r_im;
