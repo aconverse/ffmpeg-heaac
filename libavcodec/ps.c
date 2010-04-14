@@ -724,22 +724,22 @@ static void NO_OPT decorrelation(float (*out)[32][2], const float (*s)[32][2], i
             peak_decay_nrg[i][n] = (decayed_peak < power[i][n]) ? power[i][n] : decayed_peak;
         }
     }
+    static float power_smooth[34];
+    static float peak_decay_diff_smooth[34];
     for (i = 0; i < NR_PAR_BANDS[is34]; i++) {
-        float power_smooth = 0.0f;
-        float peak_decay_diff_smooth = 0.0f;
         for (n = n0; n < nL; n++) {
-            power_smooth = a_smooth * power[i][n] + (1.0f - a_smooth) * power_smooth;
-            if (!isfinite(power_smooth)) {
+            power_smooth[i] = a_smooth * power[i][n] + (1.0f - a_smooth) * power_smooth[i];
+            if (!isfinite(power_smooth[i])) {
                 av_log(NULL, AV_LOG_ERROR, "%d %d\n", i, n);
                 av_log(NULL, AV_LOG_ERROR, "%f\n", power[i][n]);
-                av_log(NULL, AV_LOG_ERROR, "%f\n", power_smooth);
+                av_log(NULL, AV_LOG_ERROR, "%f\n", power_smooth[i]);
                 abort();
             }
-            peak_decay_diff_smooth = a_smooth * (peak_decay_nrg[i][n] - power[i][n]) +
-                                         (1.0f - a_smooth) * peak_decay_diff_smooth;
-            transient_gain[i][n]   = (transient_impact * peak_decay_diff_smooth > power_smooth) ?
-                                         power_smooth / (transient_impact * peak_decay_diff_smooth) : 1.0f;
-//av_log(NULL, AV_LOG_ERROR, "transient_gain[%2d][%2d] %f\n", i, n, transient_gain[i][n]);
+            peak_decay_diff_smooth[i] = a_smooth * (peak_decay_nrg[i][n] - power[i][n]) +
+                                         (1.0f - a_smooth) * peak_decay_diff_smooth[i];
+            transient_gain[i][n]   = (transient_impact * peak_decay_diff_smooth[i] > power_smooth[i]) ?
+                                         power_smooth[i] / (transient_impact * peak_decay_diff_smooth[i]) : 1.0f;
+//av_log(NULL, AV_LOG_ERROR, "transient_gain[%2d][%2d] %f %f %f\n", i, n, transient_gain[i][n], peak_decay_diff_smooth[i], power_smooth[i]);
         }
     }
 
