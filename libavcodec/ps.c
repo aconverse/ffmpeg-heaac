@@ -1121,6 +1121,7 @@ static av_cold void ps_init_dec()
     make_filters_from_proto(f34_3_4,  g2_Q4,   4, 24);
     make_filters_from_proto(f34_4_4,  g2_Q4,   4, 28);
 
+#if !PS_HARDCODED_TABLES
     static const float acos_icc_invq[] = {
         0, 0.35685527, 0.57133466, 0.92614472, 1.1943263, M_PI/2, 2.2006171, M_PI
     };
@@ -1129,18 +1130,21 @@ static av_cold void ps_init_dec()
         float c = iid_par_dequant[iid]; //<Linear Inter-channel Intensity Difference
         float c1 = (float)M_SQRT2 / sqrtf(1.0f + c*c);
         float c2 = c * c1;
+        //av_log(NULL, AV_LOG_ERROR, "    {\n");
         for (icc = 0; icc < 8; icc++) {
             /*if (PS_BASELINE || ps->icc_mode < 3)*/ {
                 float alpha = 0.5f * acos_icc_invq[icc];
                 float beta  = alpha * (c1 - c2) * (float)M_SQRT1_2;
-                //av_log(NULL, AV_LOG_ERROR, "alpha %f beta %f c %f c1 %f c2 %f iid_par %d icc_par %d\n", alpha, beta, c, c1, c2, iid, icc);
                 HA[iid][icc][0] = c2 * cosf(beta + alpha);
                 HA[iid][icc][1] = c1 * cosf(beta - alpha);
                 HA[iid][icc][2] = c2 * sinf(beta + alpha);
                 HA[iid][icc][3] = c1 * sinf(beta - alpha);
+                //av_log(NULL, AV_LOG_ERROR, "        { %13.10f, %13.10f, %13.10f, %13.10f  },\n", HA[iid][icc][0], HA[iid][icc][1], HA[iid][icc][2], HA[iid][icc][3]);
             }
         }
+        //av_log(NULL, AV_LOG_ERROR, "    },\n");
     }
+#endif
 }
 
 av_cold void ff_ps_init(void) {
