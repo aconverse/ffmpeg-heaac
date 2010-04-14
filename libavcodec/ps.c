@@ -811,22 +811,22 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
     }
 }
 
-#if 1
 static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2], int is34)
 {
     int e, b, k, n;
 
-    static float H11[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC]; //TODO
-    static float H12[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC]; //make me a context var, or atleast my first row
-    static float H21[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC]; //deal 20-34 changes
-    static float H22[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC];
-    static float opd_smooth[PS_MAX_NR_IIDICC][2][2];
-    static float ipd_smooth[PS_MAX_NR_IIDICC][2][2];
+    float (*H11)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H11;
+    float (*H12)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H12;
+    float (*H21)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H21;
+    float (*H22)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H22;
+    float (*opd_smooth)[2][2] = ps->opd_smooth;
+    float (*ipd_smooth)[2][2] = ps->ipd_smooth;
       //Table 8.28, Quantization grid for ICC
     static const float icc_invq[] = {
         1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
     };
 
+    //Remapping
     for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
         H11[0][0][b] = H11[0][ps->num_env_old][b];
         H12[0][0][b] = H12[0][ps->num_env_old][b];
@@ -837,12 +837,6 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
         H21[1][0][b] = H21[1][ps->num_env_old][b];
         H22[1][0][b] = H22[1][ps->num_env_old][b];
     }
-    //mixing
-    //av_log(NULL, AV_LOG_ERROR, "num_env %d\n", ps->num_env);
-    //av_log(NULL, AV_LOG_ERROR, "nr_iid_par %d\n", ps->nr_iid_par);
-    //av_log(NULL, AV_LOG_ERROR, "nr_icc_par %d\n", ps->nr_icc_par);
-    av_log(NULL, AV_LOG_ERROR, "nr_ipdopd_par %d\n", ps->nr_ipdopd_par);
-    av_log(NULL, AV_LOG_ERROR, "enable_ipdopd %d\n", ps->enable_ipdopd);
     if (is34) {
         for (e = 0; e < ps->num_env; e++) {
             if (ps->nr_icc_par == 20)
@@ -889,6 +883,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
         }
     }
 
+    //Mixing
     for (e = 0; e < ps->num_env; e++) {
         for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
             float h11, h12, h21, h22;
@@ -911,7 +906,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 h21 = -M_SQRT2 * sinf(alpha) * sinf(gamma);
                 h22 =  M_SQRT2 * cosf(alpha) * sinf(gamma);
             }
-            if (ps->enable_ipdopd && b < ps->nr_ipdopd_par) { //FIXME
+            if (!PS_BASELINE && b < ps->nr_ipdopd_par) { //FIXME
                 //Smoothing
                 float h11i, h12i, h21i, h22i;
                 float opd_ar = ps->opd_par[e][b] * M_PI/4;
@@ -1015,7 +1010,6 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
         }
     }
 }
-#endif
 
 static void transpose_in(float Ltrans[64][44][2], float L[2][38][64])
 {

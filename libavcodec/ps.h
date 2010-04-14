@@ -66,6 +66,12 @@ typedef struct {
     float  peak_decay_nrg[34];
     float  power_smooth[34];
     float  peak_decay_diff_smooth[34];
+    float  H11[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC];
+    float  H12[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC];
+    float  H21[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC];
+    float  H22[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC];
+    float  opd_smooth[PS_MAX_NR_IIDICC][2][2];
+    float  ipd_smooth[PS_MAX_NR_IIDICC][2][2];
 } PSContext;
 
 void ff_ps_init(void);
