@@ -693,7 +693,7 @@ static void map_val_20_to_34(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
 
 static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
 {
-    static float power[34][32]; //[f][t]
+    float power[34][32];
     static float peak_decay_nrg[34];
     float transient_gain[34][32];
     const float peak_decay_factor = 0.76592833836465f;
