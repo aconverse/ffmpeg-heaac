@@ -27,6 +27,12 @@
 #define PS_MAX_NUM_ENV 4
 #define PS_MAX_NR_IIDICC 34
 #define PS_MAX_NR_IPDOPD 17
+#define PS_MAX_SSB 91
+#define PS_MAX_AP_BANDS 50
+#define PS_QMF_TIME_SLOTS 32
+#define PS_MAX_DELAY 14
+#define PS_AP_LINKS 3
+#define PS_MAX_AP_DELAY 5
 
 typedef struct {
     int    enable_iid;
@@ -55,8 +61,8 @@ typedef struct {
     int    is34bands_old;
 
     float  in_buf[64][44][2];
-    float  delay              [91 /*NR_BANDS[is34]*/][32 /*numQMFSlots*/+ 14 /*MAX_DELAY*/][2];
-    float  all_pass_delay_buff[50 /*NR_ALLPASS_BANDS[is34]*/][3 /*NR_ALLPASS_LINKS*/ + 1][32 /*numQMFSlots*/+ 5][2];
+    float  delay[PS_MAX_SSB][PS_QMF_TIME_SLOTS + PS_MAX_DELAY][2];
+    float  ap_delay[PS_MAX_AP_BANDS][PS_AP_LINKS + 1][PS_QMF_TIME_SLOTS + PS_MAX_AP_DELAY][2];
     float  peak_decay_nrg[34];
     float  power_smooth[34];
     float  peak_decay_diff_smooth[34];

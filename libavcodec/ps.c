@@ -512,8 +512,6 @@ static void hybrid_synthesis(float out[64][32][2], float in[91][32][2], int is34
 
 /// All-pass filter decay slope
 #define DECAY_SLOPE      0.05f
-/// Number of filter links for the all-pass filter
-#define NR_ALLPASS_LINKS 3
 /// Number of frequency bands that can be addressed by the parameter index, b(k)
 static const int   NR_PAR_BANDS[]      = { 20, 34 };
 /// Number of frequency bands that can be addressed by the sub subband index, k
@@ -527,7 +525,7 @@ static const int   NR_ALLPASS_BANDS[]  = { 30, 50 };
 /// First stereo band using the short one sample delay
 static const int   SHORT_DELAY_BAND[]  = { 42, 63 };
 
-static float Q_fract_allpass[2][NR_ALLPASS_BANDS34][NR_ALLPASS_LINKS][2];
+static float Q_fract_allpass[2][NR_ALLPASS_BANDS34][PS_AP_LINKS][2];
 static float phi_fract[2][NR_ALLPASS_BANDS34][2];
 
 /// Inverse map i = b(k)
@@ -691,21 +689,24 @@ static void map_val_20_to_34(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
     MAP_GENERIC_20_TO_34
 }
 
-static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
+static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
 {
-    float power[34][32];
-    float transient_gain[34][32];
+    float power[34][PS_QMF_TIME_SLOTS];
+    float transient_gain[34][PS_QMF_TIME_SLOTS];
     float *peak_decay_nrg = ps->peak_decay_nrg;
     float *power_smooth = ps->power_smooth;
     float *peak_decay_diff_smooth = ps->peak_decay_diff_smooth;
+    float (*delay)[PS_QMF_TIME_SLOTS + PS_MAX_DELAY][2] = ps->delay;
+    float (*ap_delay)[PS_AP_LINKS + 1][PS_QMF_TIME_SLOTS + PS_MAX_AP_DELAY][2] = ps->ap_delay;
     const float peak_decay_factor = 0.76592833836465f;
     const float transient_impact  = 1.5f;
     const float a_smooth          = 0.25f; //< Smoothing coefficient
     int i, k, m, n;
-    int n0 = 0, nL = 32; //ps->border_position[ps->num_env - 1]; //FIXME
+    int n0 = 0, nL = 32;
+
     memset(power, 0, sizeof(power));
     for (n = n0; n < nL; n++) {
-        for (k = 0; k < NR_BANDS[is34]; k++) { //TODO be careful about uninitialized bands in the 10,20 case
+        for (k = 0; k < NR_BANDS[is34]; k++) {
             int i = map_k_to_i(k, is34);
             power[i][n] += s[k][n][0] * s[k][n][0] + s[k][n][1] * s[k][n][1];
             if (!isfinite(power[i][n])) {
@@ -738,8 +739,7 @@ static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float
     }
 
     //Decorrelation and transient reduction
-    //g_decay_slope[k] = clip(1 - DECAY_SLOPE * (k - DECAY_CUTOFF), 0, 1)
-    //                         NR_ALLPASS_LINKS - 1
+    //                         PS_AP_LINKS - 1
     //                               -----
     //                                | |  Q_fract_allpass[k][m]*z^-link_delay[m] - a[m]*g_decay_slope[k]
     //H[k][z] = z^-2 * phi_fract[k] * | | ----------------------------------------------------------------
@@ -749,45 +749,41 @@ static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float
     static const float a[] = { 0.65143905753106f,
                                0.56471812200776f,
                                0.48954165955695f };
-#define MAX_DELAY 14
-    float (*delay)[32 /*numQMFSlots*/+ 14 /*MAX_DELAY*/][2] = ps->delay;
-    float (*all_pass_delay_buff)[3 /*NR_ALLPASS_LINKS*/ + 1][32 /*numQMFSlots*/+ 5][2] = ps->all_pass_delay_buff;
     //d[k][z] (out) = transient_gain_mapped[k][z] * H[k][z] * s[k][z]
     for (k = 0; k < NR_ALLPASS_BANDS[is34]; k++) {
         int b = map_k_to_i(k, is34);
         float g_decay_slope = 1.f - DECAY_SLOPE * (k - DECAY_CUTOFF[is34]);
         g_decay_slope = FFMIN(g_decay_slope, 1.f);
         g_decay_slope = FFMAX(g_decay_slope, 0.f);
-        memcpy(delay[k], delay[k]+nL, MAX_DELAY*sizeof(delay[k][0]));
-        memcpy(delay[k]+MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
-        for (m = 0; m <= NR_ALLPASS_LINKS; m++) {
-            memcpy(all_pass_delay_buff[k][m],   all_pass_delay_buff[k][m]+numQMFSlots,           5*sizeof(all_pass_delay_buff[k][m][0]));
-            //memcpy(all_pass_delay_buff[k][m]+5, s[k],                                  numQMFSlots*sizeof(all_pass_delay_buff[k][m][0]));
+        memcpy(delay[k], delay[k]+nL, PS_MAX_DELAY*sizeof(delay[k][0]));
+        memcpy(delay[k]+PS_MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
+        for (m = 0; m <= PS_AP_LINKS; m++) {
+            memcpy(ap_delay[k][m],   ap_delay[k][m]+numQMFSlots,           5*sizeof(ap_delay[k][m][0]));
         }
         for (n = n0; n < nL; n++) {
-            float in_re = delay[k][n+MAX_DELAY-2][0] * phi_fract[is34][k][0] -
-                          delay[k][n+MAX_DELAY-2][1] * phi_fract[is34][k][1];
-            float in_im = delay[k][n+MAX_DELAY-2][0] * phi_fract[is34][k][1] +
-                          delay[k][n+MAX_DELAY-2][1] * phi_fract[is34][k][0];
-            for (m = 0; m < NR_ALLPASS_LINKS; m++) {
+            float in_re = delay[k][n+PS_MAX_DELAY-2][0] * phi_fract[is34][k][0] -
+                          delay[k][n+PS_MAX_DELAY-2][1] * phi_fract[is34][k][1];
+            float in_im = delay[k][n+PS_MAX_DELAY-2][0] * phi_fract[is34][k][1] +
+                          delay[k][n+PS_MAX_DELAY-2][1] * phi_fract[is34][k][0];
+            for (m = 0; m < PS_AP_LINKS; m++) {
                 float a_re                = a[m] * g_decay_slope * in_re;
                 float a_im                = a[m] * g_decay_slope * in_im;
-                float in_link_delay_re    = all_pass_delay_buff[k][m][n+5-link_delay[m]][0];
-                float in_link_delay_im    = all_pass_delay_buff[k][m][n+5-link_delay[m]][1];
-                float out_link_delay_re   = a[m] * g_decay_slope * all_pass_delay_buff[k][m+1][n+5-link_delay[m]][0];
-                float out_link_delay_im   = a[m] * g_decay_slope * all_pass_delay_buff[k][m+1][n+5-link_delay[m]][1];
+                float in_link_delay_re    = ap_delay[k][m][n+5-link_delay[m]][0];
+                float in_link_delay_im    = ap_delay[k][m][n+5-link_delay[m]][1];
+                float out_link_delay_re   = a[m] * g_decay_slope * ap_delay[k][m+1][n+5-link_delay[m]][0];
+                float out_link_delay_im   = a[m] * g_decay_slope * ap_delay[k][m+1][n+5-link_delay[m]][1];
                 float fractional_delay_re = Q_fract_allpass[is34][k][m][0];
                 float fractional_delay_im = Q_fract_allpass[is34][k][m][1];
 //av_log(NULL, AV_LOG_ERROR, "allpass stage %d in= %e %e\n", m, in_re, in_im);
-                all_pass_delay_buff[k][m][n+5][0] = in_re;
-                all_pass_delay_buff[k][m][n+5][1] = in_im;
+                ap_delay[k][m][n+5][0] = in_re;
+                ap_delay[k][m][n+5][1] = in_im;
                 in_re  =  in_link_delay_re * fractional_delay_re -  in_link_delay_im * fractional_delay_im - a_re;
                 in_im  =  in_link_delay_re * fractional_delay_im +  in_link_delay_im * fractional_delay_re - a_im;
                 in_re += out_link_delay_re * fractional_delay_re - out_link_delay_im * fractional_delay_im;
                 in_im += out_link_delay_re * fractional_delay_im + out_link_delay_im * fractional_delay_re;
             }
-            all_pass_delay_buff[k][m][n+5][0] = in_re;
-            all_pass_delay_buff[k][m][n+5][1] = in_im;
+            ap_delay[k][m][n+5][0] = in_re;
+            ap_delay[k][m][n+5][1] = in_im;
 //av_log(NULL, AV_LOG_ERROR, "allpass[k=%2d][n=%2d] = %e %e ", k, n, in_re, in_im);
             out[k][n][0] = transient_gain[b][n] * in_re;
             out[k][n][1] = transient_gain[b][n] * in_im;
@@ -795,28 +791,24 @@ static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float
 //av_log(NULL, AV_LOG_ERROR, "out = %e %e\n", out[k][n][0], out[k][n][1]);
         }
     }
-#if 1
     for (; k < SHORT_DELAY_BAND[is34]; k++) {
-        memcpy(delay[k], delay[k]+nL, MAX_DELAY*sizeof(delay[k][0]));
-        memcpy(delay[k]+MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
+        memcpy(delay[k], delay[k]+nL, PS_MAX_DELAY*sizeof(delay[k][0]));
+        memcpy(delay[k]+PS_MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
         for (n = n0; n < nL; n++) {
             //H = delay 14
-            out[k][n][0] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+MAX_DELAY-14][0];
-            out[k][n][1] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+MAX_DELAY-14][1];
+            out[k][n][0] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+PS_MAX_DELAY-14][0];
+            out[k][n][1] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+PS_MAX_DELAY-14][1];
         }
     }
     for (; k < NR_BANDS[is34]; k++) {
-        memcpy(delay[k], delay[k]+nL, MAX_DELAY*sizeof(delay[k][0]));
-        memcpy(delay[k]+MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
+        memcpy(delay[k], delay[k]+nL, PS_MAX_DELAY*sizeof(delay[k][0]));
+        memcpy(delay[k]+PS_MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
         for (n = n0; n < nL; n++) {
             //H = delay 1
-            out[k][n][0] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+MAX_DELAY-1][0];
-            out[k][n][1] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+MAX_DELAY-1][1];
+            out[k][n][0] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+PS_MAX_DELAY-1][0];
+            out[k][n][1] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+PS_MAX_DELAY-1][1];
         }
     }
-#else
-memset(out+k, 0, (NR_BANDS[is34]-NR_ALLPASS_BANDS[is34])*sizeof(out[0]));
-#endif
 }
 
 #if 1
@@ -1064,7 +1056,7 @@ av_log(NULL, AV_LOG_ERROR, "top %d\n", top);
    top += NR_BANDS[is34] - 64;
    memset(ps->delay+top, 0, (NR_BANDS[is34] - top)*sizeof(ps->delay[0]));
    if (top < NR_ALLPASS_BANDS[is34])
-       memset(ps->all_pass_delay_buff + top, 0, (NR_ALLPASS_BANDS[is34] - top)*sizeof(ps->all_pass_delay_buff[0]));
+       memset(ps->ap_delay + top, 0, (NR_ALLPASS_BANDS[is34] - top)*sizeof(ps->ap_delay[0]));
 
    transpose_in(ps->in_buf, L);
 
@@ -1105,7 +1097,7 @@ static av_cold void ps_init_dec()
             f_center = f_center_20[k];
         else
             f_center = k - 7 + 0.5f;
-        for (m = 0; m < NR_ALLPASS_LINKS; m++) {
+        for (m = 0; m < PS_AP_LINKS; m++) {
             theta = -M_PI * fractional_delay_links[m] * f_center;
             Q_fract_allpass[0][k][m][0] = cosf(theta);
             Q_fract_allpass[0][k][m][1] = sinf(theta);
@@ -1120,7 +1112,7 @@ static av_cold void ps_init_dec()
             f_center = f_center_34[k];
         else
             f_center = k - 27 + 0.5f;
-        for (m = 0; m < NR_ALLPASS_LINKS; m++) {
+        for (m = 0; m < PS_AP_LINKS; m++) {
             Q_fract_allpass[1][k][m][0] = cosf(-M_PI * fractional_delay_links[m] * f_center);
             Q_fract_allpass[1][k][m][1] = sinf(-M_PI * fractional_delay_links[m] * f_center);
         }
