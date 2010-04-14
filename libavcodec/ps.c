@@ -840,9 +840,6 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     static const float icc_invq[] = {
         1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
     };
-    static const float acos_icc_invq[] = {
-        0, 0.35685527, 0.57133466, 0.92614472, 1.1943263, M_PI/2, 2.2006171, M_PI
-    };
 
     for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
         H11[0][0][b] = H11[0][ps->num_env_old][b];
@@ -908,19 +905,14 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
 
     for (e = 0; e < ps->num_env; e++) {
         for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
-            float c = iid_par_dequant[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant]; //<Linear Inter-channel Intensity Difference
             float h11, h12, h21, h22;
             if (PS_BASELINE || ps->icc_mode < 3) {
-                float c1 = (float)M_SQRT2 / sqrtf(1.0f + c*c);
-                float c2 = c * c1;
-                float alpha = 0.5f * acos_icc_invq[ps->icc_par[e][b]];
-                float beta  = alpha * (c1 - c2) * (float)M_SQRT1_2;
-                //av_log(NULL, AV_LOG_ERROR, "alpha %f beta %f c %f c1 %f c2 %f iid_par %d icc_par %d\n", alpha, beta, c, c1, c2, ps->iid_par[e][b], ps->icc_par[e][b]);
-                h11 = c2 * cosf(beta + alpha);
-                h12 = c1 * cosf(beta - alpha);
-                h21 = c2 * sinf(beta + alpha);
-                h22 = c1 * sinf(beta - alpha);
+                h11 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][0];
+                h12 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][1];
+                h21 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][2];
+                h22 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][3];
             } else {
+                float c = iid_par_dequant[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant]; //<Linear Inter-channel Intensity Difference
                 float rho = FFMAX(icc_invq[ps->icc_par[e][b]], 0.05f);
                 float alpha = 0.5f * atan2f(2.0f * c * rho, c*c - 1.0f);
                 float mu = c + 1.0f / c;
@@ -1148,6 +1140,27 @@ static av_cold void ps_init_dec()
     make_filters_from_proto(f34_2_4,  g2_Q4,   4, 20);
     make_filters_from_proto(f34_3_4,  g2_Q4,   4, 24);
     make_filters_from_proto(f34_4_4,  g2_Q4,   4, 28);
+
+    static const float acos_icc_invq[] = {
+        0, 0.35685527, 0.57133466, 0.92614472, 1.1943263, M_PI/2, 2.2006171, M_PI
+    };
+    int iid, icc;
+    for (iid = 0; iid < 46; iid++) {
+        float c = iid_par_dequant[iid]; //<Linear Inter-channel Intensity Difference
+        float c1 = (float)M_SQRT2 / sqrtf(1.0f + c*c);
+        float c2 = c * c1;
+        for (icc = 0; icc < 8; icc++) {
+            /*if (PS_BASELINE || ps->icc_mode < 3)*/ {
+                float alpha = 0.5f * acos_icc_invq[icc];
+                float beta  = alpha * (c1 - c2) * (float)M_SQRT1_2;
+                //av_log(NULL, AV_LOG_ERROR, "alpha %f beta %f c %f c1 %f c2 %f iid_par %d icc_par %d\n", alpha, beta, c, c1, c2, iid, icc);
+                HA[iid][icc][0] = c2 * cosf(beta + alpha);
+                HA[iid][icc][1] = c1 * cosf(beta - alpha);
+                HA[iid][icc][2] = c2 * sinf(beta + alpha);
+                HA[iid][icc][3] = c1 * sinf(beta - alpha);
+            }
+        }
+    }
 }
 
 av_cold void ff_ps_init(void) {
