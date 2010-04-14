@@ -821,10 +821,6 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     float (*H22)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H22;
     float (*opd_smooth)[2][2] = ps->opd_smooth;
     float (*ipd_smooth)[2][2] = ps->ipd_smooth;
-      //Table 8.28, Quantization grid for ICC
-    static const float icc_invq[] = {
-        1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
-    };
 
     //Remapping
     for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
@@ -893,18 +889,10 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 h21 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][2];
                 h22 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][3];
             } else {
-                float c = iid_par_dequant[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant]; //<Linear Inter-channel Intensity Difference
-                float rho = FFMAX(icc_invq[ps->icc_par[e][b]], 0.05f);
-                float alpha = 0.5f * atan2f(2.0f * c * rho, c*c - 1.0f);
-                float mu = c + 1.0f / c;
-                mu = sqrtf(1 + (4 * rho * rho - 4)/(mu * mu));
-                float gamma = atanf(sqrtf((1.0f - mu)/(1.0f + mu)));
-                if (alpha < 0) alpha += M_PI/2;
-                //av_log(NULL, AV_LOG_ERROR, "alpha %f gamma %f\n", alpha, gamma);
-                h11 =  M_SQRT2 * cosf(alpha) * cosf(gamma);
-                h12 =  M_SQRT2 * sinf(alpha) * cosf(gamma);
-                h21 = -M_SQRT2 * sinf(alpha) * sinf(gamma);
-                h22 =  M_SQRT2 * cosf(alpha) * sinf(gamma);
+                h11 = HB[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][0];
+                h12 = HB[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][1];
+                h21 = HB[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][2];
+                h22 = HB[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][3];
             }
             if (!PS_BASELINE && b < ps->nr_ipdopd_par) { //FIXME
                 //Smoothing
@@ -1122,6 +1110,10 @@ static av_cold void ps_init_dec()
     make_filters_from_proto(f34_4_4,  g2_Q4,   4, 28);
 
 #if !PS_HARDCODED_TABLES
+    //Table 8.28, Quantization grid for ICC
+    static const float icc_invq[] = {
+        1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
+    };
     static const float acos_icc_invq[] = {
         0, 0.35685527, 0.57133466, 0.92614472, 1.1943263, M_PI/2, 2.2006171, M_PI
     };
@@ -1140,6 +1132,18 @@ static av_cold void ps_init_dec()
                 HA[iid][icc][2] = c2 * sinf(beta + alpha);
                 HA[iid][icc][3] = c1 * sinf(beta - alpha);
                 //av_log(NULL, AV_LOG_ERROR, "        { %13.10f, %13.10f, %13.10f, %13.10f  },\n", HA[iid][icc][0], HA[iid][icc][1], HA[iid][icc][2], HA[iid][icc][3]);
+            } /* else */ {
+                float rho = FFMAX(icc_invq[icc], 0.05f);
+                float alpha = 0.5f * atan2f(2.0f * c * rho, c*c - 1.0f);
+                float mu = c + 1.0f / c;
+                mu = sqrtf(1 + (4 * rho * rho - 4)/(mu * mu));
+                float gamma = atanf(sqrtf((1.0f - mu)/(1.0f + mu)));
+                if (alpha < 0) alpha += M_PI/2;
+                HB[iid][icc][0] =  M_SQRT2 * cosf(alpha) * cosf(gamma);
+                HB[iid][icc][1] =  M_SQRT2 * sinf(alpha) * cosf(gamma);
+                HB[iid][icc][2] = -M_SQRT2 * sinf(alpha) * sinf(gamma);
+                HB[iid][icc][3] =  M_SQRT2 * cosf(alpha) * sinf(gamma);
+                //av_log(NULL, AV_LOG_ERROR, "        { %13.10f, %13.10f, %13.10f, %13.10f  },\n", HB[iid][icc][0], HB[iid][icc][1], HB[iid][icc][2], HB[iid][icc][3]);
             }
         }
         //av_log(NULL, AV_LOG_ERROR, "    },\n");

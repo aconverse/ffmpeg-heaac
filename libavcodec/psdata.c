@@ -623,4 +623,5 @@ static const float HA[46][8][4] = {
 };
 #else
 static float HA[46][8][4];
+static float HB[46][8][4];
 #endif
