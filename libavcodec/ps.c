@@ -691,7 +691,7 @@ static void map_val_20_to_34(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
     MAP_GENERIC_20_TO_34
 }
 
-static void NO_OPT decorrelation(float (*out)[32][2], const float (*s)[32][2], int is34)
+static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
 {
     static float power[34][32]; //[f][t]
     static float peak_decay_nrg[34][32];
@@ -756,8 +756,8 @@ static void NO_OPT decorrelation(float (*out)[32][2], const float (*s)[32][2], i
                                0.56471812200776f,
                                0.48954165955695f };
 #define MAX_DELAY 14
-    static float delay              [91 /*NR_BANDS[is34]*/][numQMFSlots+MAX_DELAY][2];
-    static float all_pass_delay_buff[50 /*NR_ALLPASS_BANDS[is34]*/][ NR_ALLPASS_LINKS + 1][numQMFSlots+        5][2];
+    float (*delay)[32 /*numQMFSlots*/+ 14 /*MAX_DELAY*/][2] = ps->delay;
+    float (*all_pass_delay_buff)[3 /*NR_ALLPASS_LINKS*/ + 1][32 /*numQMFSlots*/+ 5][2] = ps->all_pass_delay_buff;
     //d[k][z] (out) = transient_gain_mapped[k][z] * H[k][z] * s[k][z]
     for (k = 0; k < NR_ALLPASS_BANDS[is34]; k++) {
         int b = map_k_to_i(k, is34);
@@ -915,7 +915,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 float c2 = c * c1;
                 float alpha = 0.5f * acos_icc_invq[ps->icc_par[e][b]];
                 float beta  = alpha * (c1 - c2) * (float)M_SQRT1_2;
-                //av_log(NULL, AV_LOG_ERROR, "alpha %f beta %f c1 %f c2 %f\n", alpha, beta, c1, c2);
+                //av_log(NULL, AV_LOG_ERROR, "alpha %f beta %f c %f c1 %f c2 %f iid_par %d icc_par %d\n", alpha, beta, c, c1, c2, ps->iid_par[e][b], ps->icc_par[e][b]);
                 h11 = c2 * cosf(beta + alpha);
                 h12 = c1 * cosf(beta - alpha);
                 h21 = c2 * sinf(beta + alpha);
@@ -1061,7 +1061,7 @@ static void transpose_out(float in[64][32][2], float out[2][38][64])
    }
 }
 
-int NO_OPT ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float R[2][38][64])
+int NO_OPT ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float R[2][38][64], int top)
 {
    float Lout[64][32][2];
    float Rout[64][32][2];
@@ -1073,13 +1073,20 @@ int NO_OPT ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64],
    is34 = ps->is34bands = !PS_BASELINE && (ps->nr_icc_par == 34 || ps->nr_iid_par == 34);
 
 av_log(NULL, AV_LOG_ERROR, "is34 %d\n", is34);
+av_log(NULL, AV_LOG_ERROR, "top %d\n", top);
+
+   top += NR_BANDS[is34] - 64;
+   memset(ps->delay+top, 0, (NR_BANDS[is34] - top)*sizeof(ps->delay[0]));
+   if (top < NR_ALLPASS_BANDS[is34])
+       memset(ps->all_pass_delay_buff + top, 0, (NR_ALLPASS_BANDS[is34] - top)*sizeof(ps->all_pass_delay_buff[0]));
+
    transpose_in(ps->in_buf, L);
 
    memset(Lbuf, -1, sizeof(Lbuf));
    memset(Lout, -1, sizeof(Lout));
    hybrid_analysis(Lbuf, ps->in_buf, is34, len);
 #if 1
-   decorrelation(Rbuf, Lbuf, is34);
+   decorrelation(ps, Rbuf, Lbuf, is34);
    stereo_processing(ps, Lbuf, Rbuf, is34);
 #endif
    hybrid_synthesis(Lout, Lbuf, is34, len);

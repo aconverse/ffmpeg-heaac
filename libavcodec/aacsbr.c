@@ -1757,7 +1757,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
 
 #if 1
     if (sbr->start && ch == 0)
-        ff_ps_apply(ac->avccontext, &sbr->ps, sbr->X[0], sbr->X[1]);
+        ff_ps_apply(ac->avccontext, &sbr->ps, sbr->X[0], sbr->X[1], sbr->kx[1] + sbr->m[1]);
 #endif
 
     sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out, sbr->X[0], sbr->qmf_filter_scratch,
