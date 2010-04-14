@@ -694,8 +694,10 @@ static void map_val_20_to_34(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
 static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
 {
     float power[34][32];
-    static float peak_decay_nrg[34];
     float transient_gain[34][32];
+    float *peak_decay_nrg = ps->peak_decay_nrg;
+    float *power_smooth = ps->power_smooth;
+    float *peak_decay_diff_smooth = ps->peak_decay_diff_smooth;
     const float peak_decay_factor = 0.76592833836465f;
     const float transient_impact  = 1.5f;
     const float a_smooth          = 0.25f; //< Smoothing coefficient
@@ -716,8 +718,6 @@ static void NO_OPT decorrelation(PSContext *ps, float (*out)[32][2], const float
     }
 
     //Transient detection
-    static float power_smooth[34];
-    static float peak_decay_diff_smooth[34];
     for (i = 0; i < NR_PAR_BANDS[is34]; i++) {
         for (n = n0; n < nL; n++) {
             float decayed_peak = peak_decay_factor * peak_decay_nrg[i];

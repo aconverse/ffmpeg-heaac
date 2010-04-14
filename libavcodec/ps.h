@@ -57,6 +57,9 @@ typedef struct {
     float  in_buf[64][44][2];
     float  delay              [91 /*NR_BANDS[is34]*/][32 /*numQMFSlots*/+ 14 /*MAX_DELAY*/][2];
     float  all_pass_delay_buff[50 /*NR_ALLPASS_BANDS[is34]*/][3 /*NR_ALLPASS_LINKS*/ + 1][32 /*numQMFSlots*/+ 5][2];
+    float  peak_decay_nrg[34];
+    float  power_smooth[34];
+    float  peak_decay_diff_smooth[34];
 } PSContext;
 
 void ff_ps_init(void);
