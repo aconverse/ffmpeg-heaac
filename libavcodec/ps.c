@@ -364,13 +364,18 @@ static float f34_4_4 [ 4][13][2];
 static void make_filters_from_proto(float (*filter)[13][2], const float *proto, int bands, int ssb_start)
 {
     int q, n;
+//av_log(NULL, AV_LOG_ERROR, "{\n");
     for (q = 0; q < bands; q++) {
+        //av_log(NULL, AV_LOG_ERROR, "    {\n        ");
         for (n = 0; n < 13; n++) {
-            float theta = 2 * M_PI * (q + ssb_start + 0.5) * (n - 6) / bands;
-            filter[q][n][0] = proto[n] *  cosf(theta);
-            filter[q][n][1] = proto[n] * -sinf(theta); //FIXME specbug? convolution?
+            double theta = 2 * M_PI * (q + ssb_start + 0.5) * (n - 6) / bands;
+            filter[q][n][0] = proto[n] *  cos(theta);
+            filter[q][n][1] = proto[n] * -sin(theta); //FIXME specbug? convolution?
+            //av_log(NULL, AV_LOG_ERROR, "{ %13.10f, %13.10f  }, ", filter[q][n][0], filter[q][n][1]);
         }
+        //av_log(NULL, AV_LOG_ERROR, "\n    },\n");
     }
+//av_log(NULL, AV_LOG_ERROR, "};\n");
 }
 
 /** Split one subband into 2 subsubbands with a real filter */
