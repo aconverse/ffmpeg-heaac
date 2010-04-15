@@ -928,20 +928,21 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 ipd_smooth[b][1][0] = ipd_re;
                 ipd_smooth[b][1][1] = ipd_im;
                 av_log(NULL, AV_LOG_ERROR, "phi_ipd %f, phi_opd %f\n", phi_ipd, phi_opd);
-                phi_ipd = phi_opd - phi_ipd;
                 opd_re = cos(phi_opd);
                 opd_im = sin(phi_opd);
                 ipd_re = cos(phi_ipd);
                 ipd_im = sin(phi_ipd);
+                float ipd_adj_re = opd_re*ipd_re + opd_im*ipd_im;
+                float ipd_adj_im = opd_im*ipd_re - opd_re*ipd_im;
                 //rotation
                 h11i = h11 * opd_im;//sin(phi_opd);
                 h11  = h11 * opd_re;//cos(phi_opd);
-                h12i = h12 * ipd_im;//sin(phi_ipd);
-                h12  = h12 * ipd_re;//cos(phi_ipd);
+                h12i = h12 * ipd_adj_im;//sin(phi_ipd);
+                h12  = h12 * ipd_adj_re;//cos(phi_ipd);
                 h21i = h21 * opd_im;//sin(phi_opd);
                 h21  = h21 * opd_re;//cos(phi_opd);
-                h22i = h22 * ipd_im;//sin(phi_ipd);
-                h22  = h22 * ipd_re;//cos(phi_ipd);
+                h22i = h22 * ipd_adj_im;//sin(phi_ipd);
+                h22  = h22 * ipd_adj_re;//cos(phi_ipd);
                 H11[1][e+1][b] = h11i;
                 H12[1][e+1][b] = h12i;
                 H21[1][e+1][b] = h21i;
