@@ -915,10 +915,10 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 float ipd_re = cosf(ipd_ar);
                 float ipd_im = sinf(ipd_ar);
                 //TODO leave these in terms of sin and cos
-                float phi_opd = atan2(0.25f * opd_smooth[b][0][1] + 0.5f * opd_smooth[b][1][1] + opd_im,
-                                      0.25f * opd_smooth[b][0][0] + 0.5f * opd_smooth[b][1][0] + opd_re);
-                float phi_ipd = atan2(0.25f * ipd_smooth[b][0][1] + 0.5f * ipd_smooth[b][1][1] + ipd_im,
-                                      0.25f * ipd_smooth[b][0][0] + 0.5f * ipd_smooth[b][1][0] + ipd_re);
+                float opd_im_smooth = 0.25f * opd_smooth[b][0][1] + 0.5f * opd_smooth[b][1][1] + opd_im;
+                float opd_re_smooth = 0.25f * opd_smooth[b][0][0] + 0.5f * opd_smooth[b][1][0] + opd_re;
+                float ipd_im_smooth = 0.25f * ipd_smooth[b][0][1] + 0.5f * ipd_smooth[b][1][1] + ipd_im;
+                float ipd_re_smooth = 0.25f * ipd_smooth[b][0][0] + 0.5f * ipd_smooth[b][1][0] + ipd_re;
                 opd_smooth[b][0][0] = opd_smooth[b][1][0];
                 opd_smooth[b][0][1] = opd_smooth[b][1][1];
                 opd_smooth[b][1][0] = opd_re;
@@ -927,11 +927,13 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 ipd_smooth[b][0][1] = ipd_smooth[b][1][1];
                 ipd_smooth[b][1][0] = ipd_re;
                 ipd_smooth[b][1][1] = ipd_im;
-                av_log(NULL, AV_LOG_ERROR, "phi_ipd %f, phi_opd %f\n", phi_ipd, phi_opd);
-                opd_re = cos(phi_opd);
-                opd_im = sin(phi_opd);
-                ipd_re = cos(phi_ipd);
-                ipd_im = sin(phi_ipd);
+                float opd_mag = 1 / sqrt(opd_im_smooth * opd_im_smooth + opd_re_smooth * opd_re_smooth);
+                float ipd_mag = 1 / sqrt(ipd_im_smooth * ipd_im_smooth + ipd_re_smooth * ipd_re_smooth);
+                opd_re = opd_re_smooth * opd_mag;
+                opd_im = opd_im_smooth * opd_mag;
+                //av_log(NULL, AV_LOG_ERROR, "%f %f %f %f %f %f %f\n", sinf(phi_opd), opd_im, opd_im_smooth, cosf(phi_opd), opd_re, opd_re_smooth, opd_mag);
+                ipd_re = ipd_re_smooth * ipd_mag;
+                ipd_im = ipd_im_smooth * ipd_mag;
                 float ipd_adj_re = opd_re*ipd_re + opd_im*ipd_im;
                 float ipd_adj_im = opd_im*ipd_re - opd_re*ipd_im;
                 //rotation
@@ -1068,7 +1070,7 @@ av_log(NULL, AV_LOG_ERROR, "top %d\n", top);
     hybrid_synthesis(Rout, Rbuf, is34, len);
 
     transpose_out(Lout, L);
-    transpose_out(Rout, R);
+    transpose_out(Rout, L);
 
     return 0;
 }
