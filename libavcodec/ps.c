@@ -308,6 +308,17 @@ av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
         skip_bits(gb, cnt);
     }
 
+    if (!ps->num_env) {
+        ps->num_env = 1;
+        ps->border_position[1] = 31;
+        if (ps->enable_iid && ps->num_env_old > 1) {
+            memcpy(ps->iid_par, ps->iid_par+ps->num_env_old-1, sizeof(ps->iid_par[0]));
+        }
+        if (ps->enable_icc && ps->num_env_old > 1) {
+            memcpy(ps->icc_par, ps->icc_par+ps->num_env_old-1, sizeof(ps->icc_par[0]));
+        }
+    }
+
     //Baseline
     ps->enable_ipdopd &= !PS_BASELINE;
     if (!ps->enable_ipdopd) {
@@ -603,100 +614,100 @@ static int av_const map_k_to_i(int k, int is34)
 #define IS_CONJ(k, is34) ((is34) && (k) <= 13 && (k) >= 9 || (!is34) && (k) <= 1)
 
 /** Table 8.46 */
-#define MAP_GENERIC_10_TO_20 \
+#define MAP_GENERIC_10_TO_20(out, in) \
     int b;                                        \
     for (b = 9; b >= 0; b--) {                    \
-        par[e][2*b+1] = par[e][2*b] = par[e][b];  \
+        out[2*b+1] = out[2*b] = in[b];            \
     }
 
-static void map_idx_10_to_20(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+static void map_idx_10_to_20(int8_t *par_mapped, const int8_t *par)
 {
-    MAP_GENERIC_10_TO_20
+    MAP_GENERIC_10_TO_20(par_mapped, par)
 }
 
 static void map_val_10_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
 {
-    MAP_GENERIC_10_TO_20
+    MAP_GENERIC_10_TO_20(par[e], par[e])
 }
 
 /** Table 8.46 */
-#define MAP_GENERIC_34_TO_20 \
-    par[e][ 0] = (2*par[e][ 0] +   par[e][ 1]) / 3;                               \
-    par[e][ 1] = (  par[e][ 1] + 2*par[e][ 2]) / 3;                               \
-    par[e][ 2] = (2*par[e][ 3] +   par[e][ 4]) / 3;                               \
-    par[e][ 3] = (  par[e][ 4] + 2*par[e][ 5]) / 3;                               \
-    par[e][ 4] = (  par[e][ 6] +   par[e][ 7]) / 2;                               \
-    par[e][ 5] = (  par[e][ 8] +   par[e][ 9]) / 2;                               \
-    par[e][ 6] =    par[e][10];                                                   \
-    par[e][ 7] =    par[e][11];                                                   \
-    par[e][ 8] = (  par[e][12] +   par[e][13]) / 2;                               \
-    par[e][ 9] = (  par[e][14] +   par[e][15]) / 2;                               \
-    par[e][10] =    par[e][16];                                                   \
-    par[e][11] =    par[e][17];                                                   \
-    par[e][12] =    par[e][18];                                                   \
-    par[e][13] =    par[e][19];                                                   \
-    par[e][14] = (  par[e][20] +   par[e][21]) / 2;                               \
-    par[e][15] = (  par[e][22] +   par[e][23]) / 2;                               \
-    par[e][16] = (  par[e][24] +   par[e][25]) / 2;                               \
-    par[e][17] = (  par[e][26] +   par[e][27]) / 2;                               \
-    par[e][18] = (  par[e][28] +   par[e][29] +   par[e][30] +   par[e][31]) / 4; \
-    par[e][19] = (  par[e][32] +   par[e][33]) / 2;
+#define MAP_GENERIC_34_TO_20(out, in) \
+    out[ 0] = (2*in[ 0] +   in[ 1]) / 3;                               \
+    out[ 1] = (  in[ 1] + 2*in[ 2]) / 3;                               \
+    out[ 2] = (2*in[ 3] +   in[ 4]) / 3;                               \
+    out[ 3] = (  in[ 4] + 2*in[ 5]) / 3;                               \
+    out[ 4] = (  in[ 6] +   in[ 7]) / 2;                               \
+    out[ 5] = (  in[ 8] +   in[ 9]) / 2;                               \
+    out[ 6] =    in[10];                                               \
+    out[ 7] =    in[11];                                               \
+    out[ 8] = (  in[12] +   in[13]) / 2;                               \
+    out[ 9] = (  in[14] +   in[15]) / 2;                               \
+    out[10] =    in[16];                                               \
+    out[11] =    in[17];                                               \
+    out[12] =    in[18];                                               \
+    out[13] =    in[19];                                               \
+    out[14] = (  in[20] +   in[21]) / 2;                               \
+    out[15] = (  in[22] +   in[23]) / 2;                               \
+    out[16] = (  in[24] +   in[25]) / 2;                               \
+    out[17] = (  in[26] +   in[27]) / 2;                               \
+    out[18] = (  in[28] +   in[29] +   in[30] +   in[31]) / 4;         \
+    out[19] = (  in[32] +   in[33]) / 2;
 
-static void map_idx_34_to_20(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+static void map_idx_34_to_20(int8_t *par_mapped, const int8_t *par)
 {
-    MAP_GENERIC_34_TO_20
+    MAP_GENERIC_34_TO_20(par_mapped, par)
 }
 
 static void map_val_34_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
 {
-    MAP_GENERIC_34_TO_20
+    MAP_GENERIC_34_TO_20(par[e], par[e])
 }
 
 
-#define MAP_GENERIC_20_TO_34 \
-    par[e][33] =  par[e][19];                     \
-    par[e][32] =  par[e][19];                     \
-    par[e][31] =  par[e][18];                     \
-    par[e][30] =  par[e][18];                     \
-    par[e][29] =  par[e][18];                     \
-    par[e][28] =  par[e][18];                     \
-    par[e][27] =  par[e][17];                     \
-    par[e][26] =  par[e][17];                     \
-    par[e][25] =  par[e][16];                     \
-    par[e][24] =  par[e][16];                     \
-    par[e][23] =  par[e][15];                     \
-    par[e][22] =  par[e][15];                     \
-    par[e][21] =  par[e][14];                     \
-    par[e][20] =  par[e][14];                     \
-    par[e][19] =  par[e][13];                     \
-    par[e][18] =  par[e][12];                     \
-    par[e][17] =  par[e][11];                     \
-    par[e][16] =  par[e][10];                     \
-    par[e][15] =  par[e][ 9];                     \
-    par[e][14] =  par[e][ 9];                     \
-    par[e][13] =  par[e][ 8];                     \
-    par[e][12] =  par[e][ 8];                     \
-    par[e][11] =  par[e][ 7];                     \
-    par[e][10] =  par[e][ 6];                     \
-    par[e][ 9] =  par[e][ 5];                     \
-    par[e][ 8] =  par[e][ 5];                     \
-    par[e][ 7] =  par[e][ 4];                     \
-    par[e][ 6] =  par[e][ 4];                     \
-    par[e][ 5] =  par[e][ 3];                     \
-    par[e][ 4] = (par[e][ 2] + par[e][ 3]) / 2;   \
-    par[e][ 3] =  par[e][ 2];                     \
-    par[e][ 2] =  par[e][ 1];                     \
-    par[e][ 1] = (par[e][ 0] + par[e][ 1]) / 2;   \
-    par[e][ 0] =  par[e][ 0];
+#define MAP_GENERIC_20_TO_34(out, in) \
+    out[33] =  in[19];                     \
+    out[32] =  in[19];                     \
+    out[31] =  in[18];                     \
+    out[30] =  in[18];                     \
+    out[29] =  in[18];                     \
+    out[28] =  in[18];                     \
+    out[27] =  in[17];                     \
+    out[26] =  in[17];                     \
+    out[25] =  in[16];                     \
+    out[24] =  in[16];                     \
+    out[23] =  in[15];                     \
+    out[22] =  in[15];                     \
+    out[21] =  in[14];                     \
+    out[20] =  in[14];                     \
+    out[19] =  in[13];                     \
+    out[18] =  in[12];                     \
+    out[17] =  in[11];                     \
+    out[16] =  in[10];                     \
+    out[15] =  in[ 9];                     \
+    out[14] =  in[ 9];                     \
+    out[13] =  in[ 8];                     \
+    out[12] =  in[ 8];                     \
+    out[11] =  in[ 7];                     \
+    out[10] =  in[ 6];                     \
+    out[ 9] =  in[ 5];                     \
+    out[ 8] =  in[ 5];                     \
+    out[ 7] =  in[ 4];                     \
+    out[ 6] =  in[ 4];                     \
+    out[ 5] =  in[ 3];                     \
+    out[ 4] = (in[ 2] + in[ 3]) / 2;       \
+    out[ 3] =  in[ 2];                     \
+    out[ 2] =  in[ 1];                     \
+    out[ 1] = (in[ 0] + in[ 1]) / 2;       \
+    out[ 0] =  in[ 0];
 
-static void map_idx_20_to_34(int8_t par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
+static void map_idx_20_to_34(int8_t *par_mapped, const int8_t *par)
 {
-    MAP_GENERIC_20_TO_34
+    MAP_GENERIC_20_TO_34(par_mapped, par)
 }
 
 static void map_val_20_to_34(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
 {
-    MAP_GENERIC_20_TO_34
+    MAP_GENERIC_20_TO_34(par[e], par[e])
 }
 
 static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
@@ -831,6 +842,8 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     float (*H22)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H22;
     float (*opd_smooth)[2][2] = ps->opd_smooth;
     float (*ipd_smooth)[2][2] = ps->ipd_smooth;
+    int8_t iid_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
+    int8_t icc_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
 
     //Remapping
     for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
@@ -846,16 +859,16 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     if (is34) {
         for (e = 0; e < ps->num_env; e++) {
             if (ps->nr_icc_par == 20)
-                map_idx_20_to_34(ps->icc_par, e);
+                map_idx_20_to_34(icc_mapped[e], ps->icc_par[e]);
             else if (ps->nr_icc_par == 10) {
-                map_idx_10_to_20(ps->icc_par, e);
-                map_idx_20_to_34(ps->icc_par, e);
+                map_idx_10_to_20(icc_mapped[e], ps->icc_par[e]);
+                map_idx_20_to_34(icc_mapped[e], icc_mapped[e]);
             }
             if (ps->nr_iid_par == 20)
-                map_idx_20_to_34(ps->iid_par, e);
-            else if (ps->nr_ipdopd_par && ps->nr_iid_par == 10) {
-                map_idx_10_to_20(ps->iid_par, e);
-                map_idx_20_to_34(ps->iid_par, e);
+                map_idx_20_to_34(iid_mapped[e], ps->iid_par[e]);
+            else if (ps->nr_iid_par == 10) {
+                map_idx_10_to_20(iid_mapped[e], ps->iid_par[e]);
+                map_idx_20_to_34(iid_mapped[e], iid_mapped[e]);
             }
             if (ps->enable_ipdopd && ps->nr_ipdopd_par != 17) {
                 av_log(NULL, AV_LOG_ERROR, "ipd/opd remapping unsupported!\n");
@@ -875,13 +888,17 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     } else {
         for (e = 0; e < ps->num_env; e++) {
             if (ps->nr_icc_par == 34)
-                map_idx_34_to_20(ps->icc_par, e);
+                map_idx_34_to_20(icc_mapped[e], ps->icc_par[e]);
             else if (ps->nr_icc_par == 10)
-                map_idx_10_to_20(ps->icc_par, e);
+                map_idx_10_to_20(icc_mapped[e], ps->icc_par[e]);
+            else //TODO use a ptr so no copy is ncessary
+                memcpy(icc_mapped[e], ps->icc_par[e], sizeof(icc_mapped[e]));
             if (ps->nr_iid_par == 34)
-                map_idx_34_to_20(ps->iid_par, e);
+                map_idx_34_to_20(iid_mapped[e], ps->iid_par[e]);
             else if (ps->nr_iid_par == 10)
-                map_idx_10_to_20(ps->iid_par, e);
+                map_idx_10_to_20(iid_mapped[e], ps->iid_par[e]);
+            else //TODO use a ptr so no copy is ncessary
+                memcpy(iid_mapped[e], ps->iid_par[e], sizeof(iid_mapped[e]));
             if (ps->enable_ipdopd && ps->nr_ipdopd_par != 11) {
                 av_log(NULL, AV_LOG_ERROR, "ipd/opd remapping unsupported!\n");
                 abort();
@@ -894,16 +911,17 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
         for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
             float h11, h12, h21, h22;
             if (PS_BASELINE || ps->icc_mode < 3) {
-                h11 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][0];
-                h12 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][1];
-                h21 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][2];
-                h22 = HA[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][3];
+                h11 = HA[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][0];
+                h12 = HA[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][1];
+                h21 = HA[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][2];
+                h22 = HA[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][3];
             } else {
-                h11 = HB[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][0];
-                h12 = HB[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][1];
-                h21 = HB[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][2];
-                h22 = HB[ps->iid_par[e][b] + 7 + 23 * ps->iid_quant][ps->icc_par[e][b]][3];
+                h11 = HB[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][0];
+                h12 = HB[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][1];
+                h21 = HB[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][2];
+                h22 = HB[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][3];
             }
+//av_log(NULL, AV_LOG_ERROR, "e: %d b: %2d iid: %2d icc: %d\n", e, b, iid_mapped[e][b], icc_mapped[e][b]);
             if (!PS_BASELINE && b < ps->nr_ipdopd_par) { //FIXME
                 //Smoothing
                 float h11i, h12i, h21i, h22i;
