@@ -354,11 +354,6 @@ static const float g2_Q4[] = {
     -0.05908211155639f
 };
 
-static float f20_0_8 [ 8][13][2];
-static float f34_0_12[12][13][2];
-static float f34_1_8 [ 8][13][2];
-static float f34_2_4 [ 4][13][2];
-
 static void make_filters_from_proto(float (*filter)[13][2], const float *proto, int bands, int ssb_start)
 {
     int q, n;
@@ -1123,12 +1118,13 @@ static av_cold void ps_init_dec()
         phi_fract[1][k][0] = cosf(theta);
         phi_fract[1][k][1] = sinf(theta);
     }
+
+#if !PS_HARDCODED_TABLES
     make_filters_from_proto(f20_0_8,  g0_Q8,   8,  0);
     make_filters_from_proto(f34_0_12, g0_Q12, 12,  0);
     make_filters_from_proto(f34_1_8,  g1_Q8,   8, 12);
     make_filters_from_proto(f34_2_4,  g2_Q4,   4, 20);
 
-#if !PS_HARDCODED_TABLES
     //Table 8.28, Quantization grid for ICC
     static const float icc_invq[] = {
         1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
