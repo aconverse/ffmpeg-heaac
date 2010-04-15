@@ -77,6 +77,7 @@ typedef struct {
 } PSContext;
 
 void ff_ps_init(void);
+void ff_ps_ctx_init(PSContext *ps);
 int ff_ps_data(GetBitContext *gb, PSContext *ps);
 int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float R[2][38][64], int top);
 

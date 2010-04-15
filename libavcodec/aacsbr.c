@@ -146,6 +146,7 @@ av_cold void ff_aac_sbr_ctx_init(SpectralBandReplication *sbr)
     sbr->data[1].synthesis_filterbank_samples_offset = SBR_SYNTHESIS_BUF_SIZE - (1280 - 128);
     ff_mdct_init(&sbr->mdct, 7, 1, 1.0/64);
     ff_rdft_init(&sbr->rdft, 6, IDFT_R2C);
+    ff_ps_ctx_init(&sbr->ps);
 }
 
 av_cold void ff_aac_sbr_ctx_close(SpectralBandReplication *sbr)

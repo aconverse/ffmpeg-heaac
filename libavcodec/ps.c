@@ -206,6 +206,17 @@ static int ps_extension(GetBitContext *gb, PSContext *ps, int ps_extension_id)
     return get_bits_count(gb) - count;
 }
 
+static void ipdopd_reset(float (*opd_smooth)[2][2], float (*ipd_smooth)[2][2])
+{
+    int i;
+    for (i = 0; i < PS_MAX_NR_IPDOPD; i++) {
+        opd_smooth[i][0][0] = opd_smooth[i][1][0] = 1;
+        ipd_smooth[i][0][0] = ipd_smooth[i][1][0] = 1;
+        opd_smooth[i][0][1] = opd_smooth[i][1][1] = 0;
+        ipd_smooth[i][0][1] = ipd_smooth[i][1][1] = 0;
+    }
+}
+
 int ff_ps_data(GetBitContext *gb, PSContext *ps)
 {
     int e;
@@ -904,30 +915,33 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 float ipd_re = cosf(ipd_ar);
                 float ipd_im = sinf(ipd_ar);
                 //TODO leave these in terms of sin and cos
-                float phi_opd = atan2(0.25f * sin(opd_smooth[b][0][1]) + 0.5f * sin(opd_smooth[b][1][1]) + opd_im,
-                                      0.25f * cos(opd_smooth[b][0][0]) + 0.5f * cos(opd_smooth[b][1][0]) + opd_re);
-                float phi_ipd = atan2(0.25f * sin(ipd_smooth[b][0][1]) + 0.5f * sin(ipd_smooth[b][1][1]) + ipd_im,
-                                      0.25f * cos(ipd_smooth[b][0][0]) + 0.5f * cos(ipd_smooth[b][1][0]) + ipd_re);
+                float phi_opd = atan2(0.25f * opd_smooth[b][0][1] + 0.5f * opd_smooth[b][1][1] + opd_im,
+                                      0.25f * opd_smooth[b][0][0] + 0.5f * opd_smooth[b][1][0] + opd_re);
+                float phi_ipd = atan2(0.25f * ipd_smooth[b][0][1] + 0.5f * ipd_smooth[b][1][1] + ipd_im,
+                                      0.25f * ipd_smooth[b][0][0] + 0.5f * ipd_smooth[b][1][0] + ipd_re);
                 opd_smooth[b][0][0] = opd_smooth[b][1][0];
                 opd_smooth[b][0][1] = opd_smooth[b][1][1];
-                opd_smooth[b][1][0] = opd_ar;
-                opd_smooth[b][1][1] = opd_ar;
+                opd_smooth[b][1][0] = opd_re;
+                opd_smooth[b][1][1] = opd_im;
                 ipd_smooth[b][0][0] = ipd_smooth[b][1][0];
                 ipd_smooth[b][0][1] = ipd_smooth[b][1][1];
-                ipd_smooth[b][1][0] = ipd_ar;
-                ipd_smooth[b][1][1] = ipd_ar;
+                ipd_smooth[b][1][0] = ipd_re;
+                ipd_smooth[b][1][1] = ipd_im;
                 av_log(NULL, AV_LOG_ERROR, "phi_ipd %f, phi_opd %f\n", phi_ipd, phi_opd);
                 phi_ipd = phi_opd - phi_ipd;
-//phi_ipd = 0; phi_opd = 0;
+                opd_re = cos(phi_opd);
+                opd_im = sin(phi_opd);
+                ipd_re = cos(phi_ipd);
+                ipd_im = sin(phi_ipd);
                 //rotation
-                h11i = h11 * sin(phi_opd);
-                h11  = h11 * cos(phi_opd);
-                h12i = h12 * sin(phi_ipd);
-                h12  = h12 * cos(phi_ipd);
-                h21i = h21 * sin(phi_opd);
-                h21  = h21 * cos(phi_opd);
-                h22i = h22 * sin(phi_ipd);
-                h22  = h22 * cos(phi_ipd);
+                h11i = h11 * opd_im;//sin(phi_opd);
+                h11  = h11 * opd_re;//cos(phi_opd);
+                h12i = h12 * ipd_im;//sin(phi_ipd);
+                h12  = h12 * ipd_re;//cos(phi_ipd);
+                h21i = h21 * opd_im;//sin(phi_opd);
+                h21  = h21 * opd_re;//cos(phi_opd);
+                h22i = h22 * ipd_im;//sin(phi_ipd);
+                h22  = h22 * ipd_re;//cos(phi_ipd);
                 H11[1][e+1][b] = h11i;
                 H12[1][e+1][b] = h12i;
                 H21[1][e+1][b] = h21i;
@@ -1181,4 +1195,9 @@ av_cold void ff_ps_init(void) {
     PS_INIT_VLC_STATIC(9,  512);
 
     ps_init_dec();
+}
+
+av_cold void ff_ps_ctx_init(PSContext *ps)
+{
+    ipdopd_reset(ps->ipd_smooth, ps->opd_smooth);
 }
