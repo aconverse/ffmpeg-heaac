@@ -358,8 +358,6 @@ static float f20_0_8 [ 8][13][2];
 static float f34_0_12[12][13][2];
 static float f34_1_8 [ 8][13][2];
 static float f34_2_4 [ 4][13][2];
-static float f34_3_4 [ 4][13][2];
-static float f34_4_4 [ 4][13][2];
 
 static void make_filters_from_proto(float (*filter)[13][2], const float *proto, int bands, int ssb_start)
 {
@@ -464,8 +462,8 @@ static void NO_OPT hybrid_analysis(float out[91][32][2], float in[64][44][2], in
         hybrid4_8_12_cx(in[0], out,    f34_0_12, 12, len);
         hybrid4_8_12_cx(in[1], out+12, f34_1_8,   8, len);
         hybrid4_8_12_cx(in[2], out+20, f34_2_4,   4, len);
-        hybrid4_8_12_cx(in[3], out+24, f34_3_4,   4, len);
-        hybrid4_8_12_cx(in[4], out+28, f34_4_4,   4, len);
+        hybrid4_8_12_cx(in[3], out+24, f34_2_4,   4, len);
+        hybrid4_8_12_cx(in[4], out+28, f34_2_4,   4, len);
         for (i = 0; i < 59; i++) {
             memcpy(out[32 + i], in[5 + i]+6, len * sizeof(in[0][0]));
         }
@@ -1128,8 +1126,6 @@ static av_cold void ps_init_dec()
     make_filters_from_proto(f34_0_12, g0_Q12, 12,  0);
     make_filters_from_proto(f34_1_8,  g1_Q8,   8, 12);
     make_filters_from_proto(f34_2_4,  g2_Q4,   4, 20);
-    make_filters_from_proto(f34_3_4,  g2_Q4,   4, 24);
-    make_filters_from_proto(f34_4_4,  g2_Q4,   4, 28);
 
 #if !PS_HARDCODED_TABLES
     //Table 8.28, Quantization grid for ICC
