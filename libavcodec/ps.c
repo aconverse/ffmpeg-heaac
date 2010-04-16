@@ -319,6 +319,11 @@ av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
         }
     }
 
+    ps->is34bands_old = ps->is34bands;
+    if (!PS_BASELINE && (ps->enable_iid || ps->enable_icc))
+        ps->is34bands = (ps->enable_iid && ps->nr_iid_par == 34) ||
+                        (ps->enable_icc && ps->nr_icc_par == 34);
+
     //Baseline
     ps->enable_ipdopd &= !PS_BASELINE;
     if (!ps->enable_ipdopd) {
@@ -1062,9 +1067,7 @@ int NO_OPT ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64],
     float Lbuf[91][32][2];
     float Rbuf[91][32][2];
     const int len = 32;
-    int is34;
-    ps->is34bands_old = ps->is34bands;
-    is34 = ps->is34bands = !PS_BASELINE && (ps->nr_icc_par == 34 || ps->nr_iid_par == 34);
+    int is34 = ps->is34bands;
 
 av_log(NULL, AV_LOG_ERROR, "is34 %d\n", is34);
 av_log(NULL, AV_LOG_ERROR, "top %d\n", top);
