@@ -878,13 +878,15 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
             else if (ps->nr_icc_par == 10) {
                 map_idx_10_to_20(icc_mapped[e], ps->icc_par[e]);
                 map_idx_20_to_34(icc_mapped[e], icc_mapped[e]);
-            }
+            } else
+                memcpy(icc_mapped[e], ps->icc_par[e], sizeof(icc_mapped[e]));
             if (ps->nr_iid_par == 20)
                 map_idx_20_to_34(iid_mapped[e], ps->iid_par[e]);
             else if (ps->nr_iid_par == 10) {
                 map_idx_10_to_20(iid_mapped[e], ps->iid_par[e]);
                 map_idx_20_to_34(iid_mapped[e], iid_mapped[e]);
-            }
+            } else
+                memcpy(iid_mapped[e], ps->iid_par[e], sizeof(iid_mapped[e]));
             if (ps->enable_ipdopd && ps->nr_ipdopd_par != 17) {
                 av_log(NULL, AV_LOG_ERROR, "ipd/opd remapping unsupported!\n");
                 abort();
