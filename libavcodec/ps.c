@@ -577,7 +577,7 @@ static int av_const map_k_to_i(int k, int is34)
         else if (k <= 30)
             return k - 14;
         else if (k <= 31)
-            return 12;
+            return 13;
         else if (k <= 37)
             return k - 16;
         else if (k <= 47)
