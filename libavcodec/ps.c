@@ -337,46 +337,36 @@ av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
 
 static const float g0_Q8[] = {
     0.00746082949812f, 0.02270420949825f, 0.04546865930473f, 0.07266113929591f,
-    0.09885108575264f, 0.11793710567217f, 0.125f,            0.11793710567217f,
-    0.09885108575264f, 0.07266113929591f, 0.04546865930473f, 0.02270420949825f,
-    0.00746082949812f
+    0.09885108575264f, 0.11793710567217f, 0.125f
 };
 
 static const float g1_Q2[] = {
     0.0f,  0.01899487526049f, 0.0f, -0.07293139167538f,
-    0.0f,  0.30596630545168f, 0.5f,  0.30596630545168f,
-    0.0f, -0.07293139167538f, 0.0f,  0.01899487526049f,
-    0.0f
+    0.0f,  0.30596630545168f, 0.5f
 };
 
 static const float g0_Q12[] = {
     0.04081179924692f, 0.03812810994926f, 0.05144908135699f, 0.06399831151592f,
-    0.07428313801106f, 0.08100347892914f, 0.08333333333333f, 0.08100347892914f,
-    0.07428313801106f, 0.06399831151592f, 0.05144908135699f, 0.03812810994926f,
-    0.04081179924692f
+    0.07428313801106f, 0.08100347892914f, 0.08333333333333f
 };
 
 static const float g1_Q8[] = {
     0.01565675600122f, 0.03752716391991f, 0.05417891378782f, 0.08417044116767f,
-    0.10307344158036f, 0.12222452249753f, 0.125f,            0.12222452249753f,
-    0.10307344158036f, 0.08417044116767f, 0.05417891378782f, 0.03752716391991f,
-    0.01565675600122f
+    0.10307344158036f, 0.12222452249753f, 0.125f
 };
 
 static const float g2_Q4[] = {
     -0.05908211155639f, -0.04871498374946f, 0.0f,   0.07778723915851f,
-     0.16486303567403f,  0.23279856662996f, 0.25f,  0.23279856662996f,
-     0.16486303567403f,  0.07778723915851f, 0.0f,  -0.04871498374946f,
-    -0.05908211155639f
+     0.16486303567403f,  0.23279856662996f, 0.25f
 };
 
-static void make_filters_from_proto(float (*filter)[13][2], const float *proto, int bands)
+static void make_filters_from_proto(float (*filter)[7][2], const float *proto, int bands)
 {
     int q, n;
     //av_log(NULL, AV_LOG_ERROR, "{\n");
     for (q = 0; q < bands; q++) {
         //av_log(NULL, AV_LOG_ERROR, "    {\n        ");
-        for (n = 0; n < 13; n++) {
+        for (n = 0; n < 7; n++) {
             double theta = 2 * M_PI * (q + 0.5) * (n - 6) / bands;
             filter[q][n][0] = proto[n] *  cos(theta);
             filter[q][n][1] = proto[n] * -sin(theta); //FIXME specbug? convolution?
@@ -389,7 +379,7 @@ static void make_filters_from_proto(float (*filter)[13][2], const float *proto, 
 }
 
 /** Split one subband into 2 subsubbands with a real filter */
-static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[13], int len, int reverse)
+static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7], int len, int reverse)
 {
     int i, j;
     for (i = 0; i < len; i++) {
@@ -411,7 +401,7 @@ static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[1
 }
 
 /** Split one subband into 6 subsubbands with a complex filter */
-static void NO_OPT hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[13][2], int len)
+static void NO_OPT hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int len)
 {
     int i, j, ssb;
     int N = 8;
@@ -419,7 +409,6 @@ static void NO_OPT hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (
 
     for (i = 0; i < len; i++) {
         for (ssb = 0; ssb < N; ssb++) {
-            float sum_re = 0.0f, sum_im = 0.0f;
             float sum_re = filter[ssb][6][0] * in[i+6][0], sum_im = filter[ssb][6][0] * in[i+6][1];
             for (j = 0; j < 6; j++) {
                 float in0_re = in[i+j][0];
@@ -447,7 +436,7 @@ static void NO_OPT hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (
     }
 }
 
-static void NO_OPT hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[13][2], int N, int len)
+static void NO_OPT hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int N, int len)
 {
     int i, j, ssb;
 

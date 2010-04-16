@@ -1286,8 +1286,8 @@ static const float f34_2_4 [ 4][13][2] = {
 #else
 static float HA[46][8][4];
 static float HB[46][8][4];
-static float f20_0_8 [ 8][13][2];
-static float f34_0_12[12][13][2];
-static float f34_1_8 [ 8][13][2];
-static float f34_2_4 [ 4][13][2];
+static float f20_0_8 [ 8][7][2];
+static float f34_0_12[12][7][2];
+static float f34_1_8 [ 8][7][2];
+static float f34_2_4 [ 4][7][2];
 #endif
