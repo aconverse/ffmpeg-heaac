@@ -730,6 +730,14 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
     int i, k, m, n;
     int n0 = 0, nL = 32;
 
+    if (is34 != ps->is34bands_old) {
+        memset(ps->peak_decay_nrg,         0, sizeof(ps->peak_decay_nrg));
+        memset(ps->power_smooth,           0, sizeof(ps->power_smooth));
+        memset(ps->peak_decay_diff_smooth, 0, sizeof(ps->peak_decay_diff_smooth));
+        memset(ps->delay,                  0, sizeof(ps->delay));
+        memset(ps->ap_delay,               0, sizeof(ps->ap_delay));
+    }
+
     memset(power, 0, sizeof(power));
     for (n = n0; n < nL; n++) {
         for (k = 0; k < NR_BANDS[is34]; k++) {
