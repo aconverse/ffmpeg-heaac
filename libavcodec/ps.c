@@ -917,6 +917,16 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 abort();
             }
         }
+        if (ps->is34bands_old) {
+            map_val_34_to_20(H11[0], 0);
+            map_val_34_to_20(H11[1], 0);
+            map_val_34_to_20(H12[0], 0);
+            map_val_34_to_20(H12[1], 0);
+            map_val_34_to_20(H21[0], 0);
+            map_val_34_to_20(H21[1], 0);
+            map_val_34_to_20(H22[0], 0);
+            map_val_34_to_20(H22[1], 0);
+        }
     }
 
     //Mixing
