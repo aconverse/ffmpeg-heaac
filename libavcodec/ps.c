@@ -419,14 +419,15 @@ static void NO_OPT hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (
 
     for (i = 0; i < len; i++) {
         for (ssb = 0; ssb < N; ssb++) {
-            //FIXME filter is conjugate symmetric
-            //filter[6] is real
             float sum_re = 0.0f, sum_im = 0.0f;
-            for (j = 0; j < 13; j++) {
-                float in_re = in[i+j][0];
-                float in_im = in[i+j][1];
-                sum_re += filter[ssb][j][0] * in_re - filter[ssb][j][1] * in_im;
-                sum_im += filter[ssb][j][0] * in_im + filter[ssb][j][1] * in_re;
+            float sum_re = filter[ssb][6][0] * in[i+6][0], sum_im = filter[ssb][6][0] * in[i+6][1];
+            for (j = 0; j < 6; j++) {
+                float in0_re = in[i+j][0];
+                float in0_im = in[i+j][1];
+                float in1_re = in[i+12-j][0];
+                float in1_im = in[i+12-j][1];
+                sum_re += filter[ssb][j][0] * (in0_re + in1_re) - filter[ssb][j][1] * (in0_im - in1_im);
+                sum_im += filter[ssb][j][0] * (in0_im + in1_im) + filter[ssb][j][1] * (in0_re - in1_re);
             }
             temp[ssb][0] = sum_re;
             temp[ssb][1] = sum_im;
