@@ -549,62 +549,9 @@ static float phi_fract[2][NR_ALLPASS_BANDS34][2];
 static int av_const map_k_to_i(int k, int is34)
 {
     if (is34) {
-        //TODO FIXME Table 8.49
-        if (k <= 6)
-            return k;
-        else if (k <= 8)
-            return k - 1;
-        else if (k <= 11)
-            return 11 - k;
-        else if (k <= 13)
-            return 10;
-        else if (k <= 22)
-            return k - 10;
-        else if (k <= 23)
-            return 9;
-        else if (k <= 24)
-            return 14;
-        else if (k <= 30)
-            return k - 14;
-        else if (k <= 31)
-            return 13;
-        else if (k <= 37)
-            return k - 16;
-        else if (k <= 47)
-            return (k >> 1) + 3;
-        else if (k <= 50)
-            return 27;
-        else if (k <= 53)
-            return 28;
-        else if (k <= 56)
-            return 29;
-        else if (k <= 59)
-            return 30;
-        else if (k <= 63)
-            return 31;
-        else if (k <= 67)
-            return 32;
-        else
-            return 33;
+        return k_to_i_34[k];
     } else {
-        //Table 8.48
-        if (k <= 1) {
-            return 1 - k;
-        } else if (k <= 16) {
-            return k - 2;
-        } else if (k <= 17) {
-            return 14;
-        } else if (k <= 20) {
-            return 15;
-        } else if (k <= 24) {
-            return 16;
-        } else if (k <= 29) {
-            return 17;
-        } else if (k <= 41) {
-            return 18;
-        } else {
-            return 19;
-        }
+        return k_to_i_20[k];
     }
 }
 
