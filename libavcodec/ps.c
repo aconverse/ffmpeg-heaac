@@ -544,17 +544,6 @@ static const int   SHORT_DELAY_BAND[]  = { 42, 63 };
 static float Q_fract_allpass[2][NR_ALLPASS_BANDS34][PS_AP_LINKS][2];
 static float phi_fract[2][NR_ALLPASS_BANDS34][2];
 
-/// Inverse map i = b(k)
-
-static int av_const map_k_to_i(int k, int is34)
-{
-    if (is34) {
-        return k_to_i_34[k];
-    } else {
-        return k_to_i_20[k];
-    }
-}
-
 #define IS_CONJ(k, is34) ((is34) && (k) <= 13 && (k) >= 9 || (!is34) && (k) <= 1)
 
 /** Table 8.46 */
@@ -663,6 +652,7 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
     float *peak_decay_diff_smooth = ps->peak_decay_diff_smooth;
     float (*delay)[PS_QMF_TIME_SLOTS + PS_MAX_DELAY][2] = ps->delay;
     float (*ap_delay)[PS_AP_LINKS + 1][PS_QMF_TIME_SLOTS + PS_MAX_AP_DELAY][2] = ps->ap_delay;
+    int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
     const float peak_decay_factor = 0.76592833836465f;
     const float transient_impact  = 1.5f;
     const float a_smooth          = 0.25f; //< Smoothing coefficient
@@ -680,7 +670,7 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
     memset(power, 0, sizeof(power));
     for (n = n0; n < nL; n++) {
         for (k = 0; k < NR_BANDS[is34]; k++) {
-            int i = map_k_to_i(k, is34);
+            int i = k_to_i[k];
             power[i][n] += s[k][n][0] * s[k][n][0] + s[k][n][1] * s[k][n][1];
             if (!isfinite(power[i][n])) {
                 av_log(NULL, AV_LOG_ERROR, "%d %d %d\n", i, k, n);
@@ -724,7 +714,7 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
                                0.48954165955695f };
     //d[k][z] (out) = transient_gain_mapped[k][z] * H[k][z] * s[k][z]
     for (k = 0; k < NR_ALLPASS_BANDS[is34]; k++) {
-        int b = map_k_to_i(k, is34);
+        int b = k_to_i[k];
         float g_decay_slope = 1.f - DECAY_SLOPE * (k - DECAY_CUTOFF[is34]);
         g_decay_slope = FFMIN(g_decay_slope, 1.f);
         g_decay_slope = FFMAX(g_decay_slope, 0.f);
@@ -769,8 +759,8 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
         memcpy(delay[k]+PS_MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
         for (n = n0; n < nL; n++) {
             //H = delay 14
-            out[k][n][0] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+PS_MAX_DELAY-14][0];
-            out[k][n][1] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+PS_MAX_DELAY-14][1];
+            out[k][n][0] = transient_gain[k_to_i[k]][n] * delay[k][n+PS_MAX_DELAY-14][0];
+            out[k][n][1] = transient_gain[k_to_i[k]][n] * delay[k][n+PS_MAX_DELAY-14][1];
         }
     }
     for (; k < NR_BANDS[is34]; k++) {
@@ -778,8 +768,8 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
         memcpy(delay[k]+PS_MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
         for (n = n0; n < nL; n++) {
             //H = delay 1
-            out[k][n][0] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+PS_MAX_DELAY-1][0];
-            out[k][n][1] = transient_gain[map_k_to_i(k, is34)][n] * delay[k][n+PS_MAX_DELAY-1][1];
+            out[k][n][0] = transient_gain[k_to_i[k]][n] * delay[k][n+PS_MAX_DELAY-1][0];
+            out[k][n][1] = transient_gain[k_to_i[k]][n] * delay[k][n+PS_MAX_DELAY-1][1];
         }
     }
 }
@@ -796,6 +786,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     float (*ipd_smooth)[2][2] = ps->ipd_smooth;
     int8_t iid_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t icc_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
+    int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
 
     //Remapping
     for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
@@ -943,7 +934,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
             int start = ps->border_position[e];
             int stop  = ps->border_position[e+1];
             float width = 1.f / (stop - start);
-            b = map_k_to_i(k, is34);
+            b = k_to_i[k];
             h11r = H11[0][e][b];
             h12r = H12[0][e][b];
             h21r = H21[0][e][b];
