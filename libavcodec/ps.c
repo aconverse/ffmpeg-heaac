@@ -788,6 +788,8 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     int8_t icc_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
     const float (*H_LUT)[8][4] = (PS_BASELINE || ps->icc_mode < 3) ? HA : HB;
+    static const float ipdopd_sin[] = { 0, M_SQRT1_2, 1,  M_SQRT1_2,  0, -M_SQRT1_2, -1, -M_SQRT1_2 };
+    static const float ipdopd_cos[] = { 1, M_SQRT1_2, 0, -M_SQRT1_2, -1, -M_SQRT1_2,  0,  M_SQRT1_2 };
 
     //Remapping
     for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
@@ -874,12 +876,10 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
             if (!PS_BASELINE && b < ps->nr_ipdopd_par) { //FIXME
                 //Smoothing
                 float h11i, h12i, h21i, h22i;
-                float opd_ar = ps->opd_par[e][b] * M_PI/4;
-                float opd_re = cosf(opd_ar);
-                float opd_im = sinf(opd_ar);
-                float ipd_ar = ps->ipd_par[e][b] * M_PI/4;
-                float ipd_re = cosf(ipd_ar);
-                float ipd_im = sinf(ipd_ar);
+                float opd_re = ipdopd_cos[ps->opd_par[e][b]];
+                float opd_im = ipdopd_sin[ps->opd_par[e][b]];
+                float ipd_re = ipdopd_cos[ps->ipd_par[e][b]];
+                float ipd_im = ipdopd_sin[ps->ipd_par[e][b]];
                 //TODO leave these in terms of sin and cos
                 float opd_im_smooth = 0.25f * opd_smooth[b][0][1] + 0.5f * opd_smooth[b][1][1] + opd_im;
                 float opd_re_smooth = 0.25f * opd_smooth[b][0][0] + 0.5f * opd_smooth[b][1][0] + opd_re;
