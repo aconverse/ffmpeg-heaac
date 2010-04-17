@@ -787,6 +787,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     int8_t iid_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t icc_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
+    const float (*H_LUT)[8][4] = (PS_BASELINE || ps->icc_mode < 3) ? HA : HB;
 
     //Remapping
     for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
@@ -865,17 +866,10 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     for (e = 0; e < ps->num_env; e++) {
         for (b = 0; b < NR_PAR_BANDS[is34]; b++) {
             float h11, h12, h21, h22;
-            if (PS_BASELINE || ps->icc_mode < 3) {
-                h11 = HA[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][0];
-                h12 = HA[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][1];
-                h21 = HA[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][2];
-                h22 = HA[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][3];
-            } else {
-                h11 = HB[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][0];
-                h12 = HB[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][1];
-                h21 = HB[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][2];
-                h22 = HB[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][3];
-            }
+            h11 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][0];
+            h12 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][1];
+            h21 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][2];
+            h22 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][3];
 //av_log(NULL, AV_LOG_ERROR, "e: %d b: %2d iid: %2d icc: %d\n", e, b, iid_mapped[e][b], icc_mapped[e][b]);
             if (!PS_BASELINE && b < ps->nr_ipdopd_par) { //FIXME
                 //Smoothing
