@@ -873,14 +873,14 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
             h21 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][2];
             h22 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][3];
 //av_log(NULL, AV_LOG_ERROR, "e: %d b: %2d iid: %2d icc: %d\n", e, b, iid_mapped[e][b], icc_mapped[e][b]);
-            if (!PS_BASELINE && b < ps->nr_ipdopd_par) { //FIXME
-                //Smoothing
+            if (!PS_BASELINE && b < ps->nr_ipdopd_par) {
+                //The spec say says to only run this smoother when enable_ipdopd
+                //is set but the reference decoder appears to run it constantly
                 float h11i, h12i, h21i, h22i;
                 float opd_re = ipdopd_cos[ps->opd_par[e][b]];
                 float opd_im = ipdopd_sin[ps->opd_par[e][b]];
                 float ipd_re = ipdopd_cos[ps->ipd_par[e][b]];
                 float ipd_im = ipdopd_sin[ps->ipd_par[e][b]];
-                //TODO leave these in terms of sin and cos
                 float opd_im_smooth = 0.25f * opd_smooth[b][0][1] + 0.5f * opd_smooth[b][1][1] + opd_im;
                 float opd_re_smooth = 0.25f * opd_smooth[b][0][0] + 0.5f * opd_smooth[b][1][0] + opd_re;
                 float ipd_im_smooth = 0.25f * ipd_smooth[b][0][1] + 0.5f * ipd_smooth[b][1][1] + ipd_im;
@@ -897,20 +897,18 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 float ipd_mag = 1 / sqrt(ipd_im_smooth * ipd_im_smooth + ipd_re_smooth * ipd_re_smooth);
                 opd_re = opd_re_smooth * opd_mag;
                 opd_im = opd_im_smooth * opd_mag;
-                //av_log(NULL, AV_LOG_ERROR, "%f %f %f %f %f %f %f\n", sinf(phi_opd), opd_im, opd_im_smooth, cosf(phi_opd), opd_re, opd_re_smooth, opd_mag);
                 ipd_re = ipd_re_smooth * ipd_mag;
                 ipd_im = ipd_im_smooth * ipd_mag;
                 float ipd_adj_re = opd_re*ipd_re + opd_im*ipd_im;
                 float ipd_adj_im = opd_im*ipd_re - opd_re*ipd_im;
-                //rotation
-                h11i = h11 * opd_im;//sin(phi_opd);
-                h11  = h11 * opd_re;//cos(phi_opd);
-                h12i = h12 * ipd_adj_im;//sin(phi_ipd);
-                h12  = h12 * ipd_adj_re;//cos(phi_ipd);
-                h21i = h21 * opd_im;//sin(phi_opd);
-                h21  = h21 * opd_re;//cos(phi_opd);
-                h22i = h22 * ipd_adj_im;//sin(phi_ipd);
-                h22  = h22 * ipd_adj_re;//cos(phi_ipd);
+                h11i = h11 * opd_im;
+                h11  = h11 * opd_re;
+                h12i = h12 * ipd_adj_im;
+                h12  = h12 * ipd_adj_re;
+                h21i = h21 * opd_im;
+                h21  = h21 * opd_re;
+                h22i = h22 * ipd_adj_im;
+                h22  = h22 * ipd_adj_re;
                 H11[1][e+1][b] = h11i;
                 H12[1][e+1][b] = h12i;
                 H21[1][e+1][b] = h21i;
