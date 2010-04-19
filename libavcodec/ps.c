@@ -856,7 +856,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             h21 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][2];
             h22 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][3];
 //av_log(NULL, AV_LOG_ERROR, "e: %d b: %2d iid: %2d icc: %d\n", e, b, iid_mapped[e][b], icc_mapped[e][b]);
-            if (!PS_BASELINE && b < ps->nr_ipdopd_par) {
+            if (!PS_BASELINE && ps->enable_ipdopd && b < ps->nr_ipdopd_par) {
                 //The spec say says to only run this smoother when enable_ipdopd
                 //is set but the reference decoder appears to run it constantly
                 float h11i, h12i, h21i, h22i;
@@ -914,6 +914,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             h12r = H12[0][e][b];
             h21r = H21[0][e][b];
             h22r = H22[0][e][b];
+            if (!PS_BASELINE && ps->enable_ipdopd)
             //Is this necessary? ps_04_new seems unchanged
             if ((is34) && (k) <= 13 && (k) >= 9 || (!is34) && (k) <= 1) {
                 h11i = -H11[1][e][b];
@@ -931,10 +932,13 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             float h12r_step = (H12[0][e+1][b] - h12r) * width;
             float h21r_step = (H21[0][e+1][b] - h21r) * width;
             float h22r_step = (H22[0][e+1][b] - h22r) * width;
-            float h11i_step = (H11[1][e+1][b] - h11i) * width;
-            float h12i_step = (H12[1][e+1][b] - h12i) * width;
-            float h21i_step = (H21[1][e+1][b] - h21i) * width;
-            float h22i_step = (H22[1][e+1][b] - h22i) * width;
+            float h11i_step, h12i_step, h21i_step, h22i_step;
+            if (!PS_BASELINE && ps->enable_ipdopd) {
+                h11i_step = (H11[1][e+1][b] - h11i) * width;
+                h12i_step = (H12[1][e+1][b] - h12i) * width;
+                h21i_step = (H21[1][e+1][b] - h21i) * width;
+                h22i_step = (H22[1][e+1][b] - h22i) * width;
+            }
             for (n = start + 1; n <= stop; n++) {
                 //l is s, r is d
                 float l_re = l[k][n][0];
@@ -945,6 +949,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
                 h12r += h12r_step;
                 h21r += h21r_step;
                 h22r += h22r_step;
+                if (!PS_BASELINE && ps->enable_ipdopd) {
                 h11i += h11i_step;
                 h12i += h12i_step;
                 h21i += h21i_step;
@@ -960,6 +965,12 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
                 l[k][n][1] = h11r*l_im + h21r*r_im + h11i*l_re + h21i*r_re;
                 r[k][n][0] = h12r*l_re + h22r*r_re - h12i*l_im - h22i*r_im;
                 r[k][n][1] = h12r*l_im + h22r*r_im + h12i*l_re + h22i*r_re;
+                } else {
+                l[k][n][0] = h11r*l_re + h21r*r_re;
+                l[k][n][1] = h11r*l_im + h21r*r_im;
+                r[k][n][0] = h12r*l_re + h22r*r_re;
+                r[k][n][1] = h12r*l_im + h22r*r_im;
+                }
                 //av_log(NULL, AV_LOG_ERROR, "e %d k %d n %d %f %f %f %f %f %f %f %f\n",
                 //e, k, n, h11r, h21r, h11i, h21i, h12r, h22r, h12i, h22i);
             }
