@@ -544,8 +544,6 @@ static const int   SHORT_DELAY_BAND[]  = { 42, 63 };
 static float Q_fract_allpass[2][NR_ALLPASS_BANDS34][PS_AP_LINKS][2];
 static float phi_fract[2][NR_ALLPASS_BANDS34][2];
 
-#define IS_CONJ(k, is34) ((is34) && (k) <= 13 && (k) >= 9 || (!is34) && (k) <= 1)
-
 /** Table 8.46 */
 #define MAP_GENERIC_10_TO_20(out, in) \
     int b;                                        \
@@ -917,7 +915,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             h21r = H21[0][e][b];
             h22r = H22[0][e][b];
             //Is this necessary? ps_04_new seems unchanged
-            if (IS_CONJ(k, is34)) {
+            if ((is34) && (k) <= 13 && (k) >= 9 || (!is34) && (k) <= 1) {
                 h11i = -H11[1][e][b];
                 h12i = -H12[1][e][b];
                 h21i = -H21[1][e][b];
