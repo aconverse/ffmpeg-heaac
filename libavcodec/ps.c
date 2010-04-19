@@ -401,7 +401,7 @@ static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7
 }
 
 /** Split one subband into 6 subsubbands with a complex filter */
-static void NO_OPT hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int len)
+static void hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int len)
 {
     int i, j, ssb;
     int N = 8;
@@ -436,7 +436,7 @@ static void NO_OPT hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (
     }
 }
 
-static void NO_OPT hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int N, int len)
+static void hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int N, int len)
 {
     int i, j, ssb;
 
@@ -457,7 +457,7 @@ static void NO_OPT hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const fl
     }
 }
 
-static void NO_OPT hybrid_analysis(float out[91][32][2], float in[64][44][2], int is34, int len)
+static void hybrid_analysis(float out[91][32][2], float in[64][44][2], int is34, int len)
 {
     int i;
     if(is34) {
@@ -990,7 +990,7 @@ static void transpose_out(float in[64][32][2], float out[2][38][64])
     }
 }
 
-int NO_OPT ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float R[2][38][64], int top)
+int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float R[2][38][64], int top)
 {
     float Lout[64][32][2];
     float Rout[64][32][2];
