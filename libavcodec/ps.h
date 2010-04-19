@@ -64,7 +64,7 @@ typedef struct {
 
     float  in_buf[64][44][2];
     float  delay[PS_MAX_SSB][PS_QMF_TIME_SLOTS + PS_MAX_DELAY][2];
-    float  ap_delay[PS_MAX_AP_BANDS][PS_AP_LINKS + 1][PS_QMF_TIME_SLOTS + PS_MAX_AP_DELAY][2];
+    float  ap_delay[PS_MAX_AP_BANDS][PS_AP_LINKS][PS_QMF_TIME_SLOTS + PS_MAX_AP_DELAY][2];
     float  peak_decay_nrg[34];
     float  power_smooth[34];
     float  peak_decay_diff_smooth[34];

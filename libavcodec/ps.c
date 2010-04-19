@@ -651,7 +651,7 @@ static av_noinline void decorrelation(PSContext *ps, float (*out)[32][2], const 
     float *power_smooth = ps->power_smooth;
     float *peak_decay_diff_smooth = ps->peak_decay_diff_smooth;
     float (*delay)[PS_QMF_TIME_SLOTS + PS_MAX_DELAY][2] = ps->delay;
-    float (*ap_delay)[PS_AP_LINKS + 1][PS_QMF_TIME_SLOTS + PS_MAX_AP_DELAY][2] = ps->ap_delay;
+    float (*ap_delay)[PS_AP_LINKS][PS_QMF_TIME_SLOTS + PS_MAX_AP_DELAY][2] = ps->ap_delay;
     const int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
     const float peak_decay_factor = 0.76592833836465f;
     const float transient_impact  = 1.5f;
@@ -708,7 +708,7 @@ static av_noinline void decorrelation(PSContext *ps, float (*out)[32][2], const 
         g_decay_slope = FFMAX(g_decay_slope, 0.f);
         memcpy(delay[k], delay[k]+nL, PS_MAX_DELAY*sizeof(delay[k][0]));
         memcpy(delay[k]+PS_MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
-        for (m = 0; m <= PS_AP_LINKS; m++) {
+        for (m = 0; m < PS_AP_LINKS; m++) {
             memcpy(ap_delay[k][m],   ap_delay[k][m]+numQMFSlots,           5*sizeof(ap_delay[k][m][0]));
         }
         for (n = n0; n < nL; n++) {
@@ -717,24 +717,21 @@ static av_noinline void decorrelation(PSContext *ps, float (*out)[32][2], const 
             float in_im = delay[k][n+PS_MAX_DELAY-2][0] * phi_fract[is34][k][1] +
                           delay[k][n+PS_MAX_DELAY-2][1] * phi_fract[is34][k][0];
             for (m = 0; m < PS_AP_LINKS; m++) {
-                float a_re                = a[m] * g_decay_slope * in_re;
-                float a_im                = a[m] * g_decay_slope * in_im;
-                float in_link_delay_re    = ap_delay[k][m][n+5-link_delay[m]][0];
-                float in_link_delay_im    = ap_delay[k][m][n+5-link_delay[m]][1];
-                float out_link_delay_re   = a[m] * g_decay_slope * ap_delay[k][m+1][n+5-link_delay[m]][0];
-                float out_link_delay_im   = a[m] * g_decay_slope * ap_delay[k][m+1][n+5-link_delay[m]][1];
+                float ag                  = a[m] * g_decay_slope;
+                float a_re                = ag * in_re;
+                float a_im                = ag * in_im;
+                float link_delay_re       = ap_delay[k][m][n+5-link_delay[m]][0];
+                float link_delay_im       = ap_delay[k][m][n+5-link_delay[m]][1];
                 float fractional_delay_re = Q_fract_allpass[is34][k][m][0];
                 float fractional_delay_im = Q_fract_allpass[is34][k][m][1];
 //av_log(NULL, AV_LOG_ERROR, "allpass stage %d in= %e %e\n", m, in_re, in_im);
                 ap_delay[k][m][n+5][0] = in_re;
                 ap_delay[k][m][n+5][1] = in_im;
-                in_re  =  in_link_delay_re * fractional_delay_re -  in_link_delay_im * fractional_delay_im - a_re;
-                in_im  =  in_link_delay_re * fractional_delay_im +  in_link_delay_im * fractional_delay_re - a_im;
-                in_re += out_link_delay_re * fractional_delay_re - out_link_delay_im * fractional_delay_im;
-                in_im += out_link_delay_re * fractional_delay_im + out_link_delay_im * fractional_delay_re;
+                in_re = link_delay_re * fractional_delay_re - link_delay_im * fractional_delay_im - a_re;
+                in_im = link_delay_re * fractional_delay_im + link_delay_im * fractional_delay_re - a_im;
+                ap_delay[k][m][n+5][0] += ag * in_re;
+                ap_delay[k][m][n+5][1] += ag * in_im;
             }
-            ap_delay[k][m][n+5][0] = in_re;
-            ap_delay[k][m][n+5][1] = in_im;
 //av_log(NULL, AV_LOG_ERROR, "allpass[k=%2d][n=%2d] = %e %e ", k, n, in_re, in_im);
             out[k][n][0] = transient_gain[b][n] * in_re;
             out[k][n][1] = transient_gain[b][n] * in_im;
