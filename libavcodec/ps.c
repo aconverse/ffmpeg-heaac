@@ -946,10 +946,14 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
                 float l_im = l[k][n][1];
                 float r_re = r[k][n][0];
                 float r_im = r[k][n][1];
-                h11r += h11r_step; h11i += h11i_step;
-                h12r += h12r_step; h12i += h12i_step;
-                h21r += h21r_step; h21i += h21i_step;
-                h22r += h22r_step; h22i += h22i_step;
+                h11r += h11r_step;
+                h12r += h12r_step;
+                h21r += h21r_step;
+                h22r += h22r_step;
+                h11i += h11i_step;
+                h12i += h12i_step;
+                h21i += h21i_step;
+                h22i += h22i_step;
 #if 0
             h11r = 0;
             h12r = 1;
