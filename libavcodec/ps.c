@@ -652,7 +652,7 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
     float *peak_decay_diff_smooth = ps->peak_decay_diff_smooth;
     float (*delay)[PS_QMF_TIME_SLOTS + PS_MAX_DELAY][2] = ps->delay;
     float (*ap_delay)[PS_AP_LINKS + 1][PS_QMF_TIME_SLOTS + PS_MAX_AP_DELAY][2] = ps->ap_delay;
-    int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
+    const int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
     const float peak_decay_factor = 0.76592833836465f;
     const float transient_impact  = 1.5f;
     const float a_smooth          = 0.25f; //< Smoothing coefficient
@@ -774,7 +774,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     float (*ipd_smooth)[2][2] = ps->ipd_smooth;
     int8_t iid_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t icc_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
-    int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
+    const int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
     const float (*H_LUT)[8][4] = (PS_BASELINE || ps->icc_mode < 3) ? HA : HB;
     static const float ipdopd_sin[] = { 0, M_SQRT1_2, 1,  M_SQRT1_2,  0, -M_SQRT1_2, -1, -M_SQRT1_2 };
     static const float ipdopd_cos[] = { 1, M_SQRT1_2, 0, -M_SQRT1_2, -1, -M_SQRT1_2,  0,  M_SQRT1_2 };
