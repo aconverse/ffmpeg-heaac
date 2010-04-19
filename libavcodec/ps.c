@@ -379,7 +379,7 @@ static void make_filters_from_proto(float (*filter)[7][2], const float *proto, i
 }
 
 /** Split one subband into 2 subsubbands with a real filter */
-static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7], int len, int reverse)
+static av_noinline void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7], int len, int reverse)
 {
     int i, j;
     for (i = 0; i < len; i++) {
@@ -401,7 +401,7 @@ static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7
 }
 
 /** Split one subband into 6 subsubbands with a complex filter */
-static void hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int len)
+static av_noinline void hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int len)
 {
     int i, j, ssb;
     int N = 8;
@@ -436,7 +436,7 @@ static void hybrid6_cx(float (*in)[2], float (*out)[32][2], const float (*filter
     }
 }
 
-static void hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int N, int len)
+static av_noinline void hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const float (*filter)[7][2], int N, int len)
 {
     int i, j, ssb;
 
@@ -457,7 +457,7 @@ static void hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const float (*f
     }
 }
 
-static void hybrid_analysis(float out[91][32][2], float in[64][44][2], int is34, int len)
+static av_noinline void hybrid_analysis(float out[91][32][2], float in[64][44][2], int is34, int len)
 {
     int i;
     if(is34) {
@@ -483,7 +483,7 @@ static void hybrid_analysis(float out[91][32][2], float in[64][44][2], int is34,
     }
 }
 
-static void hybrid_synthesis(float out[64][32][2], float in[91][32][2], int is34, int len)
+static av_noinline void hybrid_synthesis(float out[64][32][2], float in[91][32][2], int is34, int len)
 {
     int i, n;
     if(is34) {
@@ -643,7 +643,7 @@ static void map_val_20_to_34(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
     MAP_GENERIC_20_TO_34(par[e], par[e])
 }
 
-static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
+static av_noinline void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
 {
     float power[34][PS_QMF_TIME_SLOTS];
     float transient_gain[34][PS_QMF_TIME_SLOTS];
@@ -762,7 +762,7 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
     }
 }
 
-static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2], int is34)
+static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2], int is34)
 {
     int e, b, k, n;
 
