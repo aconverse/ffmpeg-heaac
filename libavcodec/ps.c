@@ -278,7 +278,8 @@ av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
     if (ps->enable_iid)
         for (e = 0; e < ps->num_env; e++) {
             ps->iid_dt[e] = get_bits1(gb);
-            iid_data(gb, ps, e);
+            if (iid_data(gb, ps, e))
+                return -1;
         }
     else
         memset(ps->iid_par, 0, sizeof(ps->iid_par));
@@ -286,7 +287,8 @@ av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
     if (ps->enable_icc)
         for (e = 0; e < ps->num_env; e++) {
             ps->icc_dt[e] = get_bits1(gb);
-            icc_data(gb, ps, e);
+            if (icc_data(gb, ps, e))
+                return -1;
         }
     else
         memset(ps->icc_par, 0, sizeof(ps->icc_par));
@@ -304,6 +306,7 @@ av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
         if (cnt < 0) {
             av_log(NULL, AV_LOG_ERROR, "ps extension overflow %d", cnt);
             abort();
+            return -1;
         }
         skip_bits(gb, cnt);
     }
@@ -762,6 +765,8 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
     float (*ipd_smooth)[2][2] = ps->ipd_smooth;
     int8_t iid_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t icc_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
+    int8_t ipd_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD];
+    int8_t opd_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD];
     const int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
     const float (*H_LUT)[8][4] = (PS_BASELINE || ps->icc_mode < 3) ? HA : HB;
     static const float ipdopd_sin[] = { 0, M_SQRT1_2, 1,  M_SQRT1_2,  0, -M_SQRT1_2, -1, -M_SQRT1_2 };
@@ -794,7 +799,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
                 map_idx_20_to_34(iid_mapped[e], iid_mapped[e]);
             } else
                 memcpy(iid_mapped[e], ps->iid_par[e], sizeof(iid_mapped[e]));
-            if (ps->enable_ipdopd && ps->nr_ipdopd_par != 17) {
+            if (ps->nr_ipdopd_par != 17) {
                 av_log(NULL, AV_LOG_ERROR, "ipd/opd remapping unsupported!\n");
                 abort();
             }
