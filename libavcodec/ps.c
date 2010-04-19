@@ -556,12 +556,6 @@ static void map_idx_10_to_20(int8_t *par_mapped, const int8_t *par)
     MAP_GENERIC_10_TO_20(par_mapped, par)
 }
 
-static void map_val_10_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
-{
-    MAP_GENERIC_10_TO_20(par[e], par[e])
-}
-
-/** Table 8.46 */
 #define MAP_GENERIC_34_TO_20(out, in) \
     out[ 0] = (2*in[ 0] +   in[ 1]) / 3;                               \
     out[ 1] = (  in[ 1] + 2*in[ 2]) / 3;                               \
@@ -593,7 +587,6 @@ static void map_val_34_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
 {
     MAP_GENERIC_34_TO_20(par[e], par[e])
 }
-
 
 #define MAP_GENERIC_20_TO_34(out, in) \
     out[33] =  in[19];                     \
