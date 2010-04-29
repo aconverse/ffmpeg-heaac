@@ -50,7 +50,7 @@ typedef struct {
     int    num_env_old;
     int    num_env;
     int    enable_ipdopd;
-    int    border_position[PS_MAX_NUM_ENV];
+    int    border_position[PS_MAX_NUM_ENV+1];
     int8_t iid_dt [PS_MAX_NUM_ENV];
     int8_t iid_par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC]; //<Inter-channel Intensity Difference Parameters
     int8_t icc_dt [PS_MAX_NUM_ENV];
