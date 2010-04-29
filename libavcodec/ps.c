@@ -223,7 +223,6 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
     int bit_count_start = get_bits_count(gb);
     int header;
 
-av_log(NULL, AV_LOG_ERROR, "ps_data\n");
     header = get_bits1(gb);
     if (header) {     //enable_ps_header
         ps->enable_iid = get_bits1(gb);
@@ -250,26 +249,18 @@ av_log(NULL, AV_LOG_ERROR, "ps_data\n");
         }
         ps->enable_ext = get_bits1(gb);
     }
-av_log(NULL, AV_LOG_ERROR, "header %d iid %d %d icc %d %d\n", header, ps->enable_iid, ps->iid_mode, ps->enable_icc, ps->icc_mode);
 
     ps->frame_class = get_bits1(gb);
     ps->num_env_old = ps->num_env;
     ps->num_env     = num_env_tab[ps->frame_class][get_bits(gb, 2)];
 
-av_log(NULL, AV_LOG_ERROR, "frame class %d\n", ps->frame_class);
     ps->border_position[0] = -1;
     if (ps->frame_class) {
         for (e = 1; e <= ps->num_env; e++)
-{
             ps->border_position[e] = get_bits(gb, 5);
-av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
-}
     } else
         for (e = 1; e <= ps->num_env; e++)
-{
             ps->border_position[e] = e * numQMFSlots / ps->num_env - 1;
-av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
-}
 
     if (ps->enable_iid)
         for (e = 0; e < ps->num_env; e++) {
@@ -1023,9 +1014,6 @@ int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float 
     float Rbuf[91][32][2];
     const int len = 32;
     int is34 = ps->is34bands;
-
-av_log(NULL, AV_LOG_ERROR, "is34 %d\n", is34);
-av_log(NULL, AV_LOG_ERROR, "top %d\n", top);
 
     top += NR_BANDS[is34] - 64;
     memset(ps->delay+top, 0, (NR_BANDS[is34] - top)*sizeof(ps->delay[0]));
