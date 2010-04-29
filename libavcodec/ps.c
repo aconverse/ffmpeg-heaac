@@ -338,31 +338,6 @@ av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
     return get_bits_count(gb) - bit_count_start;
 }
 
-static const float g0_Q8[] = {
-    0.00746082949812f, 0.02270420949825f, 0.04546865930473f, 0.07266113929591f,
-    0.09885108575264f, 0.11793710567217f, 0.125f
-};
-
-static const float g1_Q2[] = {
-    0.0f,  0.01899487526049f, 0.0f, -0.07293139167538f,
-    0.0f,  0.30596630545168f, 0.5f
-};
-
-static const float g0_Q12[] = {
-    0.04081179924692f, 0.03812810994926f, 0.05144908135699f, 0.06399831151592f,
-    0.07428313801106f, 0.08100347892914f, 0.08333333333333f
-};
-
-static const float g1_Q8[] = {
-    0.01565675600122f, 0.03752716391991f, 0.05417891378782f, 0.08417044116767f,
-    0.10307344158036f, 0.12222452249753f, 0.125f
-};
-
-static const float g2_Q4[] = {
-    -0.05908211155639f, -0.04871498374946f, 0.0f,   0.07778723915851f,
-     0.16486303567403f,  0.23279856662996f, 0.25f
-};
-
 #if !PS_HARDCODED_TABLES
 static void make_filters_from_proto(float (*filter)[7][2], const float *proto, int bands)
 {
