@@ -363,6 +363,7 @@ static const float g2_Q4[] = {
      0.16486303567403f,  0.23279856662996f, 0.25f
 };
 
+#if !PS_HARDCODED_TABLES
 static void make_filters_from_proto(float (*filter)[7][2], const float *proto, int bands)
 {
     int q, n;
@@ -380,6 +381,7 @@ static void make_filters_from_proto(float (*filter)[7][2], const float *proto, i
     }
     //av_log(NULL, AV_LOG_ERROR, "};\n");
 }
+#endif
 
 /** Split one subband into 2 subsubbands with a real filter */
 static av_noinline void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7], int len, int reverse)
@@ -543,9 +545,6 @@ static const int   DECAY_CUTOFF[]      = { 10, 32 };
 static const int   NR_ALLPASS_BANDS[]  = { 30, 50 };
 /// First stereo band using the short one sample delay
 static const int   SHORT_DELAY_BAND[]  = { 42, 63 };
-
-static float Q_fract_allpass[2][NR_ALLPASS_BANDS34][PS_AP_LINKS][2];
-static float phi_fract[2][NR_ALLPASS_BANDS34][2];
 
 /** Table 8.46 */
 #define MAP_GENERIC_10_TO_20(out, in) \
@@ -1035,50 +1034,50 @@ av_log(NULL, AV_LOG_ERROR, "top %d\n", top);
 
 static av_cold void ps_init_dec()
 {
+#if !PS_HARDCODED_TABLES
     int k, m;
     //TODO store these as int8 and divide them during initialization
-    static const float f_center_20[] = {
-        -3./8, -1./8, 1./8, 3./8, 5./8, 7./8, 5./4, 7./4, 9./4, 11./4,
+    static const int8_t f_center_20[] = {
+        -3, -1, 1, 3, 5, 7, 10, 14, 18, 22,
     };
-    static const float f_center_34[] = {
-         1./12,  3./12,  5./12,  7./12,  9./12, 11./12, 13./12, 15./12,
-        17./12, -5./12, -3./12, -1./12, 17./ 8, 19./8,   5./8,   7./8,
-         9./8,  11./8,  13./8,  15./8,   9./4,  11./4,  13./4,   7./4,
-        17./4,  11./4,  13./4,  15./4,  17./4,  19./4,  21./4,  15./4,
+    static const int8_t f_center_34[] = {
+         2,  6, 10, 14, 18, 22, 26, 30,
+        34,-10, -6, -2, 51, 57, 15, 21,
+        27, 33, 39, 45, 54, 66, 78, 42,
+       102, 66, 78, 90,102,114,126, 90,
     };
     static const float fractional_delay_links[] = { 0.43f, 0.75f, 0.347f };
     const float fractional_delay_gain = 0.39f;
     for (k = 0; k < NR_ALLPASS_BANDS20; k++) {
-        float f_center, theta;
+        double f_center, theta;
         if (k < FF_ARRAY_ELEMS(f_center_20))
-            f_center = f_center_20[k];
+            f_center = f_center_20[k] * 0.125;
         else
-            f_center = k - 7 + 0.5f;
+            f_center = k - 6.5f;
         for (m = 0; m < PS_AP_LINKS; m++) {
             theta = -M_PI * fractional_delay_links[m] * f_center;
-            Q_fract_allpass[0][k][m][0] = cosf(theta);
-            Q_fract_allpass[0][k][m][1] = sinf(theta);
+            Q_fract_allpass[0][k][m][0] = cos(theta);
+            Q_fract_allpass[0][k][m][1] = sin(theta);
         }
         theta = -M_PI*fractional_delay_gain*f_center;
-        phi_fract[0][k][0] = cosf(theta);
-        phi_fract[0][k][1] = sinf(theta);
+        phi_fract[0][k][0] = cos(theta);
+        phi_fract[0][k][1] = sin(theta);
     }
     for (k = 0; k < NR_ALLPASS_BANDS34; k++) {
         float f_center, theta;
         if (k < FF_ARRAY_ELEMS(f_center_34))
-            f_center = f_center_34[k];
+            f_center = f_center_34[k] / 24.;
         else
-            f_center = k - 27 + 0.5f;
+            f_center = k - 26.5f;
         for (m = 0; m < PS_AP_LINKS; m++) {
-            Q_fract_allpass[1][k][m][0] = cosf(-M_PI * fractional_delay_links[m] * f_center);
-            Q_fract_allpass[1][k][m][1] = sinf(-M_PI * fractional_delay_links[m] * f_center);
+            Q_fract_allpass[1][k][m][0] = cos(-M_PI * fractional_delay_links[m] * f_center);
+            Q_fract_allpass[1][k][m][1] = sin(-M_PI * fractional_delay_links[m] * f_center);
         }
         theta = -M_PI*fractional_delay_gain*f_center;
-        phi_fract[1][k][0] = cosf(theta);
-        phi_fract[1][k][1] = sinf(theta);
+        phi_fract[1][k][0] = cos(theta);
+        phi_fract[1][k][1] = sin(theta);
     }
 
-#if !PS_HARDCODED_TABLES
     make_filters_from_proto(f20_0_8,  g0_Q8,   8);
     make_filters_from_proto(f34_0_12, g0_Q12, 12);
     make_filters_from_proto(f34_1_8,  g1_Q8,   8);
