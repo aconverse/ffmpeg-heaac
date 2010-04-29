@@ -264,10 +264,6 @@ av_log(NULL, AV_LOG_ERROR, "frame class %d\n", ps->frame_class);
             ps->border_position[e] = get_bits(gb, 5);
 av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
 }
-        if (ps->border_position[ps->num_env] != numQMFSlots - 1) {
-            av_log(NULL, AV_LOG_ERROR, "Unhandled case last envelope missing\n");
-            abort();
-        }
     } else
         for (e = 1; e <= ps->num_env; e++)
 {
@@ -311,6 +307,7 @@ av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
         skip_bits(gb, cnt);
     }
 
+    //Fix up envelopes
     if (!ps->num_env) {
         ps->num_env = 1;
         ps->border_position[1] = 31;
@@ -320,7 +317,19 @@ av_log(NULL, AV_LOG_ERROR, "border %d\n", ps->border_position[e]);
         if (ps->enable_icc && ps->num_env_old > 1) {
             memcpy(ps->icc_par, ps->icc_par+ps->num_env_old-1, sizeof(ps->icc_par[0]));
         }
+    } else if (ps->border_position[ps->num_env] < numQMFSlots - 1) {
+        //Create a fake envelope
+        if (ps->enable_iid && ps->num_env_old > 1) {
+            memcpy(ps->iid_par+ps->num_env, ps->iid_par+ps->num_env-1, sizeof(ps->iid_par[0]));
+        }
+        if (ps->enable_icc && ps->num_env_old > 1) {
+            memcpy(ps->icc_par+ps->num_env, ps->icc_par+ps->num_env-1, sizeof(ps->icc_par[0]));
+        }
+        //TODO ipd/opd
+        ps->num_env++;
+        ps->border_position[ps->num_env] = numQMFSlots - 1;
     }
+
 
     ps->is34bands_old = ps->is34bands;
     if (!PS_BASELINE && (ps->enable_iid || ps->enable_icc))
