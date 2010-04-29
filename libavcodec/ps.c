@@ -522,18 +522,24 @@ static const int   NR_ALLPASS_BANDS[]  = { 30, 50 };
 static const int   SHORT_DELAY_BAND[]  = { 42, 63 };
 
 /** Table 8.46 */
-#define MAP_GENERIC_10_TO_20(out, in) \
+#define MAP_GENERIC_10_TO_20(out, in, full) \
     int b;                                        \
-    for (b = 9; b >= 0; b--) {                    \
+    if (full)                                     \
+        b = 9;                                    \
+    else {                                        \
+        b = 4;                                    \
+        out[10] = 0;                              \
+    }                                             \
+    for (; b >= 0; b--) {                         \
         out[2*b+1] = out[2*b] = in[b];            \
     }
 
-static void map_idx_10_to_20(int8_t *par_mapped, const int8_t *par)
+static void map_idx_10_to_20(int8_t *par_mapped, const int8_t *par, int full)
 {
-    MAP_GENERIC_10_TO_20(par_mapped, par)
+    MAP_GENERIC_10_TO_20(par_mapped, par, full)
 }
 
-#define MAP_GENERIC_34_TO_20(out, in) \
+#define MAP_GENERIC_34_TO_20(out, in, full) \
     out[ 0] = (2*in[ 0] +   in[ 1]) / 3;                               \
     out[ 1] = (  in[ 1] + 2*in[ 2]) / 3;                               \
     out[ 2] = (2*in[ 3] +   in[ 4]) / 3;                               \
@@ -545,6 +551,7 @@ static void map_idx_10_to_20(int8_t *par_mapped, const int8_t *par)
     out[ 8] = (  in[12] +   in[13]) / 2;                               \
     out[ 9] = (  in[14] +   in[15]) / 2;                               \
     out[10] =    in[16];                                               \
+    if (full) {                                                        \
     out[11] =    in[17];                                               \
     out[12] =    in[18];                                               \
     out[13] =    in[19];                                               \
@@ -553,19 +560,21 @@ static void map_idx_10_to_20(int8_t *par_mapped, const int8_t *par)
     out[16] = (  in[24] +   in[25]) / 2;                               \
     out[17] = (  in[26] +   in[27]) / 2;                               \
     out[18] = (  in[28] +   in[29] +   in[30] +   in[31]) / 4;         \
-    out[19] = (  in[32] +   in[33]) / 2;
+    out[19] = (  in[32] +   in[33]) / 2;                               \
+    }
 
-static void map_idx_34_to_20(int8_t *par_mapped, const int8_t *par)
+static void map_idx_34_to_20(int8_t *par_mapped, const int8_t *par, int full)
 {
-    MAP_GENERIC_34_TO_20(par_mapped, par)
+    MAP_GENERIC_34_TO_20(par_mapped, par, full)
 }
 
 static void map_val_34_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
 {
-    MAP_GENERIC_34_TO_20(par[e], par[e])
+    MAP_GENERIC_34_TO_20(par[e], par[e], 1)
 }
 
-#define MAP_GENERIC_20_TO_34(out, in) \
+#define MAP_GENERIC_20_TO_34(out, in, full) \
+    if (full) {                            \
     out[33] =  in[19];                     \
     out[32] =  in[19];                     \
     out[31] =  in[18];                     \
@@ -583,6 +592,7 @@ static void map_val_34_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
     out[19] =  in[13];                     \
     out[18] =  in[12];                     \
     out[17] =  in[11];                     \
+    }                                      \
     out[16] =  in[10];                     \
     out[15] =  in[ 9];                     \
     out[14] =  in[ 9];                     \
@@ -601,14 +611,14 @@ static void map_val_34_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
     out[ 1] = (in[ 0] + in[ 1]) / 2;       \
     out[ 0] =  in[ 0];
 
-static void map_idx_20_to_34(int8_t *par_mapped, const int8_t *par)
+static void map_idx_20_to_34(int8_t *par_mapped, const int8_t *par, int full)
 {
-    MAP_GENERIC_20_TO_34(par_mapped, par)
+    MAP_GENERIC_20_TO_34(par_mapped, par, full)
 }
 
 static void map_val_20_to_34(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e)
 {
-    MAP_GENERIC_20_TO_34(par[e], par[e])
+    MAP_GENERIC_20_TO_34(par[e], par[e], 1)
 }
 
 static av_noinline void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
@@ -737,10 +747,14 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
     float (*H22)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H22;
     float (*opd_smooth)[2][2] = ps->opd_smooth;
     float (*ipd_smooth)[2][2] = ps->ipd_smooth;
-    int8_t iid_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
-    int8_t icc_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
-    int8_t ipd_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD];
-    int8_t opd_mapped[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD];
+    int8_t iid_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
+    int8_t icc_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
+    int8_t ipd_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD];
+    int8_t opd_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD];
+    int8_t (*iid_mapped)[PS_MAX_NR_IIDICC] = iid_mapped_buf;
+    int8_t (*icc_mapped)[PS_MAX_NR_IIDICC] = icc_mapped_buf;
+    int8_t (*ipd_mapped)[PS_MAX_NR_IPDOPD] = ipd_mapped_buf;
+    int8_t (*opd_mapped)[PS_MAX_NR_IPDOPD] = opd_mapped_buf;
     const int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
     const float (*H_LUT)[8][4] = (PS_BASELINE || ps->icc_mode < 3) ? HA : HB;
     static const float ipdopd_sin[] = { 0, M_SQRT1_2, 1,  M_SQRT1_2,  0, -M_SQRT1_2, -1, -M_SQRT1_2 };
@@ -760,22 +774,32 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
     if (is34) {
         for (e = 0; e < ps->num_env; e++) {
             if (ps->nr_icc_par == 20)
-                map_idx_20_to_34(icc_mapped[e], ps->icc_par[e]);
+                map_idx_20_to_34(icc_mapped[e], ps->icc_par[e], 1);
             else if (ps->nr_icc_par == 10) {
-                map_idx_10_to_20(icc_mapped[e], ps->icc_par[e]);
-                map_idx_20_to_34(icc_mapped[e], icc_mapped[e]);
+                map_idx_10_to_20(icc_mapped[e], ps->icc_par[e], 1);
+                map_idx_20_to_34(icc_mapped[e], icc_mapped[e], 1);
             } else
-                memcpy(icc_mapped[e], ps->icc_par[e], sizeof(icc_mapped[e]));
+                icc_mapped = ps->icc_par;
             if (ps->nr_iid_par == 20)
-                map_idx_20_to_34(iid_mapped[e], ps->iid_par[e]);
+                map_idx_20_to_34(iid_mapped[e], ps->iid_par[e], 1);
             else if (ps->nr_iid_par == 10) {
-                map_idx_10_to_20(iid_mapped[e], ps->iid_par[e]);
-                map_idx_20_to_34(iid_mapped[e], iid_mapped[e]);
+                map_idx_10_to_20(iid_mapped[e], ps->iid_par[e], 1);
+                map_idx_20_to_34(iid_mapped[e], iid_mapped[e], 1);
             } else
-                memcpy(iid_mapped[e], ps->iid_par[e], sizeof(iid_mapped[e]));
-            if (ps->nr_ipdopd_par != 17) {
-                av_log(NULL, AV_LOG_ERROR, "ipd/opd remapping unsupported!\n");
-                abort();
+                iid_mapped = ps->iid_par;
+            if (ps->enable_ipdopd) {
+                if (ps->nr_ipdopd_par == 11) {
+                    map_idx_20_to_34(ipd_mapped[e], ps->ipd_par[e], 0);
+                    map_idx_20_to_34(opd_mapped[e], ps->opd_par[e], 0);
+                } else if (ps->nr_ipdopd_par == 5) {
+                    map_idx_10_to_20(ipd_mapped[e], ps->ipd_par[e], 0);
+                    map_idx_20_to_34(ipd_mapped[e], ipd_mapped[e], 0);
+                    map_idx_10_to_20(opd_mapped[e], ps->opd_par[e], 0);
+                    map_idx_20_to_34(opd_mapped[e], opd_mapped[e], 0);
+                } else {
+                    ipd_mapped = ps->ipd_par;
+                    opd_mapped = ps->opd_par;
+                }
             }
         }
         if (!ps->is34bands_old) {
@@ -787,24 +811,33 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             map_val_20_to_34(H21[1], 0);
             map_val_20_to_34(H22[0], 0);
             map_val_20_to_34(H22[1], 0);
+            ipdopd_reset(ps->ipd_smooth, ps->opd_smooth);
         }
     } else {
         for (e = 0; e < ps->num_env; e++) {
             if (ps->nr_icc_par == 34)
-                map_idx_34_to_20(icc_mapped[e], ps->icc_par[e]);
+                map_idx_34_to_20(icc_mapped[e], ps->icc_par[e], 1);
             else if (ps->nr_icc_par == 10)
-                map_idx_10_to_20(icc_mapped[e], ps->icc_par[e]);
-            else //TODO use a ptr so no copy is ncessary
-                memcpy(icc_mapped[e], ps->icc_par[e], sizeof(icc_mapped[e]));
+                map_idx_10_to_20(icc_mapped[e], ps->icc_par[e], 1);
+            else
+                icc_mapped = ps->icc_par;
             if (ps->nr_iid_par == 34)
-                map_idx_34_to_20(iid_mapped[e], ps->iid_par[e]);
+                map_idx_34_to_20(iid_mapped[e], ps->iid_par[e], 1);
             else if (ps->nr_iid_par == 10)
-                map_idx_10_to_20(iid_mapped[e], ps->iid_par[e]);
-            else //TODO use a ptr so no copy is ncessary
-                memcpy(iid_mapped[e], ps->iid_par[e], sizeof(iid_mapped[e]));
-            if (ps->enable_ipdopd && ps->nr_ipdopd_par != 11) {
-                av_log(NULL, AV_LOG_ERROR, "ipd/opd remapping unsupported!\n");
-                abort();
+                map_idx_10_to_20(iid_mapped[e], ps->iid_par[e], 1);
+            else
+                iid_mapped = ps->iid_par;
+            if (ps->enable_ipdopd) {
+                if (ps->nr_ipdopd_par == 17) {
+                    map_idx_34_to_20(ipd_mapped[e], ps->ipd_par[e], 0);
+                    map_idx_34_to_20(opd_mapped[e], ps->opd_par[e], 0);
+                } else if (ps->nr_ipdopd_par == 5) {
+                    map_idx_10_to_20(ipd_mapped[e], ps->ipd_par[e], 0);
+                    map_idx_10_to_20(opd_mapped[e], ps->opd_par[e], 0);
+                } else {
+                    ipd_mapped = ps->ipd_par;
+                    opd_mapped = ps->opd_par;
+                }
             }
         }
         if (ps->is34bands_old) {
@@ -816,6 +849,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             map_val_34_to_20(H21[1], 0);
             map_val_34_to_20(H22[0], 0);
             map_val_34_to_20(H22[1], 0);
+            ipdopd_reset(ps->ipd_smooth, ps->opd_smooth);
         }
     }
 
