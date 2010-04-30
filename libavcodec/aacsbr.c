@@ -1721,40 +1721,45 @@ static void sbr_hf_assemble(float Y[2][38][64][2], const float X_high[64][40][2]
     ch_data->f_indexsine  = indexsine;
 }
 
-void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
+void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int id_aac,
+                  float* L, float* R)
 {
+    int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
+    int ch;
+    int nch = (id_aac == TYPE_CPE) ? 2 : 1;
+
     if (sbr->start) {
         sbr_dequant(sbr, id_aac);
     }
-}
+    for (ch = 0; ch < nch; ch++) {
+        /* decode channel */
+        sbr_qmf_analysis(&ac->dsp, &sbr->rdft, ch ? R : L, sbr->data[ch].analysis_filterbank_samples,
+                         (float*)sbr->qmf_filter_scratch,
+                         sbr->data[ch].W, 1/(-1024 * ac->sf_scale));
+        sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
+        if (sbr->start) {
+            sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->X_low, sbr->k[0]);
+            sbr_chirp(sbr, &sbr->data[ch]);
+            sbr_hf_gen(ac, sbr, sbr->X_high, sbr->X_low, sbr->alpha0, sbr->alpha1,
+                       sbr->data[ch].bw_array, sbr->data[ch].t_env,
+                       sbr->data[ch].bs_num_env);
 
-void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
-                  const float* in, float* out, float *out2)
-{
-    int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
+            // hf_adj
+            sbr_mapping(ac, sbr, &sbr->data[ch], sbr->data[ch].e_a);
+            sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch]);
+            sbr_gain_calc(ac, sbr, &sbr->data[ch], sbr->data[ch].e_a);
+            sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch],
+                            sbr->data[ch].e_a);
+        }
 
-    /* decode channel */
-    sbr_qmf_analysis(&ac->dsp, &sbr->rdft, in, sbr->data[ch].analysis_filterbank_samples,
-                     (float*)sbr->qmf_filter_scratch,
-                     sbr->data[ch].W, 1/(-1024 * ac->sf_scale));
-    sbr_lf_gen(ac, sbr, sbr->X_low, sbr->data[ch].W);
-    if (sbr->start) {
-        sbr_hf_inverse_filter(sbr->alpha0, sbr->alpha1, sbr->X_low, sbr->k[0]);
-        sbr_chirp(sbr, &sbr->data[ch]);
-        sbr_hf_gen(ac, sbr, sbr->X_high, sbr->X_low, sbr->alpha0, sbr->alpha1,
-                   sbr->data[ch].bw_array, sbr->data[ch].t_env,
-                   sbr->data[ch].bs_num_env);
-
-        // hf_adj
-        sbr_mapping(ac, sbr, &sbr->data[ch], sbr->data[ch].e_a);
-        sbr_env_estimate(sbr->e_curr, sbr->X_high, sbr, &sbr->data[ch]);
-        sbr_gain_calc(ac, sbr, &sbr->data[ch], sbr->data[ch].e_a);
-        sbr_hf_assemble(sbr->data[ch].Y, sbr->X_high, sbr, &sbr->data[ch],
-                        sbr->data[ch].e_a);
+        /* synthesis */
+        sbr_x_gen(sbr, sbr->X, sbr->X_low, sbr->data[ch].Y, ch);
     }
-
-    /* synthesis */
-    sbr_x_gen(sbr, sbr->X[0], sbr->X_low, sbr->data[ch].Y, ch);
+    sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, L, sbr->X, sbr->qmf_filter_scratch,
+                      sbr->data[0].synthesis_filterbank_samples,
+                      &sbr->data[0].synthesis_filterbank_samples_offset,
+                      downsampled,
+                      ac->add_bias, -1024 * ac->sf_scale);
 
 #if 1
     if (ac->m4ac.ps == 1) {
@@ -1763,17 +1768,14 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
         } else {
             memcpy(sbr->X[1], sbr->X[0], sizeof(sbr->X[0]));
         }
-        sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out2, sbr->X[1], sbr->qmf_filter_scratch,
-                      sbr->data[1].synthesis_filterbank_samples,
-                      &sbr->data[1].synthesis_filterbank_samples_offset,
-                      downsampled,
-                      ac->add_bias, -1024 * ac->sf_scale);
+        nch = 2;
     }
 #endif
 
-    sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out, sbr->X[0], sbr->qmf_filter_scratch,
-                      sbr->data[ch].synthesis_filterbank_samples,
-                      &sbr->data[ch].synthesis_filterbank_samples_offset,
-                      downsampled,
-                      ac->add_bias, -1024 * ac->sf_scale);
+    if (nch == 2)
+        sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, R, sbr->X, sbr->qmf_filter_scratch,
+                          sbr->data[1].synthesis_filterbank_samples,
+                          &sbr->data[1].synthesis_filterbank_samples_offset,
+                          downsampled,
+                          ac->add_bias, -1024 * ac->sf_scale);
 }
