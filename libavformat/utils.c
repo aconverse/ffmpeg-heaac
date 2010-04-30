@@ -37,7 +37,7 @@
 #include <assert.h>
 
 /**
- * @file libavformat/utils.c
+ * @file
  * various utility functions for use within FFmpeg
  */
 
@@ -559,7 +559,7 @@ int av_open_input_file(AVFormatContext **ic_ptr, const char *filename,
         if (buf_size > 0) {
             url_setbufsize(pb, buf_size);
         }
-        if ((err = ff_probe_input_buffer(&pb, &fmt, filename, logctx, 0, logctx ? (*ic_ptr)->probesize : 0)) < 0) {
+        if (!fmt && (err = ff_probe_input_buffer(&pb, &fmt, filename, logctx, 0, logctx ? (*ic_ptr)->probesize : 0)) < 0) {
             goto fail;
         }
     }
@@ -2544,7 +2544,7 @@ AVChapter *ff_new_chapter(AVFormatContext *s, int id, AVRational time_base, int6
 #if LIBAVFORMAT_VERSION_INT < (53<<16)
     av_free(chapter->title);
 #endif
-    av_metadata_set(&chapter->metadata, "title", title);
+    av_metadata_set2(&chapter->metadata, "title", title, 0);
     chapter->id    = id;
     chapter->time_base= time_base;
     chapter->start = start;

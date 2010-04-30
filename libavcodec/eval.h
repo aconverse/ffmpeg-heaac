@@ -19,7 +19,7 @@
  */
 
 /**
- * @file libavcodec/eval.h
+ * @file
  * simple arithmetic expression evaluator
  */
 
@@ -30,7 +30,7 @@ typedef struct AVExpr AVExpr;
 
 /**
  * Parses and evaluates an expression.
- * Note, this is significantly slower than ff_parse_eval()
+ * Note, this is significantly slower than ff_eval_expr().
  *
  * @param s expression as a zero terminated string for example "1+2^3+5*5+sin(2/3)"
  * @param func1 NULL terminated array of function pointers for functions which take 1 argument
@@ -43,13 +43,13 @@ typedef struct AVExpr AVExpr;
  * @param opaque a pointer which will be passed to all functions from func1 and func2
  * @return the value of the expression
  */
-double ff_eval2(const char *s, const double *const_value, const char * const *const_name,
-               double (**func1)(void *, double), const char **func1_name,
-               double (**func2)(void *, double, double), const char **func2_name,
+double ff_parse_and_eval_expr(const char *s, const double *const_value, const char * const *const_name,
+               double (* const *func1)(void *, double), const char * const *func1_name,
+               double (* const *func2)(void *, double, double), const char * const *func2_name,
                void *opaque, const char **error);
 
 /**
- * Parses a expression.
+ * Parses an expression.
  *
  * @param s expression as a zero terminated string for example "1+2^3+5*5+sin(2/3)"
  * @param func1 NULL terminated array of function pointers for functions which take 1 argument
@@ -61,9 +61,9 @@ double ff_eval2(const char *s, const double *const_value, const char * const *co
  * @return AVExpr which must be freed with ff_free_expr() by the user when it is not needed anymore
  *         NULL if anything went wrong
  */
-AVExpr * ff_parse(const char *s, const char * const *const_name,
-               double (**func1)(void *, double), const char **func1_name,
-               double (**func2)(void *, double, double), const char **func2_name,
+AVExpr *ff_parse_expr(const char *s, const char * const *const_name,
+               double (* const *func1)(void *, double), const char * const *func1_name,
+               double (* const *func2)(void *, double, double), const char * const *func2_name,
                const char **error);
 
 /**
@@ -73,7 +73,7 @@ AVExpr * ff_parse(const char *s, const char * const *const_name,
  * @param opaque a pointer which will be passed to all functions from func1 and func2
  * @return the value of the expression
  */
-double ff_parse_eval(AVExpr * e, const double *const_value, void *opaque);
+double ff_eval_expr(AVExpr * e, const double *const_value, void *opaque);
 
 /**
  * Frees a parsed expression previously created with ff_parse().

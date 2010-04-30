@@ -293,7 +293,8 @@ static int rtp_new_av_stream(HTTPContext *c,
 static const char *my_program_name;
 static const char *my_program_dir;
 
-static const char *config_filename;
+static const char *config_filename = "/etc/ffserver.conf";
+
 static int ffserver_debug;
 static int ffserver_daemon;
 static int no_launch;
@@ -2231,10 +2232,10 @@ static int http_prepare_data(HTTPContext *c)
     switch(c->state) {
     case HTTPSTATE_SEND_DATA_HEADER:
         memset(&c->fmt_ctx, 0, sizeof(c->fmt_ctx));
-        av_metadata_set(&c->fmt_ctx.metadata, "author"   ,c->stream->author);
-        av_metadata_set(&c->fmt_ctx.metadata, "comment"  ,c->stream->comment);
-        av_metadata_set(&c->fmt_ctx.metadata, "copyright",c->stream->copyright);
-        av_metadata_set(&c->fmt_ctx.metadata, "title"    ,c->stream->title);
+        av_metadata_set2(&c->fmt_ctx.metadata, "author"   , c->stream->author   , 0);
+        av_metadata_set2(&c->fmt_ctx.metadata, "comment"  , c->stream->comment  , 0);
+        av_metadata_set2(&c->fmt_ctx.metadata, "copyright", c->stream->copyright, 0);
+        av_metadata_set2(&c->fmt_ctx.metadata, "title"    , c->stream->title    , 0);
 
         for(i=0;i<c->stream->nb_streams;i++) {
             AVStream *st;
@@ -2938,8 +2939,8 @@ static int prepare_sdp_description(FFStream *stream, uint8_t **pbuffer,
     if (avc == NULL) {
         return -1;
     }
-    av_metadata_set(&avc->metadata, "title",
-                    stream->title[0] ? stream->title : "No Title");
+    av_metadata_set2(&avc->metadata, "title",
+                     stream->title[0] ? stream->title : "No Title", 0);
     avc->nb_streams = stream->nb_streams;
     if (stream->is_multicast) {
         snprintf(avc->filename, 1024, "rtp://%s:%d?multicast=1?ttl=%d",
@@ -3042,7 +3043,7 @@ static void rtsp_cmd_setup(HTTPContext *c, const char *url,
                            RTSPMessageHeader *h)
 {
     FFStream *stream;
-    int stream_index, port;
+    int stream_index, rtp_port, rtcp_port;
     char buf[1024];
     char path1[1024];
     const char *path;
@@ -3156,11 +3157,12 @@ static void rtsp_cmd_setup(HTTPContext *c, const char *url,
 
     switch(rtp_c->rtp_protocol) {
     case RTSP_LOWER_TRANSPORT_UDP:
-        port = rtp_get_local_port(rtp_c->rtp_handles[stream_index]);
+        rtp_port = rtp_get_local_rtp_port(rtp_c->rtp_handles[stream_index]);
+        rtcp_port = rtp_get_local_rtcp_port(rtp_c->rtp_handles[stream_index]);
         url_fprintf(c->pb, "Transport: RTP/AVP/UDP;unicast;"
                     "client_port=%d-%d;server_port=%d-%d",
-                    th->client_port_min, th->client_port_min + 1,
-                    port, port + 1);
+                    th->client_port_min, th->client_port_max,
+                    rtp_port, rtcp_port);
         break;
     case RTSP_LOWER_TRANSPORT_TCP:
         url_fprintf(c->pb, "Transport: RTP/AVP/TCP;interleaved=%d-%d",
@@ -3949,6 +3951,17 @@ static AVOutputFormat *ffserver_guess_format(const char *short_name, const char 
     return fmt;
 }
 
+static void report_config_error(const char *filename, int line_num, int *errors, const char *fmt, ...)
+{
+    va_list vl;
+    va_start(vl, fmt);
+    fprintf(stderr, "%s:%d: ", filename, line_num);
+    vfprintf(stderr, fmt, vl);
+    va_end(vl);
+
+    (*errors)++;
+}
+
 static int parse_ffconfig(const char *filename)
 {
     FILE *f;
@@ -3979,6 +3992,8 @@ static int parse_ffconfig(const char *filename)
     redirect = NULL;
     audio_id = CODEC_ID_NONE;
     video_id = CODEC_ID_NONE;
+
+#define ERROR(...) report_config_error(filename, line_num, &errors, __VA_ARGS__)
     for(;;) {
         if (fgets(line, sizeof(line), f) == NULL)
             break;
@@ -3995,17 +4010,13 @@ static int parse_ffconfig(const char *filename)
             get_arg(arg, sizeof(arg), &p);
             val = atoi(arg);
             if (val < 1 || val > 65536) {
-                fprintf(stderr, "%s:%d: Invalid port: %s\n",
-                        filename, line_num, arg);
-                errors++;
+                ERROR("Invalid_port: %s\n", arg);
             }
             my_http_addr.sin_port = htons(val);
         } else if (!strcasecmp(cmd, "BindAddress")) {
             get_arg(arg, sizeof(arg), &p);
             if (resolve_host(&my_http_addr.sin_addr, arg) != 0) {
-                fprintf(stderr, "%s:%d: Invalid host/IP address: %s\n",
-                        filename, line_num, arg);
-                errors++;
+                ERROR("%s:%d: Invalid host/IP address: %s\n", arg);
             }
         } else if (!strcasecmp(cmd, "NoDaemon")) {
             ffserver_daemon = 0;
@@ -4013,34 +4024,26 @@ static int parse_ffconfig(const char *filename)
             get_arg(arg, sizeof(arg), &p);
             val = atoi(arg);
             if (val < 1 || val > 65536) {
-                fprintf(stderr, "%s:%d: Invalid port: %s\n",
-                        filename, line_num, arg);
-                errors++;
+                ERROR("%s:%d: Invalid port: %s\n", arg);
             }
             my_rtsp_addr.sin_port = htons(atoi(arg));
         } else if (!strcasecmp(cmd, "RTSPBindAddress")) {
             get_arg(arg, sizeof(arg), &p);
             if (resolve_host(&my_rtsp_addr.sin_addr, arg) != 0) {
-                fprintf(stderr, "%s:%d: Invalid host/IP address: %s\n",
-                        filename, line_num, arg);
-                errors++;
+                ERROR("Invalid host/IP address: %s\n", arg);
             }
         } else if (!strcasecmp(cmd, "MaxHTTPConnections")) {
             get_arg(arg, sizeof(arg), &p);
             val = atoi(arg);
             if (val < 1 || val > 65536) {
-                fprintf(stderr, "%s:%d: Invalid MaxHTTPConnections: %s\n",
-                        filename, line_num, arg);
-                errors++;
+                ERROR("Invalid MaxHTTPConnections: %s\n", arg);
             }
             nb_max_http_connections = val;
         } else if (!strcasecmp(cmd, "MaxClients")) {
             get_arg(arg, sizeof(arg), &p);
             val = atoi(arg);
             if (val < 1 || val > nb_max_http_connections) {
-                fprintf(stderr, "%s:%d: Invalid MaxClients: %s\n",
-                        filename, line_num, arg);
-                errors++;
+                ERROR("Invalid MaxClients: %s\n", arg);
             } else {
                 nb_max_connections = val;
             }
@@ -4049,9 +4052,7 @@ static int parse_ffconfig(const char *filename)
             get_arg(arg, sizeof(arg), &p);
             llval = atoll(arg);
             if (llval < 10 || llval > 10000000) {
-                fprintf(stderr, "%s:%d: Invalid MaxBandwidth: %s\n",
-                        filename, line_num, arg);
-                errors++;
+                ERROR("Invalid MaxBandwidth: %s\n", arg);
             } else
                 max_bandwidth = llval;
         } else if (!strcasecmp(cmd, "CustomLog")) {
@@ -4062,8 +4063,7 @@ static int parse_ffconfig(const char *filename)
             /* Feed related options */
             char *q;
             if (stream || feed) {
-                fprintf(stderr, "%s:%d: Already in a tag\n",
-                        filename, line_num);
+                ERROR("Already in a tag\n");
             } else {
                 feed = av_mallocz(sizeof(FFStream));
                 get_arg(feed->filename, sizeof(feed->filename), &p);
@@ -4073,9 +4073,7 @@ static int parse_ffconfig(const char *filename)
 
                 for (s = first_feed; s; s = s->next) {
                     if (!strcmp(feed->filename, s->filename)) {
-                        fprintf(stderr, "%s:%d: Feed '%s' already registered\n",
-                                filename, line_num, s->filename);
-                        errors++;
+                        ERROR("Feed '%s' already registered\n", s->filename);
                     }
                 }
 
@@ -4154,16 +4152,12 @@ static int parse_ffconfig(const char *filename)
                 }
                 feed->feed_max_size = (int64_t)fsize;
                 if (feed->feed_max_size < FFM_PACKET_SIZE*4) {
-                    fprintf(stderr, "%s:%d: Feed max file size is too small, "
-                            "must be at least %d\n", filename, line_num, FFM_PACKET_SIZE*4);
-                    errors++;
+                    ERROR("Feed max file size is too small, must be at least %d\n", FFM_PACKET_SIZE*4);
                 }
             }
         } else if (!strcasecmp(cmd, "</Feed>")) {
             if (!feed) {
-                fprintf(stderr, "%s:%d: No corresponding <Feed> for </Feed>\n",
-                        filename, line_num);
-                errors++;
+                ERROR("No corresponding <Feed> for </Feed>\n");
             }
             feed = NULL;
         } else if (!strcasecmp(cmd, "<Stream")) {
@@ -4171,8 +4165,7 @@ static int parse_ffconfig(const char *filename)
             /* Stream related options */
             char *q;
             if (stream || feed) {
-                fprintf(stderr, "%s:%d: Already in a tag\n",
-                        filename, line_num);
+                ERROR("Already in a tag\n");
             } else {
                 FFStream *s;
                 stream = av_mallocz(sizeof(FFStream));
@@ -4183,9 +4176,7 @@ static int parse_ffconfig(const char *filename)
 
                 for (s = first_stream; s; s = s->next) {
                     if (!strcmp(stream->filename, s->filename)) {
-                        fprintf(stderr, "%s:%d: Stream '%s' already registered\n",
-                                filename, line_num, s->filename);
-                        errors++;
+                        ERROR("Stream '%s' already registered\n", s->filename);
                     }
                 }
 
@@ -4214,8 +4205,7 @@ static int parse_ffconfig(const char *filename)
                     sfeed = sfeed->next_feed;
                 }
                 if (!sfeed)
-                    fprintf(stderr, "%s:%d: feed '%s' not defined\n",
-                            filename, line_num, arg);
+                    ERROR("feed '%s' not defined\n", arg);
                 else
                     stream->feed = sfeed;
             }
@@ -4232,9 +4222,7 @@ static int parse_ffconfig(const char *filename)
                         strcpy(arg, "mjpeg");
                     stream->fmt = ffserver_guess_format(arg, NULL, NULL);
                     if (!stream->fmt) {
-                        fprintf(stderr, "%s:%d: Unknown Format: %s\n",
-                                filename, line_num, arg);
-                        errors++;
+                        ERROR("Unknown Format: %s\n", arg);
                     }
                 }
                 if (stream->fmt) {
@@ -4247,17 +4235,14 @@ static int parse_ffconfig(const char *filename)
             if (stream) {
                 stream->ifmt = av_find_input_format(arg);
                 if (!stream->ifmt) {
-                    fprintf(stderr, "%s:%d: Unknown input format: %s\n",
-                            filename, line_num, arg);
+                    ERROR("Unknown input format: %s\n", arg);
                 }
             }
         } else if (!strcasecmp(cmd, "FaviconURL")) {
             if (stream && stream->stream_type == STREAM_TYPE_STATUS) {
                 get_arg(stream->feed_filename, sizeof(stream->feed_filename), &p);
             } else {
-                fprintf(stderr, "%s:%d: FaviconURL only permitted for status streams\n",
-                            filename, line_num);
-                errors++;
+                ERROR("FaviconURL only permitted for status streams\n");
             }
         } else if (!strcasecmp(cmd, "Author")) {
             if (stream)
@@ -4282,17 +4267,13 @@ static int parse_ffconfig(const char *filename)
             get_arg(arg, sizeof(arg), &p);
             audio_id = opt_audio_codec(arg);
             if (audio_id == CODEC_ID_NONE) {
-                fprintf(stderr, "%s:%d: Unknown AudioCodec: %s\n",
-                        filename, line_num, arg);
-                errors++;
+                ERROR("Unknown AudioCodec: %s\n", arg);
             }
         } else if (!strcasecmp(cmd, "VideoCodec")) {
             get_arg(arg, sizeof(arg), &p);
             video_id = opt_video_codec(arg);
             if (video_id == CODEC_ID_NONE) {
-                fprintf(stderr, "%s:%d: Unknown VideoCodec: %s\n",
-                        filename, line_num, arg);
-                errors++;
+                ERROR("Unknown VideoCodec: %s\n", arg);
             }
         } else if (!strcasecmp(cmd, "MaxTime")) {
             get_arg(arg, sizeof(arg), &p);
@@ -4325,9 +4306,7 @@ static int parse_ffconfig(const char *filename)
                     video_enc.rc_min_rate = minrate * 1000;
                     video_enc.rc_max_rate = maxrate * 1000;
                 } else {
-                    fprintf(stderr, "%s:%d: Incorrect format for VideoBitRateRange -- should be <min>-<max>: %s\n",
-                            filename, line_num, arg);
-                    errors++;
+                    ERROR("Incorrect format for VideoBitRateRange -- should be <min>-<max>: %s\n", arg);
                 }
             }
         } else if (!strcasecmp(cmd, "Debug")) {
@@ -4361,9 +4340,7 @@ static int parse_ffconfig(const char *filename)
                 av_parse_video_frame_size(&video_enc.width, &video_enc.height, arg);
                 if ((video_enc.width % 16) != 0 ||
                     (video_enc.height % 16) != 0) {
-                    fprintf(stderr, "%s:%d: Image size must be a multiple of 16\n",
-                            filename, line_num);
-                    errors++;
+                    ERROR("Image size must be a multiple of 16\n");
                 }
             }
         } else if (!strcasecmp(cmd, "VideoFrameRate")) {
@@ -4371,8 +4348,7 @@ static int parse_ffconfig(const char *filename)
             if (stream) {
                 AVRational frame_rate;
                 if (av_parse_video_frame_rate(&frame_rate, arg) < 0) {
-                    fprintf(stderr, "Incorrect frame rate\n");
-                    errors++;
+                    ERROR("Incorrect frame rate: %s\n", arg);
                 } else {
                     video_enc.time_base.num = frame_rate.den;
                     video_enc.time_base.den = frame_rate.num;
@@ -4408,8 +4384,7 @@ static int parse_ffconfig(const char *filename)
                 type = AV_OPT_FLAG_AUDIO_PARAM;
             }
             if (ffserver_opt_default(arg, arg2, avctx, type|AV_OPT_FLAG_ENCODING_PARAM)) {
-                fprintf(stderr, "AVOption error: %s %s\n", arg, arg2);
-                errors++;
+                ERROR("AVOption error: %s %s\n", arg, arg2);
             }
         } else if (!strcasecmp(cmd, "VideoTag")) {
             get_arg(arg, sizeof(arg), &p);
@@ -4435,9 +4410,7 @@ static int parse_ffconfig(const char *filename)
             if (stream) {
                 video_enc.max_qdiff = atoi(arg);
                 if (video_enc.max_qdiff < 1 || video_enc.max_qdiff > 31) {
-                    fprintf(stderr, "%s:%d: VideoQDiff out of range\n",
-                            filename, line_num);
-                    errors++;
+                    ERROR("VideoQDiff out of range\n");
                 }
             }
         } else if (!strcasecmp(cmd, "VideoQMax")) {
@@ -4445,9 +4418,7 @@ static int parse_ffconfig(const char *filename)
             if (stream) {
                 video_enc.qmax = atoi(arg);
                 if (video_enc.qmax < 1 || video_enc.qmax > 31) {
-                    fprintf(stderr, "%s:%d: VideoQMax out of range\n",
-                            filename, line_num);
-                    errors++;
+                    ERROR("VideoQMax out of range\n");
                 }
             }
         } else if (!strcasecmp(cmd, "VideoQMin")) {
@@ -4455,9 +4426,7 @@ static int parse_ffconfig(const char *filename)
             if (stream) {
                 video_enc.qmin = atoi(arg);
                 if (video_enc.qmin < 1 || video_enc.qmin > 31) {
-                    fprintf(stderr, "%s:%d: VideoQMin out of range\n",
-                            filename, line_num);
-                    errors++;
+                    ERROR("VideoQMin out of range\n");
                 }
             }
         } else if (!strcasecmp(cmd, "LumaElim")) {
@@ -4496,9 +4465,7 @@ static int parse_ffconfig(const char *filename)
             get_arg(arg, sizeof(arg), &p);
             if (stream) {
                 if (resolve_host(&stream->multicast_ip, arg) != 0) {
-                    fprintf(stderr, "%s:%d: Invalid host/IP address: %s\n",
-                            filename, line_num, arg);
-                    errors++;
+                    ERROR("Invalid host/IP address: %s\n", arg);
                 }
                 stream->is_multicast = 1;
                 stream->loop = 1; /* default is looping */
@@ -4516,9 +4483,7 @@ static int parse_ffconfig(const char *filename)
                 stream->loop = 0;
         } else if (!strcasecmp(cmd, "</Stream>")) {
             if (!stream) {
-                fprintf(stderr, "%s:%d: No corresponding <Stream> for </Stream>\n",
-                        filename, line_num);
-                errors++;
+                ERROR("No corresponding <Stream> for </Stream>\n");
             } else {
                 if (stream->feed && stream->fmt && strcmp(stream->fmt->name, "ffm") != 0) {
                     if (audio_id != CODEC_ID_NONE) {
@@ -4538,9 +4503,7 @@ static int parse_ffconfig(const char *filename)
             /*********************************************/
             char *q;
             if (stream || feed || redirect) {
-                fprintf(stderr, "%s:%d: Already in a tag\n",
-                        filename, line_num);
-                errors++;
+                ERROR("Already in a tag\n");
             } else {
                 redirect = av_mallocz(sizeof(FFStream));
                 *last_stream = redirect;
@@ -4557,14 +4520,10 @@ static int parse_ffconfig(const char *filename)
                 get_arg(redirect->feed_filename, sizeof(redirect->feed_filename), &p);
         } else if (!strcasecmp(cmd, "</Redirect>")) {
             if (!redirect) {
-                fprintf(stderr, "%s:%d: No corresponding <Redirect> for </Redirect>\n",
-                        filename, line_num);
-                errors++;
+                ERROR("No corresponding <Redirect> for </Redirect>\n");
             } else {
                 if (!redirect->feed_filename[0]) {
-                    fprintf(stderr, "%s:%d: No URL found for <Redirect>\n",
-                            filename, line_num);
-                    errors++;
+                    ERROR("No URL found for <Redirect>\n");
                 }
                 redirect = NULL;
             }
@@ -4573,15 +4532,13 @@ static int parse_ffconfig(const char *filename)
 #if HAVE_DLOPEN
             load_module(arg);
 #else
-            fprintf(stderr, "%s:%d: Module support not compiled into this version: '%s'\n",
-                    filename, line_num, arg);
-            errors++;
+            ERROR("Module support not compiled into this version: '%s'\n", arg);
 #endif
         } else {
-            fprintf(stderr, "%s:%d: Incorrect keyword: '%s'\n",
-                    filename, line_num, cmd);
+            ERROR("Incorrect keyword: '%s'\n", cmd);
         }
     }
+#undef ERROR
 
     fclose(f);
     if (errors)
@@ -4645,8 +4602,6 @@ int main(int argc, char **argv)
     av_register_all();
 
     show_banner();
-
-    config_filename = "/etc/ffserver.conf";
 
     my_program_name = argv[0];
     my_program_dir = getcwd(0, 0);
