@@ -46,6 +46,6 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
 void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac);
 /** Apply dequantized SBR to a single AAC channel. */
 void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
-                  const float* in, float* out);
+                  const float* in, float* out, float* out2);
 
 #endif /* AVCODEC_AACSBR_H */

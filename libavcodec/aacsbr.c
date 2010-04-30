@@ -1729,7 +1729,7 @@ void ff_sbr_dequant(AACContext *ac, SpectralBandReplication *sbr, int id_aac)
 }
 
 void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
-                  const float* in, float* out)
+                  const float* in, float* out, float *out2)
 {
     int downsampled = ac->m4ac.ext_sample_rate < sbr->sample_rate;
 
@@ -1757,8 +1757,18 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int ch,
     sbr_x_gen(sbr, sbr->X[0], sbr->X_low, sbr->data[ch].Y, ch);
 
 #if 1
-    if (sbr->start && ch == 0)
-        ff_ps_apply(ac->avccontext, &sbr->ps, sbr->X[0], sbr->X[1], sbr->kx[1] + sbr->m[1]);
+    if (ac->m4ac.ps == 1) {
+        if (sbr->start) {
+            ff_ps_apply(ac->avccontext, &sbr->ps, sbr->X[0], sbr->X[1], sbr->kx[1] + sbr->m[1]);
+        } else {
+            memcpy(sbr->X[1], sbr->X[0], sizeof(sbr->X[0]));
+        }
+        sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out2, sbr->X[1], sbr->qmf_filter_scratch,
+                      sbr->data[1].synthesis_filterbank_samples,
+                      &sbr->data[1].synthesis_filterbank_samples_offset,
+                      downsampled,
+                      ac->add_bias, -1024 * ac->sf_scale);
+    }
 #endif
 
     sbr_qmf_synthesis(&ac->dsp, &sbr->mdct, out, sbr->X[0], sbr->qmf_filter_scratch,

@@ -184,7 +184,8 @@ static av_cold int che_configure(AACContext *ac,
         ff_aac_sbr_ctx_init(&ac->che[type][id]->sbr);
         if (type != TYPE_CCE) {
             ac->output_data[(*channels)++] = ac->che[type][id]->ch[0].ret;
-            if (type == TYPE_CPE) {
+            if (type == TYPE_CPE ||
+                (type == TYPE_SCE && ac->m4ac.ps == 1)) {
                 ac->output_data[(*channels)++] = ac->che[type][id]->ch[1].ret;
             }
         }
@@ -1894,13 +1895,13 @@ static void spectral_to_sample(AACContext *ac)
                     imdct_and_windowing(ac, &che->ch[0], imdct_bias);
                     if (ac->m4ac.sbr > 0) {
                         ff_sbr_dequant(ac, &che->sbr, type == TYPE_CPE ? TYPE_CPE : TYPE_SCE);
-                        ff_sbr_apply(ac, &che->sbr, 0, che->ch[0].ret, che->ch[0].ret);
+                        ff_sbr_apply(ac, &che->sbr, 0, che->ch[0].ret, che->ch[0].ret, che->ch[1].ret);
                     }
                 }
                 if (type == TYPE_CPE) {
                     imdct_and_windowing(ac, &che->ch[1], imdct_bias);
                     if (ac->m4ac.sbr > 0)
-                        ff_sbr_apply(ac, &che->sbr, 1, che->ch[1].ret, che->ch[1].ret);
+                        ff_sbr_apply(ac, &che->sbr, 1, che->ch[1].ret, che->ch[1].ret, NULL);
                 }
                 if (type <= TYPE_CCE)
                     apply_channel_coupling(ac, che, type, i, AFTER_IMDCT, apply_independent_coupling);

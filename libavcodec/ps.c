@@ -1033,7 +1033,7 @@ int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float 
     hybrid_synthesis(Rout, Rbuf, is34, len);
 
     transpose_out(Lout, L);
-    transpose_out(Rout, L);
+    transpose_out(Rout, R);
 
     return 0;
 }
