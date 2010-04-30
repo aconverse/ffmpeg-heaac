@@ -1057,7 +1057,6 @@ int ff_decode_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
     GetBitContext gbc = *gb_host, *gb = &gbc;
     skip_bits_long(gb_host, cnt*8 - 4);
 
-av_log(ac->avccontext, AV_LOG_ERROR, "frame %d\n", ac->avccontext->frame_number);
     sbr->reset = 0;
 
     if (!sbr->sample_rate)
