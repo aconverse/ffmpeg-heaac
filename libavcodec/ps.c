@@ -37,16 +37,16 @@
 
 #define numQMFSlots 32 //numTimeSlots * RATE
 
-static int8_t num_env_tab[2][4] = {
+static const int8_t num_env_tab[2][4] = {
     { 0, 1, 2, 4, },
     { 1, 2, 3, 4, },
 };
 
-static int8_t nr_iidicc_par_tab[] = {
+static const int8_t nr_iidicc_par_tab[] = {
     10, 20, 34, 10, 20, 34,
 };
 
-static int8_t nr_iidopd_par_tab[] = {
+static const int8_t nr_iidopd_par_tab[] = {
      5, 11, 17,  5, 11, 17,
 };
 
