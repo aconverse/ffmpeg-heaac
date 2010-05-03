@@ -80,12 +80,12 @@ static VLC vlc_ps[10];
 #define PS_VLC_ROW(name) \
     { name ## _codes, name ## _bits, sizeof(name ## _codes), sizeof(name ## _codes[0]) }
 
-static int iid_data(GetBitContext *gb, PSContext *ps, int e)
+static int iid_data(GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
-    int table_idx = huff_iid[2*ps->iid_dt[e]+ps->iid_quant];
+    int table_idx = huff_iid[2*dt+ps->iid_quant];
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
-    if (ps->iid_dt[e]) {
+    if (dt) {
         int e_prev = e ? e - 1 : ps->num_env_old - 1;
         e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
         for (b = 0; b < ps->nr_iid_par; b++) {
@@ -114,12 +114,12 @@ static int iid_data(GetBitContext *gb, PSContext *ps, int e)
     return 0;
 }
 
-static int icc_data(GetBitContext *gb, PSContext *ps, int e)
+static int icc_data(GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
-    int table_idx = ps->icc_dt[e] ? huff_icc_dt : huff_icc_df;
+    int table_idx = dt ? huff_icc_dt : huff_icc_df;
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
-    if (ps->icc_dt[e]) {
+    if (dt) {
         int e_prev = e ? e - 1 : ps->num_env_old - 1;
         e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
         for (b = 0; b < ps->nr_icc_par; b++) {
@@ -145,12 +145,12 @@ static int icc_data(GetBitContext *gb, PSContext *ps, int e)
     return 0;
 }
 
-static void ipd_data(GetBitContext *gb, PSContext *ps, int e)
+static void ipd_data(GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
-    int table_idx = ps->ipd_dt[e] ? huff_ipd_dt : huff_ipd_df;
+    int table_idx = dt ? huff_ipd_dt : huff_ipd_df;
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
-    if (ps->ipd_dt[e]) {
+    if (dt) {
         int e_prev = e ? e - 1 : ps->num_env_old - 1;
         e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
         for (b = 0; b < ps->nr_ipdopd_par; b++) {
@@ -166,12 +166,12 @@ static void ipd_data(GetBitContext *gb, PSContext *ps, int e)
     }
 }
 
-static void opd_data(GetBitContext *gb, PSContext *ps, int e)
+static void opd_data(GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
-    int table_idx = ps->opd_dt[e] ? huff_opd_dt : huff_opd_df;
+    int table_idx = dt ? huff_opd_dt : huff_opd_df;
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
-    if (ps->opd_dt[e]) {
+    if (dt) {
         int e_prev = e ? e - 1 : ps->num_env_old - 1;
         e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
         for (b = 0; b < ps->nr_ipdopd_par; b++) {
@@ -195,10 +195,10 @@ static int ps_extension(GetBitContext *gb, PSContext *ps, int ps_extension_id)
         ps->enable_ipdopd = get_bits1(gb);
         if (ps->enable_ipdopd) {
             for (e = 0; e < ps->num_env; e++) {
-                ps->ipd_dt[e] = get_bits1(gb);
-                ipd_data(gb, ps, e);
-                ps->opd_dt[e] = get_bits1(gb);
-                opd_data(gb, ps, e);
+                int dt = get_bits1(gb);
+                ipd_data(gb, ps, e, dt);
+                dt = get_bits1(gb);
+                opd_data(gb, ps, e, dt);
             }
         }
         skip_bits1(gb);      //reserved_ps
@@ -264,8 +264,8 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
 
     if (ps->enable_iid)
         for (e = 0; e < ps->num_env; e++) {
-            ps->iid_dt[e] = get_bits1(gb);
-            if (iid_data(gb, ps, e))
+            int dt = get_bits1(gb);
+            if (iid_data(gb, ps, e, dt))
                 return -1;
         }
     else
@@ -273,8 +273,8 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
 
     if (ps->enable_icc)
         for (e = 0; e < ps->num_env; e++) {
-            ps->icc_dt[e] = get_bits1(gb);
-            if (icc_data(gb, ps, e))
+            int dt = get_bits1(gb);
+            if (icc_data(gb, ps, e, dt))
                 return -1;
         }
     else
