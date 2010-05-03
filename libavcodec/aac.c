@@ -213,6 +213,7 @@ static av_cold int output_configure(AACContext *ac,
     AVCodecContext *avctx = ac->avccontext;
     int i, type, channels = 0, ret;
 
+    if (new_che_pos != che_pos)
     memcpy(che_pos, new_che_pos, 4 * MAX_ELEM_ID * sizeof(new_che_pos[0][0]));
 
     if (channel_config) {
@@ -455,6 +456,10 @@ static int decode_audio_specific_config(AACContext *ac, void *data,
     if (ac->m4ac.sampling_index > 12) {
         av_log(ac->avccontext, AV_LOG_ERROR, "invalid sampling rate index %d\n", ac->m4ac.sampling_index);
         return -1;
+    }
+    if (ac->m4ac.sbr == 1 && ac->m4ac.ps) {
+        ac->avccontext->channels = 2;
+        ac->m4ac.ps = 1;
     }
 
     skip_bits_long(&gb, i);
@@ -1646,6 +1651,11 @@ static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
             av_log(ac->avccontext, AV_LOG_ERROR, "Implicit SBR was found with a first occurrence after the first frame.\n");
             skip_bits_long(gb, 8 * cnt - 4);
             return res;
+        } else if (ac->m4ac.sbr == -1 && ac->output_configured < OC_LOCKED && ac->m4ac.ps == -1) {
+            ac->m4ac.sbr = 1;
+            ac->m4ac.ps = 1;
+            ac->avccontext->channels = 2;
+            output_configure(ac, ac->che_pos, ac->che_pos, ac->m4ac.chan_config, ac->output_configured);
         } else {
             ac->m4ac.sbr = 1;
         }
