@@ -298,6 +298,8 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
         skip_bits(gb, cnt);
     }
 
+    ps->enable_ipdopd &= !PS_BASELINE;
+
     //Fix up envelopes
     if (!ps->num_env) {
         ps->num_env = 1;
@@ -308,6 +310,10 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
         if (ps->enable_icc && ps->num_env_old > 1) {
             memcpy(ps->icc_par, ps->icc_par+ps->num_env_old-1, sizeof(ps->icc_par[0]));
         }
+        if (ps->enable_ipdopd && ps->num_env_old > 1) {
+            memcpy(ps->ipd_par, ps->ipd_par+ps->num_env_old-1, sizeof(ps->ipd_par[0]));
+            memcpy(ps->opd_par, ps->opd_par+ps->num_env_old-1, sizeof(ps->opd_par[0]));
+        }
     } else if (ps->border_position[ps->num_env] < numQMFSlots - 1) {
         //Create a fake envelope
         if (ps->enable_iid && ps->num_env_old > 1) {
@@ -316,7 +322,10 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
         if (ps->enable_icc && ps->num_env_old > 1) {
             memcpy(ps->icc_par+ps->num_env, ps->icc_par+ps->num_env-1, sizeof(ps->icc_par[0]));
         }
-        //TODO ipd/opd
+        if (ps->enable_ipdopd) {
+            memcpy(ps->ipd_par+ps->num_env, ps->ipd_par+ps->num_env-1, sizeof(ps->ipd_par[0]));
+            memcpy(ps->opd_par+ps->num_env, ps->opd_par+ps->num_env-1, sizeof(ps->opd_par[0]));
+        }
         ps->num_env++;
         ps->border_position[ps->num_env] = numQMFSlots - 1;
     }
@@ -328,7 +337,6 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
                         (ps->enable_icc && ps->nr_icc_par == 34);
 
     //Baseline
-    ps->enable_ipdopd &= !PS_BASELINE;
     if (!ps->enable_ipdopd) {
         memset(ps->ipd_par, 0, sizeof(ps->ipd_par));
         memset(ps->opd_par, 0, sizeof(ps->opd_par));
