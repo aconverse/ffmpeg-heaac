@@ -1765,7 +1765,7 @@ void ff_sbr_apply(AACContext *ac, SpectralBandReplication *sbr, int id_aac,
     }
 #if 1
     if (ac->m4ac.ps == 1) {
-        if (sbr->start) {
+        if (sbr->ps.start) {
             ff_ps_apply(ac->avccontext, &sbr->ps, sbr->X[0], sbr->X[1], sbr->kx[1] + sbr->m[1]);
         } else {
             memcpy(sbr->X[1], sbr->X[0], sizeof(sbr->X[0]));

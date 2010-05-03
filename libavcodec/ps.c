@@ -334,6 +334,9 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
         memset(ps->opd_par, 0, sizeof(ps->opd_par));
     }
 
+    if (header)
+        ps->start = 1;
+
 //av_log(NULL, AV_LOG_ERROR, "bits consumed %d\n", get_bits_count(gb) - bit_count_start);
     return get_bits_count(gb) - bit_count_start;
 }
