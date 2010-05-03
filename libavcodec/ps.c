@@ -87,7 +87,7 @@ static int iid_data(GetBitContext *gb, PSContext *ps, int e, int dt)
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
     if (dt) {
         int e_prev = e ? e - 1 : ps->num_env_old - 1;
-        e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
+        e_prev = FFMAX(e_prev, 0);
         for (b = 0; b < ps->nr_iid_par; b++) {
             ps->iid_par[e][b] = ps->iid_par[e_prev][b] +
                                 get_vlc2(gb, vlc_table, 9, 3) -
@@ -121,7 +121,7 @@ static int icc_data(GetBitContext *gb, PSContext *ps, int e, int dt)
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
     if (dt) {
         int e_prev = e ? e - 1 : ps->num_env_old - 1;
-        e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
+        e_prev = FFMAX(e_prev, 0);
         for (b = 0; b < ps->nr_icc_par; b++) {
             ps->icc_par[e][b] = ps->icc_par[e_prev][b] + get_vlc2(gb, vlc_table, 9, 3) - huff_offset[table_idx];
             if (ps->icc_par[e][b] > 7U) {
@@ -152,7 +152,7 @@ static void ipd_data(GetBitContext *gb, PSContext *ps, int e, int dt)
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
     if (dt) {
         int e_prev = e ? e - 1 : ps->num_env_old - 1;
-        e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
+        e_prev = FFMAX(e_prev, 0);
         for (b = 0; b < ps->nr_ipdopd_par; b++) {
             ps->ipd_par[e][b] = (ps->ipd_par[e_prev][b] + get_vlc2(gb, vlc_table, 9, 1)) & 0x07;
         }
@@ -173,7 +173,7 @@ static void opd_data(GetBitContext *gb, PSContext *ps, int e, int dt)
     VLC_TYPE (*vlc_table)[2] = vlc_ps[table_idx].table;
     if (dt) {
         int e_prev = e ? e - 1 : ps->num_env_old - 1;
-        e_prev = FFMAX(e_prev, 0); //TODO FIXME does this make sense for ps->num_env_old = 0
+        e_prev = FFMAX(e_prev, 0);
         for (b = 0; b < ps->nr_ipdopd_par; b++) {
             ps->opd_par[e][b] = (ps->opd_par[e_prev][b] + get_vlc2(gb, vlc_table, 9, 1)) & 0x07;
         }
@@ -359,7 +359,7 @@ static void make_filters_from_proto(float (*filter)[7][2], const float *proto, i
         for (n = 0; n < 7; n++) {
             double theta = 2 * M_PI * (q + 0.5) * (n - 6) / bands;
             filter[q][n][0] = proto[n] *  cos(theta);
-            filter[q][n][1] = proto[n] * -sin(theta); //FIXME specbug? convolution?
+            filter[q][n][1] = proto[n] * -sin(theta);
             //av_log(NULL, AV_LOG_ERROR, "{ %13.10f, %13.10f  }, ", filter[q][n][0], filter[q][n][1]);
             //if ((n & 3) == 3) av_log(NULL, AV_LOG_ERROR, "\n        ");
         }
