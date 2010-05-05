@@ -458,7 +458,6 @@ static int decode_audio_specific_config(AACContext *ac, void *data,
         return -1;
     }
     if (ac->m4ac.sbr == 1 && ac->m4ac.ps) {
-        ac->avccontext->channels = 2;
         ac->m4ac.ps = 1;
     }
 
@@ -1651,10 +1650,9 @@ static int decode_extension_payload(AACContext *ac, GetBitContext *gb, int cnt,
             av_log(ac->avccontext, AV_LOG_ERROR, "Implicit SBR was found with a first occurrence after the first frame.\n");
             skip_bits_long(gb, 8 * cnt - 4);
             return res;
-        } else if (ac->m4ac.sbr == -1 && ac->output_configured < OC_LOCKED && ac->m4ac.ps == -1) {
+        } else if (ac->m4ac.sbr == -1 && ac->output_configured < OC_LOCKED && ac->m4ac.ps == -1 && ac->avccontext->channels == 1) {
             ac->m4ac.sbr = 1;
             ac->m4ac.ps = 1;
-            ac->avccontext->channels = 2;
             output_configure(ac, ac->che_pos, ac->che_pos, ac->m4ac.chan_config, ac->output_configured);
         } else {
             ac->m4ac.sbr = 1;
