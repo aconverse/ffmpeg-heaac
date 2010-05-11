@@ -89,7 +89,7 @@ Configuration options:
   --disable-avformat       disable libavformat build
   --disable-swscale        disable libswscale build
   --enable-postproc        enable GPLed postprocessing support [no]
-  --enable-avfilter        video filter support [no]
+  --disable-avfilter       disable video filter support [no]
   --enable-avfilter-lavf   video filters dependent on avformat [no]
   --enable-beosthreads     use BeOS threads [no]
   --enable-os2threads      use OS/2 threads [no]
@@ -1334,7 +1334,7 @@ libdirac_decoder_deps="libdirac !libschroedinger"
 libdirac_encoder_deps="libdirac"
 libfaac_encoder_deps="libfaac"
 libfaad_decoder_deps="libfaad"
-libfaadbin_decoder_extralibs='$ldl'
+libfaadbin_extralibs='$ldl'
 libgsm_decoder_deps="libgsm"
 libgsm_encoder_deps="libgsm"
 libgsm_ms_decoder_deps="libgsm"
@@ -1468,6 +1468,7 @@ host_os=$target_os_default
 # configurable options
 enable avcodec
 enable avdevice
+enable avfilter
 enable avformat
 enable avutil
 enable asm
@@ -1821,9 +1822,9 @@ elif $cc -V 2>&1 | grep -q Sun; then
                 -march=*|-mcpu=*)
                     case "${flag#*=}" in
                         native)                   echo -xtarget=native       ;;
-                        v9)                       echo -xarch=sparc          ;;
+                        v9|niagara)               echo -xarch=sparc          ;;
                         ultrasparc)               echo -xarch=sparcvis       ;;
-                        ultrasparc3|niagara*)     echo -xarch=sparcvis2      ;;
+                        ultrasparc3|niagara2)     echo -xarch=sparcvis2      ;;
                         i586|pentium)             echo -xchip=pentium        ;;
                         i686|pentiumpro|pentium2) echo -xtarget=pentium_pro  ;;
                         pentium3*|c3-2)           echo -xtarget=pentium3     ;;
@@ -2018,6 +2019,10 @@ elif enabled x86; then
 elif enabled sparc; then
 
     case $cpu in
+        niagara)
+            cpuflags="-mcpu=$cpu"
+            disable vis
+        ;;
         sparc64)
             cpuflags="-mcpu=v9"
         ;;
@@ -2406,11 +2411,6 @@ EOF
 
     enabled_all armv6t2 shared !pic && enable_pic
 
-elif enabled ia64; then
-
-    # HACK: currently fails to build if .bss is > 4MB and shared libs are built
-    enabled shared && enable_weak hardcoded_tables
-
 elif enabled mips; then
 
     check_asm loongson '"dmult.g $1, $2, $3"'
@@ -2618,8 +2618,8 @@ enabled libspeex   && require  libspeex speex/speex.h speex_decoder_init -lspeex
 enabled libtheora  && require  libtheora theora/theoraenc.h th_info_init -ltheoraenc -ltheoradec -logg
 enabled libvorbis  && require  libvorbis vorbis/vorbisenc.h vorbis_info_init -lvorbisenc -lvorbis -logg
 enabled libx264    && require  libx264 x264.h x264_encoder_encode -lx264 -lm &&
-                      { check_cpp_condition x264.h "X264_BUILD >= 83" ||
-                        die "ERROR: libx264 version must be >= 0.83."; }
+                      { check_cpp_condition x264.h "X264_BUILD >= 90" ||
+                        die "ERROR: libx264 version must be >= 0.90."; }
 enabled libxvid    && require  libxvid xvid.h xvid_global -lxvidcore
 enabled mlib       && require  mediaLib mlib_types.h mlib_VectorSub_S16_U8_Mod -lmlib
 

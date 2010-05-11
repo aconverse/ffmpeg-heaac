@@ -174,6 +174,10 @@ static av_cold int aac_encode_init(AVCodecContext *avctx)
         av_log(avctx, AV_LOG_ERROR, "Unsupported profile %d\n", avctx->profile);
         return -1;
     }
+    if (1024.0 * avctx->bit_rate / avctx->sample_rate > 6144 * avctx->channels) {
+        av_log(avctx, AV_LOG_ERROR, "Too many bits per frame requested\n");
+        return -1;
+    }
     s->samplerate_index = i;
 
     dsputil_init(&s->dsp, avctx);
@@ -557,6 +561,7 @@ static int aac_encode_frame(AVCodecContext *avctx,
             chans    = tag == TYPE_CPE ? 2 : 1;
             cpe      = &s->cpe[i];
             for (j = 0; j < chans; j++) {
+                s->cur_channel = start_ch + j;
                 s->coder->search_for_quantizers(avctx, s, &cpe->ch[j], s->lambda);
             }
             cpe->common_window = 0;
@@ -572,6 +577,7 @@ static int aac_encode_frame(AVCodecContext *avctx,
                     }
                 }
             }
+            s->cur_channel = start_ch;
             if (cpe->common_window && s->coder->search_for_ms)
                 s->coder->search_for_ms(s, cpe, s->lambda);
             adjust_frame_information(s, cpe, chans);
