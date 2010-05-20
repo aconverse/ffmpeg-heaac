@@ -26,13 +26,6 @@
 #include "ps.h"
 #include "psdata.c"
 
-#define DEBUG
-#if defined(__llvm__) || !defined(DEBUG)
-#define NO_OPT
-#else
-#define NO_OPT __attribute__((optimize(0)))
-#endif
-
 #define PS_BASELINE 0
 
 #define numQMFSlots 32 //numTimeSlots * RATE
