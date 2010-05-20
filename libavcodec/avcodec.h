@@ -30,8 +30,8 @@
 #include "libavutil/avutil.h"
 
 #define LIBAVCODEC_VERSION_MAJOR 52
-#define LIBAVCODEC_VERSION_MINOR 67
-#define LIBAVCODEC_VERSION_MICRO  0
+#define LIBAVCODEC_VERSION_MINOR 68
+#define LIBAVCODEC_VERSION_MICRO  2
 
 #define LIBAVCODEC_VERSION_INT  AV_VERSION_INT(LIBAVCODEC_VERSION_MAJOR, \
                                                LIBAVCODEC_VERSION_MINOR, \
@@ -210,6 +210,7 @@ enum CodecID {
     CODEC_ID_IFF_BYTERUN1,
     CODEC_ID_KGV1,
     CODEC_ID_YOP,
+    CODEC_ID_VP8,
 
     /* various PCM "codecs" */
     CODEC_ID_PCM_S16LE= 0x10000,
@@ -2656,6 +2657,8 @@ typedef struct AVCodecContext {
      * - decoding: unused
      */
     float crf_max;
+
+    int log_level_offset;
 } AVCodecContext;
 
 /**

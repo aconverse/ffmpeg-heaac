@@ -201,7 +201,7 @@ static av_cold int aac_encode_init(AVCodecContext *avctx)
     lengths[1] = ff_aac_num_swb_128[i];
     ff_psy_init(&s->psy, avctx, 2, sizes, lengths);
     s->psypp = ff_psy_preprocess_init(avctx);
-    s->coder = &ff_aac_coders[0];
+    s->coder = &ff_aac_coders[2];
 
     s->lambda = avctx->global_quality ? avctx->global_quality : 120;
 #if !CONFIG_HARDCODED_TABLES
@@ -562,6 +562,7 @@ static int aac_encode_frame(AVCodecContext *avctx,
             cpe      = &s->cpe[i];
             for (j = 0; j < chans; j++) {
                 s->cur_channel = start_ch + j;
+                ff_psy_set_band_info(&s->psy, s->cur_channel, cpe->ch[j].coeffs, &wi[j]);
                 s->coder->search_for_quantizers(avctx, s, &cpe->ch[j], s->lambda);
             }
             cpe->common_window = 0;
@@ -592,7 +593,6 @@ static int aac_encode_frame(AVCodecContext *avctx,
             }
             for (j = 0; j < chans; j++) {
                 s->cur_channel = start_ch + j;
-                ff_psy_set_band_info(&s->psy, s->cur_channel, cpe->ch[j].coeffs, &wi[j]);
                 encode_individual_channel(avctx, s, &cpe->ch[j], cpe->common_window);
             }
             start_ch += chans;

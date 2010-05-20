@@ -169,6 +169,8 @@ const AVCodecTag ff_codec_bmp_tags[] = {
     { CODEC_ID_RAWVIDEO,     MKTAG('Y', 'V', 'U', '9') },
     { CODEC_ID_RAWVIDEO,     MKTAG('V', 'D', 'T', 'Z') }, /* SoftLab-NSK VideoTizer */
     { CODEC_ID_RAWVIDEO,     MKTAG('Y', '4', '1', '1') },
+    { CODEC_ID_RAWVIDEO,     MKTAG('N', 'V', '1', '2') },
+    { CODEC_ID_RAWVIDEO,     MKTAG('N', 'V', '2', '1') },
     { CODEC_ID_FRWU,         MKTAG('F', 'R', 'W', 'U') },
     { CODEC_ID_R210,         MKTAG('r', '2', '1', '0') },
     { CODEC_ID_V210,         MKTAG('v', '2', '1', '0') },
@@ -184,6 +186,7 @@ const AVCodecTag ff_codec_bmp_tags[] = {
     { CODEC_ID_VP6,          MKTAG('V', 'P', '6', '2') },
     { CODEC_ID_VP6F,         MKTAG('V', 'P', '6', 'F') },
     { CODEC_ID_VP6F,         MKTAG('F', 'L', 'V', '4') },
+    { CODEC_ID_VP8,          MKTAG('V', 'P', '8', '0') },
     { CODEC_ID_ASV1,         MKTAG('A', 'S', 'V', '1') },
     { CODEC_ID_ASV2,         MKTAG('A', 'S', 'V', '2') },
     { CODEC_ID_VCR1,         MKTAG('V', 'C', 'R', '1') },

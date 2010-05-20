@@ -232,10 +232,15 @@ void avcodec_register_all(void)
     REGISTER_DECODER (MACE6, mace6);
     REGISTER_DECODER (MLP, mlp);
     REGISTER_DECODER (MP1, mp1);
+    REGISTER_DECODER (MP1FLOAT, mp1float);
     REGISTER_ENCDEC  (MP2, mp2);
+    REGISTER_DECODER (MP2FLOAT, mp2float);
     REGISTER_DECODER (MP3, mp3);
+    REGISTER_DECODER (MP3FLOAT, mp3float);
     REGISTER_DECODER (MP3ADU, mp3adu);
+    REGISTER_DECODER (MP3ADUFLOAT, mp3adufloat);
     REGISTER_DECODER (MP3ON4, mp3on4);
+    REGISTER_DECODER (MP3ON4FLOAT, mp3on4float);
     REGISTER_DECODER (MPC7, mpc7);
     REGISTER_DECODER (MPC8, mpc8);
     REGISTER_ENCDEC  (NELLYMOSER, nellymoser);
@@ -370,6 +375,7 @@ void avcodec_register_all(void)
 
     /* bitstream filters */
     REGISTER_BSF     (AAC_ADTSTOASC, aac_adtstoasc);
+    REGISTER_BSF     (CHOMP, chomp);
     REGISTER_BSF     (DUMP_EXTRADATA, dump_extradata);
     REGISTER_BSF     (H264_MP4TOANNEXB, h264_mp4toannexb);
     REGISTER_BSF     (IMX_DUMP_HEADER, imx_dump_header);
