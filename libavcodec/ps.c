@@ -343,7 +343,7 @@ int ff_ps_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
     return get_bits_count(gb) - bit_count_start;
 }
 
-#if !PS_HARDCODED_TABLES
+#if !CONFIG_HARDCODED_TABLES
 static void make_filters_from_proto(float (*filter)[7][2], const float *proto, int bands)
 {
     int q, n;
@@ -1040,7 +1040,7 @@ int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float 
 
 static av_cold void ps_init_dec()
 {
-#if !PS_HARDCODED_TABLES
+#if !CONFIG_HARDCODED_TABLES
     int k, m;
     //TODO store these as int8 and divide them during initialization
     static const int8_t f_center_20[] = {

@@ -174,7 +174,7 @@ static const int8_t k_to_i_34[] = {
     33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33, 33
 };
 
-#if PS_HARDCODED_TABLES
+#if CONFIG_HARDCODED_TABLES
 static const float HA[46][8][4] = {
     {
         {  0.0794016272,  1.4119827747,  0.0000000000,  0.0000000000  },

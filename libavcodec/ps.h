@@ -34,8 +34,6 @@
 #define PS_AP_LINKS 3
 #define PS_MAX_AP_DELAY 5
 
-#define PS_HARDCODED_TABLES 0
-
 typedef struct {
     int    start;
     int    enable_iid;
