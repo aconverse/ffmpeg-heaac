@@ -94,7 +94,6 @@ static int iid_data(GetBitContext *gb, PSContext *ps, int e, int dt)
                                 huff_offset[table_idx];
             if (FFABS(ps->iid_par[e][b]) > 7 + 8 * ps->iid_quant) {
                 av_log(NULL, AV_LOG_ERROR, "illegal iid\n");
-                abort();
                 return -1;
             }
         }
@@ -106,7 +105,6 @@ static int iid_data(GetBitContext *gb, PSContext *ps, int e, int dt)
             ps->iid_par[e][b] = prev;
             if (FFABS(ps->iid_par[e][b]) > 7 + 8 * ps->iid_quant) {
                 av_log(NULL, AV_LOG_ERROR, "illegal iid\n");
-                abort();
                 return -1;
             }
         }
@@ -126,7 +124,6 @@ static int icc_data(GetBitContext *gb, PSContext *ps, int e, int dt)
             ps->icc_par[e][b] = ps->icc_par[e_prev][b] + get_vlc2(gb, vlc_table, 9, 3) - huff_offset[table_idx];
             if (ps->icc_par[e][b] > 7U) {
                 av_log(NULL, AV_LOG_ERROR, "illegal icc\n");
-                abort();
                 return -1;
             }
         }
@@ -137,7 +134,6 @@ static int icc_data(GetBitContext *gb, PSContext *ps, int e, int dt)
             ps->icc_par[e][b] = prev;
             if (ps->icc_par[e][b] > 7U) {
                 av_log(NULL, AV_LOG_ERROR, "illegal icc\n");
-                abort();
                 return -1;
             }
         }
@@ -292,7 +288,6 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
         }
         if (cnt < 0) {
             av_log(NULL, AV_LOG_ERROR, "ps extension overflow %d", cnt);
-            abort();
             return -1;
         }
         skip_bits(gb, cnt);
