@@ -934,7 +934,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             h12r = H12[0][e][b];
             h21r = H21[0][e][b];
             h22r = H22[0][e][b];
-            if (!PS_BASELINE && ps->enable_ipdopd)
+            if (!PS_BASELINE && ps->enable_ipdopd) {
             //Is this necessary? ps_04_new seems unchanged
             if ((is34) && (k) <= 13 && (k) >= 9 || (!is34) && (k) <= 1) {
                 h11i = -H11[1][e][b];
@@ -946,6 +946,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
                 h12i = H12[1][e][b];
                 h21i = H21[1][e][b];
                 h22i = H22[1][e][b];
+            }
             }
             //Interpolation
             h11r_step = (H11[0][e+1][b] - h11r) * width;
