@@ -80,7 +80,7 @@ static VLC vlc_ps[10];
 #define PS_VLC_ROW(name) \
     { name ## _codes, name ## _bits, sizeof(name ## _codes), sizeof(name ## _codes[0]) }
 
-static int iid_data(GetBitContext *gb, PSContext *ps, int e, int dt)
+static int iid_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
     int table_idx = huff_iid[2*dt+ps->iid_quant];
@@ -93,7 +93,7 @@ static int iid_data(GetBitContext *gb, PSContext *ps, int e, int dt)
                                 get_vlc2(gb, vlc_table, 9, 3) -
                                 huff_offset[table_idx];
             if (FFABS(ps->iid_par[e][b]) > 7 + 8 * ps->iid_quant) {
-                av_log(NULL, AV_LOG_ERROR, "illegal iid\n");
+                av_log(avctx, AV_LOG_ERROR, "illegal iid\n");
                 return -1;
             }
         }
@@ -104,7 +104,7 @@ static int iid_data(GetBitContext *gb, PSContext *ps, int e, int dt)
                     huff_offset[table_idx];
             ps->iid_par[e][b] = prev;
             if (FFABS(ps->iid_par[e][b]) > 7 + 8 * ps->iid_quant) {
-                av_log(NULL, AV_LOG_ERROR, "illegal iid\n");
+                av_log(avctx, AV_LOG_ERROR, "illegal iid\n");
                 return -1;
             }
         }
@@ -112,7 +112,7 @@ static int iid_data(GetBitContext *gb, PSContext *ps, int e, int dt)
     return 0;
 }
 
-static int icc_data(GetBitContext *gb, PSContext *ps, int e, int dt)
+static int icc_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
     int table_idx = dt ? huff_icc_dt : huff_icc_df;
@@ -123,7 +123,7 @@ static int icc_data(GetBitContext *gb, PSContext *ps, int e, int dt)
         for (b = 0; b < ps->nr_icc_par; b++) {
             ps->icc_par[e][b] = ps->icc_par[e_prev][b] + get_vlc2(gb, vlc_table, 9, 3) - huff_offset[table_idx];
             if (ps->icc_par[e][b] > 7U) {
-                av_log(NULL, AV_LOG_ERROR, "illegal icc\n");
+                av_log(avctx, AV_LOG_ERROR, "illegal icc\n");
                 return -1;
             }
         }
@@ -133,7 +133,7 @@ static int icc_data(GetBitContext *gb, PSContext *ps, int e, int dt)
             prev += get_vlc2(gb, vlc_table, 9, 3) - huff_offset[table_idx];
             ps->icc_par[e][b] = prev;
             if (ps->icc_par[e][b] > 7U) {
-                av_log(NULL, AV_LOG_ERROR, "illegal icc\n");
+                av_log(avctx, AV_LOG_ERROR, "illegal icc\n");
                 return -1;
             }
         }
@@ -213,7 +213,7 @@ static void ipdopd_reset(float (*opd_smooth)[2][2], float (*ipd_smooth)[2][2])
     }
 }
 
-int ff_ps_data(GetBitContext *gb, PSContext *ps)
+int ff_ps_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
 {
     int e;
     int bit_count_start = get_bits_count(gb);
@@ -225,7 +225,7 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
         if (ps->enable_iid) {
             ps->iid_mode = get_bits(gb, 3);
             if (ps->iid_mode > 5) {
-                av_log(NULL, AV_LOG_ERROR, "iid_mode %d is reserved.\n",
+                av_log(avctx, AV_LOG_ERROR, "iid_mode %d is reserved.\n",
                        ps->iid_mode);
                 return -1;
             }
@@ -237,7 +237,7 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
         if (ps->enable_icc) {
             ps->icc_mode = get_bits(gb, 3);
             if (ps->icc_mode > 5) {
-                av_log(NULL, AV_LOG_ERROR, "icc_mode %d is reserved.\n",
+                av_log(avctx, AV_LOG_ERROR, "icc_mode %d is reserved.\n",
                        ps->icc_mode);
                 return -1;
             }
@@ -261,7 +261,7 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
     if (ps->enable_iid)
         for (e = 0; e < ps->num_env; e++) {
             int dt = get_bits1(gb);
-            if (iid_data(gb, ps, e, dt))
+            if (iid_data(avctx, gb, ps, e, dt))
                 return -1;
         }
     else
@@ -270,7 +270,7 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
     if (ps->enable_icc)
         for (e = 0; e < ps->num_env; e++) {
             int dt = get_bits1(gb);
-            if (icc_data(gb, ps, e, dt))
+            if (icc_data(avctx, gb, ps, e, dt))
                 return -1;
         }
     else
@@ -287,7 +287,7 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
             cnt -= 2 + ps_extension(gb, ps, ps_extension_id);
         }
         if (cnt < 0) {
-            av_log(NULL, AV_LOG_ERROR, "ps extension overflow %d", cnt);
+            av_log(avctx, AV_LOG_ERROR, "ps extension overflow %d", cnt);
             return -1;
         }
         skip_bits(gb, cnt);
