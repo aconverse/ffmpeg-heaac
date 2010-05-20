@@ -647,6 +647,10 @@ static av_noinline void decorrelation(PSContext *ps, float (*out)[32][2], const 
     const float a_smooth          = 0.25f; //< Smoothing coefficient
     int i, k, m, n;
     int n0 = 0, nL = 32;
+    static const int link_delay[] = { 3, 4, 5 };
+    static const float a[] = { 0.65143905753106f,
+                               0.56471812200776f,
+                               0.48954165955695f };
 
     if (is34 != ps->is34bands_old) {
         memset(ps->peak_decay_nrg,         0, sizeof(ps->peak_decay_nrg));
@@ -685,10 +689,6 @@ static av_noinline void decorrelation(PSContext *ps, float (*out)[32][2], const 
     //H[k][z] = z^-2 * phi_fract[k] * | | ----------------------------------------------------------------
     //                                | | 1 - a[m]*g_decay_slope[k]*Q_fract_allpass[k][m]*z^-link_delay[m]
     //                               m = 0
-    static const int link_delay[] = { 3, 4, 5 };
-    static const float a[] = { 0.65143905753106f,
-                               0.56471812200776f,
-                               0.48954165955695f };
     //d[k][z] (out) = transient_gain_mapped[k][z] * H[k][z] * s[k][z]
     for (k = 0; k < NR_ALLPASS_BANDS[is34]; k++) {
         int b = k_to_i[k];
@@ -877,6 +877,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
                 //The spec say says to only run this smoother when enable_ipdopd
                 //is set but the reference decoder appears to run it constantly
                 float h11i, h12i, h21i, h22i;
+                float opd_mag, ipd_mag, ipd_adj_re, ipd_adj_im;
                 float opd_re = ipdopd_cos[ps->opd_par[e][b]];
                 float opd_im = ipdopd_sin[ps->opd_par[e][b]];
                 float ipd_re = ipdopd_cos[ps->ipd_par[e][b]];
@@ -893,14 +894,14 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
                 ipd_smooth[b][0][1] = ipd_smooth[b][1][1];
                 ipd_smooth[b][1][0] = ipd_re;
                 ipd_smooth[b][1][1] = ipd_im;
-                float opd_mag = 1 / sqrt(opd_im_smooth * opd_im_smooth + opd_re_smooth * opd_re_smooth);
-                float ipd_mag = 1 / sqrt(ipd_im_smooth * ipd_im_smooth + ipd_re_smooth * ipd_re_smooth);
+                opd_mag = 1 / sqrt(opd_im_smooth * opd_im_smooth + opd_re_smooth * opd_re_smooth);
+                ipd_mag = 1 / sqrt(ipd_im_smooth * ipd_im_smooth + ipd_re_smooth * ipd_re_smooth);
                 opd_re = opd_re_smooth * opd_mag;
                 opd_im = opd_im_smooth * opd_mag;
                 ipd_re = ipd_re_smooth * ipd_mag;
                 ipd_im = ipd_im_smooth * ipd_mag;
-                float ipd_adj_re = opd_re*ipd_re + opd_im*ipd_im;
-                float ipd_adj_im = opd_im*ipd_re - opd_re*ipd_im;
+                ipd_adj_re = opd_re*ipd_re + opd_im*ipd_im;
+                ipd_adj_im = opd_im*ipd_re - opd_re*ipd_im;
                 h11i = h11 * opd_im;
                 h11  = h11 * opd_re;
                 h12i = h12 * ipd_adj_im;
@@ -923,6 +924,8 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             //av_log(NULL, AV_LOG_ERROR, "k %d\n", k);
             float h11r, h12r, h21r, h22r;
             float h11i, h12i, h21i, h22i;
+            float h11r_step, h12r_step, h21r_step, h22r_step;
+            float h11i_step, h12i_step, h21i_step, h22i_step;
             int start = ps->border_position[e];
             int stop  = ps->border_position[e+1];
             float width = 1.f / (stop - start);
@@ -945,11 +948,10 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
                 h22i = H22[1][e][b];
             }
             //Interpolation
-            float h11r_step = (H11[0][e+1][b] - h11r) * width;
-            float h12r_step = (H12[0][e+1][b] - h12r) * width;
-            float h21r_step = (H21[0][e+1][b] - h21r) * width;
-            float h22r_step = (H22[0][e+1][b] - h22r) * width;
-            float h11i_step, h12i_step, h21i_step, h22i_step;
+            h11r_step = (H11[0][e+1][b] - h11r) * width;
+            h12r_step = (H12[0][e+1][b] - h12r) * width;
+            h21r_step = (H21[0][e+1][b] - h21r) * width;
+            h22r_step = (H22[0][e+1][b] - h22r) * width;
             if (!PS_BASELINE && ps->enable_ipdopd) {
                 h11i_step = (H11[1][e+1][b] - h11i) * width;
                 h12i_step = (H12[1][e+1][b] - h12i) * width;
@@ -1065,6 +1067,13 @@ static av_cold void ps_init_dec()
     };
     static const float fractional_delay_links[] = { 0.43f, 0.75f, 0.347f };
     const float fractional_delay_gain = 0.39f;
+    static const float icc_invq[] = {
+        1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
+    };
+    static const float acos_icc_invq[] = {
+        0, 0.35685527, 0.57133466, 0.92614472, 1.1943263, M_PI/2, 2.2006171, M_PI
+    };
+    int iid, icc;
     for (k = 0; k < NR_ALLPASS_BANDS20; k++) {
         double f_center, theta;
         if (k < FF_ARRAY_ELEMS(f_center_20))
@@ -1100,14 +1109,6 @@ static av_cold void ps_init_dec()
     make_filters_from_proto(f34_1_8,  g1_Q8,   8);
     make_filters_from_proto(f34_2_4,  g2_Q4,   4);
 
-    //Table 8.28, Quantization grid for ICC
-    static const float icc_invq[] = {
-        1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
-    };
-    static const float acos_icc_invq[] = {
-        0, 0.35685527, 0.57133466, 0.92614472, 1.1943263, M_PI/2, 2.2006171, M_PI
-    };
-    int iid, icc;
     for (iid = 0; iid < 46; iid++) {
         float c = iid_par_dequant[iid]; //<Linear Inter-channel Intensity Difference
         float c1 = (float)M_SQRT2 / sqrtf(1.0f + c*c);
@@ -1123,11 +1124,12 @@ static av_cold void ps_init_dec()
                 HA[iid][icc][3] = c1 * sinf(beta - alpha);
                 //av_log(NULL, AV_LOG_ERROR, "        { %13.10f, %13.10f, %13.10f, %13.10f  },\n", HA[iid][icc][0], HA[iid][icc][1], HA[iid][icc][2], HA[iid][icc][3]);
             } /* else */ {
-                float rho = FFMAX(icc_invq[icc], 0.05f);
-                float alpha = 0.5f * atan2f(2.0f * c * rho, c*c - 1.0f);
-                float mu = c + 1.0f / c;
+                float alpha, gamma, mu, rho;
+                rho = FFMAX(icc_invq[icc], 0.05f);
+                alpha = 0.5f * atan2f(2.0f * c * rho, c*c - 1.0f);
+                mu = c + 1.0f / c;
                 mu = sqrtf(1 + (4 * rho * rho - 4)/(mu * mu));
-                float gamma = atanf(sqrtf((1.0f - mu)/(1.0f + mu)));
+                gamma = atanf(sqrtf((1.0f - mu)/(1.0f + mu)));
                 if (alpha < 0) alpha += M_PI/2;
                 HB[iid][icc][0] =  M_SQRT2 * cosf(alpha) * cosf(gamma);
                 HB[iid][icc][1] =  M_SQRT2 * sinf(alpha) * cosf(gamma);
