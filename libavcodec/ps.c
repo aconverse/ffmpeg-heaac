@@ -345,7 +345,6 @@ int ff_ps_data(GetBitContext *gb, PSContext *ps)
     if (header)
         ps->start = 1;
 
-//av_log(NULL, AV_LOG_ERROR, "bits consumed %d\n", get_bits_count(gb) - bit_count_start);
     return get_bits_count(gb) - bit_count_start;
 }
 
@@ -713,7 +712,6 @@ static av_noinline void decorrelation(PSContext *ps, float (*out)[32][2], const 
                 float link_delay_im       = ap_delay[k][m][n+5-link_delay[m]][1];
                 float fractional_delay_re = Q_fract_allpass[is34][k][m][0];
                 float fractional_delay_im = Q_fract_allpass[is34][k][m][1];
-//av_log(NULL, AV_LOG_ERROR, "allpass stage %d in= %e %e\n", m, in_re, in_im);
                 ap_delay[k][m][n+5][0] = in_re;
                 ap_delay[k][m][n+5][1] = in_im;
                 in_re = link_delay_re * fractional_delay_re - link_delay_im * fractional_delay_im - a_re;
@@ -721,11 +719,8 @@ static av_noinline void decorrelation(PSContext *ps, float (*out)[32][2], const 
                 ap_delay[k][m][n+5][0] += ag * in_re;
                 ap_delay[k][m][n+5][1] += ag * in_im;
             }
-//av_log(NULL, AV_LOG_ERROR, "allpass[k=%2d][n=%2d] = %e %e ", k, n, in_re, in_im);
             out[k][n][0] = transient_gain[b][n] * in_re;
             out[k][n][1] = transient_gain[b][n] * in_im;
-//av_log(NULL, AV_LOG_ERROR, "b %2d tr %f ", b, transient_gain[b][n]);
-//av_log(NULL, AV_LOG_ERROR, "out = %e %e\n", out[k][n][0], out[k][n][1]);
         }
     }
     for (; k < SHORT_DELAY_BAND[is34]; k++) {
@@ -872,7 +867,6 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             h12 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][1];
             h21 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][2];
             h22 = H_LUT[iid_mapped[e][b] + 7 + 23 * ps->iid_quant][icc_mapped[e][b]][3];
-//av_log(NULL, AV_LOG_ERROR, "e: %d b: %2d iid: %2d icc: %d\n", e, b, iid_mapped[e][b], icc_mapped[e][b]);
             if (!PS_BASELINE && ps->enable_ipdopd && b < ps->nr_ipdopd_par) {
                 //The spec say says to only run this smoother when enable_ipdopd
                 //is set but the reference decoder appears to run it constantly
@@ -921,7 +915,6 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             H22[0][e+1][b] = h22;
         }
         for (k = 0; k < NR_BANDS[is34]; k++) {
-            //av_log(NULL, AV_LOG_ERROR, "k %d\n", k);
             float h11r, h12r, h21r, h22r;
             float h11i, h12i, h21i, h22i;
             float h11r_step, h12r_step, h21r_step, h22r_step;
@@ -991,8 +984,6 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
                 r[k][n][0] = h12r*l_re + h22r*r_re;
                 r[k][n][1] = h12r*l_im + h22r*r_im;
                 }
-                //av_log(NULL, AV_LOG_ERROR, "e %d k %d n %d %f %f %f %f %f %f %f %f\n",
-                //e, k, n, h11r, h21r, h11i, h21i, h12r, h22r, h12i, h22i);
             }
         }
     }
