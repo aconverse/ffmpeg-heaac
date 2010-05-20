@@ -924,7 +924,7 @@ static av_noinline void stereo_processing(PSContext *ps, float (*l)[32][2], floa
             h22r = H22[0][e][b];
             if (!PS_BASELINE && ps->enable_ipdopd) {
             //Is this necessary? ps_04_new seems unchanged
-            if ((is34) && (k) <= 13 && (k) >= 9 || (!is34) && (k) <= 1) {
+            if ((is34 && k <= 13 && k >= 9) || (!is34 && k <= 1)) {
                 h11i = -H11[1][e][b];
                 h12i = -H12[1][e][b];
                 h21i = -H21[1][e][b];
