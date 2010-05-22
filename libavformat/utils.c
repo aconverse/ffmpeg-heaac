@@ -2024,7 +2024,7 @@ static int try_decode_frame(AVStream *st, AVPacket *avpkt)
     return ret;
 }
 
-unsigned int ff_codec_get_tag(const AVCodecTag *tags, int id)
+unsigned int ff_codec_get_tag(const AVCodecTag *tags, enum CodecID id)
 {
     while (tags->id != CODEC_ID_NONE) {
         if (tags->id == id)
@@ -3591,3 +3591,22 @@ int ff_url_join(char *str, int size, const char *proto,
     }
     return strlen(str);
 }
+
+int ff_write_chained(AVFormatContext *dst, int dst_stream, AVPacket *pkt,
+                     AVFormatContext *src)
+{
+    AVPacket local_pkt;
+
+    local_pkt = *pkt;
+    local_pkt.stream_index = dst_stream;
+    if (pkt->pts != AV_NOPTS_VALUE)
+        local_pkt.pts = av_rescale_q(pkt->pts,
+                                     src->streams[pkt->stream_index]->time_base,
+                                     dst->streams[dst_stream]->time_base);
+    if (pkt->dts != AV_NOPTS_VALUE)
+        local_pkt.dts = av_rescale_q(pkt->dts,
+                                     src->streams[pkt->stream_index]->time_base,
+                                     dst->streams[dst_stream]->time_base);
+    return av_write_frame(dst, &local_pkt);
+}
+
