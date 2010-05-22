@@ -1106,16 +1106,21 @@ static av_cold void ps_init_dec()
                 //av_log(NULL, AV_LOG_ERROR, "        { %13.10f, %13.10f, %13.10f, %13.10f  },\n", HA[iid][icc][0], HA[iid][icc][1], HA[iid][icc][2], HA[iid][icc][3]);
             } /* else */ {
                 float alpha, gamma, mu, rho;
+                float alpha_c, alpha_s, gamma_c, gamma_s;
                 rho = FFMAX(icc_invq[icc], 0.05f);
                 alpha = 0.5f * atan2f(2.0f * c * rho, c*c - 1.0f);
                 mu = c + 1.0f / c;
                 mu = sqrtf(1 + (4 * rho * rho - 4)/(mu * mu));
                 gamma = atanf(sqrtf((1.0f - mu)/(1.0f + mu)));
                 if (alpha < 0) alpha += M_PI/2;
-                HB[iid][icc][0] =  M_SQRT2 * cosf(alpha) * cosf(gamma);
-                HB[iid][icc][1] =  M_SQRT2 * sinf(alpha) * cosf(gamma);
-                HB[iid][icc][2] = -M_SQRT2 * sinf(alpha) * sinf(gamma);
-                HB[iid][icc][3] =  M_SQRT2 * cosf(alpha) * sinf(gamma);
+                alpha_c = cosf(alpha);
+                alpha_s = sinf(alpha);
+                gamma_c = cosf(gamma);
+                gamma_s = sinf(gamma);
+                HB[iid][icc][0] =  M_SQRT2 * alpha_c * gamma_c;
+                HB[iid][icc][1] =  M_SQRT2 * alpha_s * gamma_c;
+                HB[iid][icc][2] = -M_SQRT2 * alpha_s * gamma_s;
+                HB[iid][icc][3] =  M_SQRT2 * alpha_c * gamma_s;
                 //av_log(NULL, AV_LOG_ERROR, "        { %13.10f, %13.10f, %13.10f, %13.10f  },\n", HB[iid][icc][0], HB[iid][icc][1], HB[iid][icc][2], HB[iid][icc][3]);
             }
         }
