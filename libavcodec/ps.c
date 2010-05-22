@@ -1070,14 +1070,15 @@ static av_cold void ps_init_dec()
         phi_fract[0][k][1] = sin(theta);
     }
     for (k = 0; k < NR_ALLPASS_BANDS34; k++) {
-        float f_center, theta;
+        double f_center, theta;
         if (k < FF_ARRAY_ELEMS(f_center_34))
             f_center = f_center_34[k] / 24.;
         else
             f_center = k - 26.5f;
         for (m = 0; m < PS_AP_LINKS; m++) {
-            Q_fract_allpass[1][k][m][0] = cos(-M_PI * fractional_delay_links[m] * f_center);
-            Q_fract_allpass[1][k][m][1] = sin(-M_PI * fractional_delay_links[m] * f_center);
+            theta = -M_PI * fractional_delay_links[m] * f_center;
+            Q_fract_allpass[1][k][m][0] = cos(theta);
+            Q_fract_allpass[1][k][m][1] = sin(theta);
         }
         theta = -M_PI*fractional_delay_gain*f_center;
         phi_fract[1][k][0] = cos(theta);
