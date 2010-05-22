@@ -550,15 +550,15 @@ static void map_idx_10_to_20(int8_t *par_mapped, const int8_t *par, int full)
     out[ 9] = (  in[14] +   in[15]) / 2;                               \
     out[10] =    in[16];                                               \
     if (full) {                                                        \
-    out[11] =    in[17];                                               \
-    out[12] =    in[18];                                               \
-    out[13] =    in[19];                                               \
-    out[14] = (  in[20] +   in[21]) / 2;                               \
-    out[15] = (  in[22] +   in[23]) / 2;                               \
-    out[16] = (  in[24] +   in[25]) / 2;                               \
-    out[17] = (  in[26] +   in[27]) / 2;                               \
-    out[18] = (  in[28] +   in[29] +   in[30] +   in[31]) / 4;         \
-    out[19] = (  in[32] +   in[33]) / 2;                               \
+        out[11] =    in[17];                                           \
+        out[12] =    in[18];                                           \
+        out[13] =    in[19];                                           \
+        out[14] = (  in[20] +   in[21]) / 2;                           \
+        out[15] = (  in[22] +   in[23]) / 2;                           \
+        out[16] = (  in[24] +   in[25]) / 2;                           \
+        out[17] = (  in[26] +   in[27]) / 2;                           \
+        out[18] = (  in[28] +   in[29] +   in[30] +   in[31]) / 4;     \
+        out[19] = (  in[32] +   in[33]) / 2;                           \
     }
 
 static void map_idx_34_to_20(int8_t *par_mapped, const int8_t *par, int full)
@@ -572,24 +572,24 @@ static void map_val_34_to_20(float  par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC], int e
 }
 
 #define MAP_GENERIC_20_TO_34(out, in, full) \
-    if (full) {                            \
-    out[33] =  in[19];                     \
-    out[32] =  in[19];                     \
-    out[31] =  in[18];                     \
-    out[30] =  in[18];                     \
-    out[29] =  in[18];                     \
-    out[28] =  in[18];                     \
-    out[27] =  in[17];                     \
-    out[26] =  in[17];                     \
-    out[25] =  in[16];                     \
-    out[24] =  in[16];                     \
-    out[23] =  in[15];                     \
-    out[22] =  in[15];                     \
-    out[21] =  in[14];                     \
-    out[20] =  in[14];                     \
-    out[19] =  in[13];                     \
-    out[18] =  in[12];                     \
-    out[17] =  in[11];                     \
+    if (full) {                             \
+        out[33] =  in[19];                 \
+        out[32] =  in[19];                 \
+        out[31] =  in[18];                 \
+        out[30] =  in[18];                 \
+        out[29] =  in[18];                 \
+        out[28] =  in[18];                 \
+        out[27] =  in[17];                 \
+        out[26] =  in[17];                 \
+        out[25] =  in[16];                 \
+        out[24] =  in[16];                 \
+        out[23] =  in[15];                 \
+        out[22] =  in[15];                 \
+        out[21] =  in[14];                 \
+        out[20] =  in[14];                 \
+        out[19] =  in[13];                 \
+        out[18] =  in[12];                 \
+        out[17] =  in[11];                 \
     }                                      \
     out[16] =  in[10];                     \
     out[15] =  in[ 9];                     \
