@@ -67,7 +67,7 @@
  * Y (not in this code) Layer-2
  * Y (not in this code) Layer-3
  * N                    SinuSoidal Coding (Transient, Sinusoid, Noise)
- * N (planned)          Parametric Stereo
+ * Y                    Parametric Stereo
  * N                    Direct Stream Transfer
  *
  * Note: - HE AAC v1 comprises LC AAC with Spectral Band Replication.
