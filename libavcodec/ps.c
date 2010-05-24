@@ -77,10 +77,8 @@ static int iid_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps, int
             ps->iid_par[e][b] = ps->iid_par[e_prev][b] +
                                 get_vlc2(gb, vlc_table, 9, 3) -
                                 huff_offset[table_idx];
-            if (FFABS(ps->iid_par[e][b]) > 7 + 8 * ps->iid_quant) {
-                av_log(avctx, AV_LOG_ERROR, "illegal iid\n");
-                return -1;
-            }
+            if (FFABS(ps->iid_par[e][b]) > 7 + 8 * ps->iid_quant)
+                goto err;
         }
     } else {
         int prev = 0;
@@ -88,13 +86,14 @@ static int iid_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps, int
             prev += get_vlc2(gb, vlc_table, 9, 3) -
                     huff_offset[table_idx];
             ps->iid_par[e][b] = prev;
-            if (FFABS(ps->iid_par[e][b]) > 7 + 8 * ps->iid_quant) {
-                av_log(avctx, AV_LOG_ERROR, "illegal iid\n");
-                return -1;
-            }
+            if (FFABS(ps->iid_par[e][b]) > 7 + 8 * ps->iid_quant)
+                goto err;
         }
     }
     return 0;
+err:
+    av_log(avctx, AV_LOG_ERROR, "illegal iid\n");
+    return -1;
 }
 
 static int icc_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps, int e, int dt)
@@ -107,23 +106,22 @@ static int icc_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps, int
         e_prev = FFMAX(e_prev, 0);
         for (b = 0; b < ps->nr_icc_par; b++) {
             ps->icc_par[e][b] = ps->icc_par[e_prev][b] + get_vlc2(gb, vlc_table, 9, 3) - huff_offset[table_idx];
-            if (ps->icc_par[e][b] > 7U) {
-                av_log(avctx, AV_LOG_ERROR, "illegal icc\n");
-                return -1;
-            }
+            if (ps->icc_par[e][b] > 7U)
+                goto err;
         }
     } else {
         int prev = 0;
         for (b = 0; b < ps->nr_icc_par; b++) {
             prev += get_vlc2(gb, vlc_table, 9, 3) - huff_offset[table_idx];
             ps->icc_par[e][b] = prev;
-            if (ps->icc_par[e][b] > 7U) {
-                av_log(avctx, AV_LOG_ERROR, "illegal icc\n");
-                return -1;
-            }
+            if (ps->icc_par[e][b] > 7U)
+                goto err;
         }
     }
     return 0;
+err:
+    av_log(avctx, AV_LOG_ERROR, "illegal icc\n");
+    return -1;
 }
 
 static void ipd_data(GetBitContext *gb, PSContext *ps, int e, int dt)
