@@ -64,14 +64,6 @@ static const int huff_iid[] = {
 };
 
 static VLC vlc_ps[10];
-#define PS_INIT_VLC_STATIC(num, size) \
-    INIT_VLC_STATIC(&vlc_ps[num], 9, ps_tmp[num].table_size / ps_tmp[num].elem_size,    \
-                    ps_tmp[num].ps_bits, 1, 1,                                          \
-                    ps_tmp[num].ps_codes, ps_tmp[num].elem_size, ps_tmp[num].elem_size, \
-                    size);
-
-#define PS_VLC_ROW(name) \
-    { name ## _codes, name ## _bits, sizeof(name ## _codes), sizeof(name ## _codes[0]) }
 
 static int iid_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps, int e, int dt)
 {
@@ -1139,6 +1131,15 @@ static av_cold void ps_init_dec()
     }
 #endif
 }
+
+#define PS_INIT_VLC_STATIC(num, size) \
+    INIT_VLC_STATIC(&vlc_ps[num], 9, ps_tmp[num].table_size / ps_tmp[num].elem_size,    \
+                    ps_tmp[num].ps_bits, 1, 1,                                          \
+                    ps_tmp[num].ps_codes, ps_tmp[num].elem_size, ps_tmp[num].elem_size, \
+                    size);
+
+#define PS_VLC_ROW(name) \
+    { name ## _codes, name ## _bits, sizeof(name ## _codes), sizeof(name ## _codes[0]) }
 
 av_cold void ff_ps_init(void) {
     // Syntax initialization
