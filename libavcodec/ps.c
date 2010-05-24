@@ -206,11 +206,13 @@ static void ipdopd_reset(float (*opd_smooth)[2][2], float (*ipd_smooth)[2][2])
     }
 }
 
-int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
+int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb_host, PSContext *ps, int bits_left)
 {
     int e;
-    int bit_count_start = get_bits_count(gb);
+    int bit_count_start = get_bits_count(gb_host);
     int header;
+    int bits_consumed;
+    GetBitContext gbc = *gb_host, *gb = &gbc;
 
     header = get_bits1(gb);
     if (header) {     //enable_ps_header
@@ -220,7 +222,7 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
             if (ps->iid_mode > 5) {
                 av_log(avctx, AV_LOG_ERROR, "iid_mode %d is reserved.\n",
                        ps->iid_mode);
-                return -1;
+                goto err;
             }
             ps->nr_iid_par    = nr_iidicc_par_tab[ps->iid_mode];
             ps->iid_quant     = ps->iid_mode > 2;
@@ -232,7 +234,7 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
             if (ps->icc_mode > 5) {
                 av_log(avctx, AV_LOG_ERROR, "icc_mode %d is reserved.\n",
                        ps->icc_mode);
-                return -1;
+                goto err;
             }
             ps->nr_icc_par = nr_iidicc_par_tab[ps->icc_mode];
         }
@@ -255,7 +257,7 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
         for (e = 0; e < ps->num_env; e++) {
             int dt = get_bits1(gb);
             if (iid_data(avctx, gb, ps, e, dt))
-                return -1;
+                goto err;
         }
     else
         memset(ps->iid_par, 0, sizeof(ps->iid_par));
@@ -264,7 +266,7 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
         for (e = 0; e < ps->num_env; e++) {
             int dt = get_bits1(gb);
             if (icc_data(avctx, gb, ps, e, dt))
-                return -1;
+                goto err;
         }
     else
         memset(ps->icc_par, 0, sizeof(ps->icc_par));
@@ -281,7 +283,7 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
         }
         if (cnt < 0) {
             av_log(avctx, AV_LOG_ERROR, "ps extension overflow %d", cnt);
-            return -1;
+            goto err;
         }
         skip_bits(gb, cnt);
     }
@@ -333,7 +335,16 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
     if (header)
         ps->start = 1;
 
-    return get_bits_count(gb) - bit_count_start;
+    bits_consumed = get_bits_count(gb) - bit_count_start;
+    if (bits_consumed <= bits_left) {
+        skip_bits_long(gb_host, bits_consumed);
+        return bits_consumed;
+    }
+    av_log(avctx, AV_LOG_ERROR, "Expected to read %d PS bits actually read %d.\n", bits_left, bits_consumed);
+err:
+    ps->start = 0;
+    skip_bits_long(gb_host, bits_left);
+    return bits_left;
 }
 
 #if !CONFIG_HARDCODED_TABLES
