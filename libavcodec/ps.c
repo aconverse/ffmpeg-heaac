@@ -206,7 +206,7 @@ static void ipdopd_reset(float (*opd_smooth)[2][2], float (*ipd_smooth)[2][2])
     }
 }
 
-int ff_ps_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
+int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps)
 {
     int e;
     int bit_count_start = get_bits_count(gb);

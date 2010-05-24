@@ -73,7 +73,7 @@ typedef struct {
 
 void ff_ps_init(void);
 void ff_ps_ctx_init(PSContext *ps);
-int ff_ps_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps);
+int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps);
 int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float R[2][38][64], int top);
 
 #endif /* AVCODEC_PS_H */
