@@ -861,10 +861,10 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 //is set but the reference decoder appears to run it constantly
                 float h11i, h12i, h21i, h22i;
                 float opd_mag, ipd_mag, ipd_adj_re, ipd_adj_im;
-                float opd_re = ipdopd_cos[ps->opd_par[e][b]];
-                float opd_im = ipdopd_sin[ps->opd_par[e][b]];
-                float ipd_re = ipdopd_cos[ps->ipd_par[e][b]];
-                float ipd_im = ipdopd_sin[ps->ipd_par[e][b]];
+                float opd_re = ipdopd_cos[opd_mapped[e][b]];
+                float opd_im = ipdopd_sin[opd_mapped[e][b]];
+                float ipd_re = ipdopd_cos[ipd_mapped[e][b]];
+                float ipd_im = ipdopd_sin[ipd_mapped[e][b]];
                 float opd_im_smooth = 0.25f * opd_smooth[b][0][1] + 0.5f * opd_smooth[b][1][1] + opd_im;
                 float opd_re_smooth = 0.25f * opd_smooth[b][0][0] + 0.5f * opd_smooth[b][1][0] + opd_re;
                 float ipd_im_smooth = 0.25f * ipd_smooth[b][0][1] + 0.5f * ipd_smooth[b][1][1] + ipd_im;
