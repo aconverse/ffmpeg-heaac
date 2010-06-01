@@ -654,7 +654,7 @@ static void map_val_20_to_34(float par[PS_MAX_NR_IIDICC])
 
 static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[32][2], int is34)
 {
-    float power[34][PS_QMF_TIME_SLOTS];
+    float power[34][PS_QMF_TIME_SLOTS] = {0};
     float transient_gain[34][PS_QMF_TIME_SLOTS];
     float *peak_decay_nrg = ps->peak_decay_nrg;
     float *power_smooth = ps->power_smooth;
@@ -680,7 +680,6 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
         memset(ps->ap_delay,               0, sizeof(ps->ap_delay));
     }
 
-    memset(power, 0, sizeof(power));
     for (n = n0; n < nL; n++) {
         for (k = 0; k < NR_BANDS[is34]; k++) {
             int i = k_to_i[k];
