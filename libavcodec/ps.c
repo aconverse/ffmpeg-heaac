@@ -170,18 +170,20 @@ static int ps_extension(GetBitContext *gb, PSContext *ps, int ps_extension_id)
 {
     int e;
     int count = get_bits_count(gb);
-    if (!ps_extension_id) {
-        ps->enable_ipdopd = get_bits1(gb);
-        if (ps->enable_ipdopd) {
-            for (e = 0; e < ps->num_env; e++) {
-                int dt = get_bits1(gb);
-                ipd_data(gb, ps, e, dt);
-                dt = get_bits1(gb);
-                opd_data(gb, ps, e, dt);
-            }
+
+    if (ps_extension_id)
+        return 0;
+
+    ps->enable_ipdopd = get_bits1(gb);
+    if (ps->enable_ipdopd) {
+        for (e = 0; e < ps->num_env; e++) {
+            int dt = get_bits1(gb);
+            ipd_data(gb, ps, e, dt);
+            dt = get_bits1(gb);
+            opd_data(gb, ps, e, dt);
         }
-        skip_bits1(gb);      //reserved_ps
     }
+    skip_bits1(gb);      //reserved_ps
     return get_bits_count(gb) - count;
 }
 
