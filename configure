@@ -1426,6 +1426,7 @@ avformat_deps="avcodec"
 
 # programs
 ffmpeg_deps="avcodec avformat swscale"
+ffmpeg_select="buffer_filter"
 ffplay_deps="avcodec avformat swscale sdl"
 ffplay_select="rdft"
 ffprobe_deps="avcodec avformat"
@@ -2341,6 +2342,7 @@ die_license_disabled gpl postproc
 die_license_disabled gpl x11grab
 
 die_license_disabled nonfree libfaac
+die_license_disabled nonfree libvpx
 
 die_license_disabled version3 libopencore_amrnb
 die_license_disabled version3 libopencore_amrwb
