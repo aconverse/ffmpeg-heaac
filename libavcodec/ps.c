@@ -746,12 +746,13 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
     for (k = 0; k < NR_ALLPASS_BANDS[is34]; k++) {
         int b = k_to_i[k];
         float g_decay_slope = 1.f - DECAY_SLOPE * (k - DECAY_CUTOFF[is34]);
-        g_decay_slope = FFMIN(g_decay_slope, 1.f);
-        g_decay_slope = FFMAX(g_decay_slope, 0.f);
+        float ag[PS_AP_LINKS];
+        g_decay_slope = av_clipf(g_decay_slope, 0.f, 1.f);
         memcpy(delay[k], delay[k]+nL, PS_MAX_DELAY*sizeof(delay[k][0]));
         memcpy(delay[k]+PS_MAX_DELAY, s[k], numQMFSlots*sizeof(delay[k][0]));
         for (m = 0; m < PS_AP_LINKS; m++) {
             memcpy(ap_delay[k][m],   ap_delay[k][m]+numQMFSlots,           5*sizeof(ap_delay[k][m][0]));
+            ag[m] = a[m] * g_decay_slope;
         }
         for (n = n0; n < nL; n++) {
             float in_re = delay[k][n+PS_MAX_DELAY-2][0] * phi_fract[is34][k][0] -
@@ -759,9 +760,8 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
             float in_im = delay[k][n+PS_MAX_DELAY-2][0] * phi_fract[is34][k][1] +
                           delay[k][n+PS_MAX_DELAY-2][1] * phi_fract[is34][k][0];
             for (m = 0; m < PS_AP_LINKS; m++) {
-                float ag                  = a[m] * g_decay_slope;
-                float a_re                = ag * in_re;
-                float a_im                = ag * in_im;
+                float a_re                = ag[m] * in_re;
+                float a_im                = ag[m] * in_im;
                 float link_delay_re       = ap_delay[k][m][n+5-link_delay[m]][0];
                 float link_delay_im       = ap_delay[k][m][n+5-link_delay[m]][1];
                 float fractional_delay_re = Q_fract_allpass[is34][k][m][0];
@@ -770,8 +770,8 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
                 ap_delay[k][m][n+5][1] = in_im;
                 in_re = link_delay_re * fractional_delay_re - link_delay_im * fractional_delay_im - a_re;
                 in_im = link_delay_re * fractional_delay_im + link_delay_im * fractional_delay_re - a_im;
-                ap_delay[k][m][n+5][0] += ag * in_re;
-                ap_delay[k][m][n+5][1] += ag * in_im;
+                ap_delay[k][m][n+5][0] += ag[m] * in_re;
+                ap_delay[k][m][n+5][1] += ag[m] * in_im;
             }
             out[k][n][0] = transient_gain[b][n] * in_re;
             out[k][n][1] = transient_gain[b][n] * in_im;
