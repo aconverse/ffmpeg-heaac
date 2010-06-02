@@ -65,6 +65,15 @@ static const int huff_iid[] = {
 
 static VLC vlc_ps[10];
 
+/**
+ * Read Inter-channel Intensity Difference parameters from the bitstream.
+ *
+ * @param avctx contains the current codec context
+ * @param gb    pointer to the input bitstream
+ * @param ps    pointer to the Parametric Stereo context
+ * @param e     envelope to decode
+ * @param dt    1: time delta-coded, 0: frequency delta-coded
+ */
 static int iid_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
@@ -96,6 +105,15 @@ err:
     return -1;
 }
 
+/**
+ * Read Inter-Channel Coherence parameters from the bitstream.
+ *
+ * @param avctx contains the current codec context
+ * @param gb    pointer to the input bitstream
+ * @param ps    pointer to the Parametric Stereo context
+ * @param e     envelope to decode
+ * @param dt    1: time delta-coded, 0: frequency delta-coded
+ */
 static int icc_data(AVCodecContext *avctx, GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
@@ -124,6 +142,14 @@ err:
     return -1;
 }
 
+/**
+ * Read Inter-channel Phase Difference parameters from the bitstream.
+ *
+ * @param gb    pointer to the input bitstream
+ * @param ps    pointer to the Parametric Stereo context
+ * @param e     envelope to decode
+ * @param dt    1: time delta-coded, 0: frequency delta-coded
+ */
 static void ipd_data(GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
@@ -145,6 +171,14 @@ static void ipd_data(GetBitContext *gb, PSContext *ps, int e, int dt)
     }
 }
 
+/**
+ * Read Overall Phase Difference parameters from the bitstream.
+ *
+ * @param gb    pointer to the input bitstream
+ * @param ps    pointer to the Parametric Stereo context
+ * @param e     envelope to decode
+ * @param dt    1: time delta-coded, 0: frequency delta-coded
+ */
 static void opd_data(GetBitContext *gb, PSContext *ps, int e, int dt)
 {
     int b;
