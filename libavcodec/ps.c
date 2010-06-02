@@ -725,13 +725,13 @@ static void decorrelation(PSContext *ps, float (*out)[32][2], const float (*s)[3
     for (i = 0; i < NR_PAR_BANDS[is34]; i++) {
         for (n = n0; n < nL; n++) {
             float decayed_peak = peak_decay_factor * peak_decay_nrg[i];
-            peak_decay_nrg[i] = (decayed_peak < power[i][n]) ? power[i][n] : decayed_peak;
-            power_smooth[i] = a_smooth * power[i][n] + (1.0f - a_smooth) * power_smooth[i];
-            peak_decay_diff_smooth[i] = a_smooth * (peak_decay_nrg[i] - power[i][n]) +
-                                         (1.0f - a_smooth) * peak_decay_diff_smooth[i];
-            transient_gain[i][n]   = (transient_impact * peak_decay_diff_smooth[i] > power_smooth[i]) ?
-                                         power_smooth[i] / (transient_impact * peak_decay_diff_smooth[i]) : 1.0f;
-//av_log(NULL, AV_LOG_ERROR, "transient_gain[%2d][%2d] %f %f %f\n", i, n, transient_gain[i][n], peak_decay_diff_smooth[i], power_smooth[i]);
+            float denom;
+            peak_decay_nrg[i] = FFMAX(decayed_peak, power[i][n]);
+            power_smooth[i] += a_smooth * (power[i][n] - power_smooth[i]);
+            peak_decay_diff_smooth[i] += a_smooth * (peak_decay_nrg[i] - power[i][n] - peak_decay_diff_smooth[i]);
+            denom = transient_impact * peak_decay_diff_smooth[i];
+            transient_gain[i][n]   = (denom > power_smooth[i]) ?
+                                         power_smooth[i] / denom : 1.0f;
         }
     }
 
