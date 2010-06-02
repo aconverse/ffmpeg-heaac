@@ -279,13 +279,13 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb_host, PSContext *ps
         for (e = 1; e <= ps->num_env; e++)
             ps->border_position[e] = e * numQMFSlots / ps->num_env - 1;
 
-    if (ps->enable_iid)
+    if (ps->enable_iid) {
         for (e = 0; e < ps->num_env; e++) {
             int dt = get_bits1(gb);
             if (iid_data(avctx, gb, ps, e, dt))
                 goto err;
         }
-    else
+    } else
         memset(ps->iid_par, 0, sizeof(ps->iid_par));
 
     if (ps->enable_icc)
