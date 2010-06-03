@@ -52,8 +52,9 @@ typedef struct {
     int    border_position[PS_MAX_NUM_ENV+1];
     int8_t iid_par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC]; //<Inter-channel Intensity Difference Parameters
     int8_t icc_par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC]; //<Inter-Channel Coherence Parameters
-    int8_t ipd_par[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD]; //<Inter-channel Phase Difference Parameters
-    int8_t opd_par[PS_MAX_NUM_ENV][PS_MAX_NR_IPDOPD]; //<Overall Phase Difference Parameters
+    /* ips/opd is iid/icc siezed so that the same functions can handle both */
+    int8_t ipd_par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC]; //<Inter-channel Phase Difference Parameters
+    int8_t opd_par[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC]; //<Overall Phase Difference Parameters
     int    is34bands;
     int    is34bands_old;
 
