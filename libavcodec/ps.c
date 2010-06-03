@@ -608,6 +608,48 @@ static void map_val_34_to_20(float par[PS_MAX_NR_IIDICC])
     par[19] = (  par[32] +   par[33]) * 0.5f;
 }
 
+static void map_idx_10_to_34(int8_t *par_mapped, const int8_t *par, int full)
+{
+    if (full) {
+        par_mapped[33] = par[9];
+        par_mapped[32] = par[9];
+        par_mapped[31] = par[9];
+        par_mapped[30] = par[9];
+        par_mapped[29] = par[9];
+        par_mapped[28] = par[9];
+        par_mapped[27] = par[8];
+        par_mapped[26] = par[8];
+        par_mapped[25] = par[8];
+        par_mapped[24] = par[8];
+        par_mapped[23] = par[7];
+        par_mapped[22] = par[7];
+        par_mapped[21] = par[7];
+        par_mapped[20] = par[7];
+        par_mapped[19] = par[6];
+        par_mapped[18] = par[6];
+        par_mapped[17] = par[5];
+        par_mapped[16] = par[5];
+    } else {
+        par_mapped[16] =      0;
+    }
+    par_mapped[15] = par[4];
+    par_mapped[14] = par[4];
+    par_mapped[13] = par[4];
+    par_mapped[12] = par[4];
+    par_mapped[11] = par[3];
+    par_mapped[10] = par[3];
+    par_mapped[ 9] = par[2];
+    par_mapped[ 8] = par[2];
+    par_mapped[ 7] = par[2];
+    par_mapped[ 6] = par[2];
+    par_mapped[ 5] = par[1];
+    par_mapped[ 4] = par[1];
+    par_mapped[ 3] = par[1];
+    par_mapped[ 2] = par[0];
+    par_mapped[ 1] = par[0];
+    par_mapped[ 0] = par[0];
+}
+
 static void map_idx_20_to_34(int8_t *par_mapped, const int8_t *par, int full)
 {
     if (full) {
@@ -805,12 +847,11 @@ static void remap34(int8_t (**p_par_mapped)[PS_MAX_NR_IIDICC],
     int e;
     if (num_par == 20 || num_par == 11) {
         for (e = 0; e < num_env; e++) {
-            map_idx_20_to_34(par_mapped[e], par[e],        full);
+            map_idx_20_to_34(par_mapped[e], par[e], full);
         }
     } else if (num_par == 10 || num_par == 5) {
         for (e = 0; e < num_env; e++) {
-            map_idx_10_to_20(par_mapped[e], par[e],        full);
-            map_idx_20_to_34(par_mapped[e], par_mapped[e], full);
+            map_idx_10_to_34(par_mapped[e], par[e], full);
         }
     } else {
         *p_par_mapped = par;
@@ -825,11 +866,11 @@ static void remap20(int8_t (**p_par_mapped)[PS_MAX_NR_IIDICC],
     int e;
     if (num_par == 34 || num_par == 17) {
         for (e = 0; e < num_env; e++) {
-            map_idx_34_to_20(par_mapped[e], par[e],        full);
+            map_idx_34_to_20(par_mapped[e], par[e], full);
         }
     } else if (num_par == 10 || num_par == 5) {
         for (e = 0; e < num_env; e++) {
-            map_idx_10_to_20(par_mapped[e], par[e],        full);
+            map_idx_10_to_20(par_mapped[e], par[e], full);
         }
     } else {
         *p_par_mapped = par;
