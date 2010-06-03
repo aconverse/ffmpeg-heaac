@@ -1117,13 +1117,9 @@ int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float 
 
     transpose_in(ps->in_buf, L);
 
-    memset(Lbuf, -1, sizeof(Lbuf));
-    memset(Lout, -1, sizeof(Lout));
     hybrid_analysis(Lbuf, ps->in_buf, is34, len);
-#if 1
     decorrelation(ps, Rbuf, Lbuf, is34);
     stereo_processing(ps, Lbuf, Rbuf, is34);
-#endif
     hybrid_synthesis(Lout, Lbuf, is34, len);
     hybrid_synthesis(Rout, Rbuf, is34, len);
 
