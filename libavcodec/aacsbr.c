@@ -907,8 +907,6 @@ static void read_sbr_extension(AACContext *ac, SpectralBandReplication *sbr,
                                GetBitContext *gb,
                                int bs_extension_id, int *num_bits_left)
 {
-//TODO - implement ps_data for parametric stereo parsing
-//av_log(NULL, AV_LOG_ERROR, "frame %d sbr_extension %d %d\n", ac->avctx->frame_number, bs_extension_id, *num_bits_left);
     switch (bs_extension_id) {
     case EXTENSION_ID_PS:
         if (!ac->m4ac.ps) {
