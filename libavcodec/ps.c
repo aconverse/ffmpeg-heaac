@@ -321,16 +321,16 @@ int ff_ps_read_data(AVCodecContext *avctx, GetBitContext *gb_host, PSContext *ps
         //Create a fake envelope
         int source = ps->num_env ? ps->num_env - 1 : ps->num_env_old - 1;
         if (source >= 0 && source != ps->num_env) {
-        if (ps->enable_iid && ps->num_env_old > 1) {
-            memcpy(ps->iid_par+ps->num_env, ps->iid_par+source, sizeof(ps->iid_par[0]));
-        }
-        if (ps->enable_icc && ps->num_env_old > 1) {
-            memcpy(ps->icc_par+ps->num_env, ps->icc_par+source, sizeof(ps->icc_par[0]));
-        }
-        if (ps->enable_ipdopd && ps->num_env_old > 1) {
-            memcpy(ps->ipd_par+ps->num_env, ps->ipd_par+source, sizeof(ps->ipd_par[0]));
-            memcpy(ps->opd_par+ps->num_env, ps->opd_par+source, sizeof(ps->opd_par[0]));
-        }
+            if (ps->enable_iid && ps->num_env_old > 1) {
+                memcpy(ps->iid_par+ps->num_env, ps->iid_par+source, sizeof(ps->iid_par[0]));
+            }
+            if (ps->enable_icc && ps->num_env_old > 1) {
+                memcpy(ps->icc_par+ps->num_env, ps->icc_par+source, sizeof(ps->icc_par[0]));
+            }
+            if (ps->enable_ipdopd && ps->num_env_old > 1) {
+                memcpy(ps->ipd_par+ps->num_env, ps->ipd_par+source, sizeof(ps->ipd_par[0]));
+                memcpy(ps->opd_par+ps->num_env, ps->opd_par+source, sizeof(ps->opd_par[0]));
+            }
         }
         ps->num_env++;
         ps->border_position[ps->num_env] = numQMFSlots - 1;
