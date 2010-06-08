@@ -48,7 +48,6 @@ static int rtsp_write_record(AVFormatContext *s)
 
 static int rtsp_write_header(AVFormatContext *s)
 {
-    RTSPState *rt = s->priv_data;
     int ret;
 
     ret = ff_rtsp_connect(s);
@@ -57,7 +56,7 @@ static int rtsp_write_header(AVFormatContext *s)
 
     if (rtsp_write_record(s) < 0) {
         ff_rtsp_close_streams(s);
-        url_close(rt->rtsp_hd);
+        ff_rtsp_close_connections(s);
         return AVERROR_INVALIDDATA;
     }
     return 0;
@@ -162,7 +161,7 @@ static int rtsp_write_close(AVFormatContext *s)
     ff_rtsp_send_cmd_async(s, "TEARDOWN", rt->control_uri, NULL);
 
     ff_rtsp_close_streams(s);
-    url_close(rt->rtsp_hd);
+    ff_rtsp_close_connections(s);
     ff_network_close();
     return 0;
 }
