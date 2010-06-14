@@ -383,7 +383,8 @@ static void make_filters_from_proto(float (*filter)[7][2], const float *proto, i
 }
 #endif
 
-/** Split one subband into 2 subsubbands with a real filter */
+/** Split one subband into 2 subsubbands with a symmetric real filter.
+ * The filter must have its non-center even coefficients equal to zero. */
 static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7], int len, int reverse)
 {
     int i, j;
@@ -393,8 +394,6 @@ static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7
         float im_in = filter[6] * in[6+i][1];        //imag inphase
         float im_op = 0.0f;                          //imag out of phase
         for (j = 0; j < 6; j += 2) {
-            re_in += filter[j  ] * (in[i+j  ][0] + in[12-j  +i][0]);
-            im_in += filter[j  ] * (in[i+j  ][1] + in[12-j  +i][1]);
             re_op += filter[j+1] * (in[i+j+1][0] + in[12-j-1+i][0]);
             im_op += filter[j+1] * (in[i+j+1][1] + in[12-j-1+i][1]);
         }
