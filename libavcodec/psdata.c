@@ -1384,6 +1384,3 @@ static const float g1_Q2[] = {
     0.0f,  0.01899487526049f, 0.0f, -0.07293139167538f,
     0.0f,  0.30596630545168f, 0.5f
 };
-
-static float pd_re_smooth[8*8*8];
-static float pd_im_smooth[8*8*8];

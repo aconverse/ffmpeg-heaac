@@ -24,6 +24,7 @@
 #include "avcodec.h"
 #include "get_bits.h"
 #include "ps.h"
+#include "ps_tablegen.h"
 #include "psdata.c"
 
 #define PS_BASELINE 0
@@ -1106,9 +1107,6 @@ int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float 
 
 static av_cold void ps_init_dec()
 {
-    static const float ipdopd_sin[] = { 0, M_SQRT1_2, 1,  M_SQRT1_2,  0, -M_SQRT1_2, -1, -M_SQRT1_2 };
-    static const float ipdopd_cos[] = { 1, M_SQRT1_2, 0, -M_SQRT1_2, -1, -M_SQRT1_2,  0,  M_SQRT1_2 };
-    int pd0, pd1, pd2;
 #if !CONFIG_HARDCODED_TABLES
     int k, m;
     static const int8_t f_center_20[] = {
@@ -1202,23 +1200,7 @@ static av_cold void ps_init_dec()
         //av_log(NULL, AV_LOG_ERROR, "    },\n");
     }
 #endif
-    for (pd0 = 0; pd0 < 8; pd0++) {
-        float pd0_re = ipdopd_cos[pd0];
-        float pd0_im = ipdopd_sin[pd0];
-        for (pd1 = 0; pd1 < 8; pd1++) {
-            float pd1_re = ipdopd_cos[pd1];
-            float pd1_im = ipdopd_sin[pd1];
-            for (pd2 = 0; pd2 < 8; pd2++) {
-                float pd2_re = ipdopd_cos[pd2];
-                float pd2_im = ipdopd_sin[pd2];
-                float re_smooth = 0.25f * pd0_re + 0.5f * pd1_re + pd2_re;
-                float im_smooth = 0.25f * pd0_im + 0.5f * pd1_im + pd2_im;
-                float pd_mag = 1 / sqrt(im_smooth * im_smooth + re_smooth * re_smooth);
-                pd_re_smooth[pd0*64+pd1*8+pd2] = re_smooth * pd_mag;
-                pd_im_smooth[pd0*64+pd1*8+pd2] = im_smooth * pd_mag;
-            }
-        }
-    }
+    ps_tableinit();
 }
 
 #define PS_INIT_VLC_STATIC(num, size) \
