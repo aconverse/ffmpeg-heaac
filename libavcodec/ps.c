@@ -488,7 +488,7 @@ static void hybrid_analysis(float out[91][32][2], float in[64][44][2], int is34,
     }
 }
 
-static void hybrid_synthesis(float out[64][32][2], float in[91][32][2], int is34, int len)
+static void hybrid_synthesis(float out[2][38][64], float in[91][32][2], int is34, int len)
 {
     int i, n;
     if(is34) {
@@ -496,37 +496,43 @@ static void hybrid_synthesis(float out[64][32][2], float in[91][32][2], int is34
         for (n = 0; n < len; n++) {
             for(i = 0; i < 12; i++) {
                 out[0][n][0] += in[   i][n][0];
-                out[0][n][1] += in[   i][n][1];
+                out[1][n][0] += in[   i][n][1];
             }
             for(i = 0; i < 8; i++) {
-                out[1][n][0] += in[12+i][n][0];
+                out[0][n][1] += in[12+i][n][0];
                 out[1][n][1] += in[12+i][n][1];
             }
             for(i = 0; i < 4; i++) {
-                out[2][n][0] += in[20+i][n][0];
-                out[2][n][1] += in[20+i][n][1];
-                out[3][n][0] += in[24+i][n][0];
-                out[3][n][1] += in[24+i][n][1];
-                out[4][n][0] += in[28+i][n][0];
-                out[4][n][1] += in[28+i][n][1];
+                out[0][n][2] += in[20+i][n][0];
+                out[1][n][2] += in[20+i][n][1];
+                out[0][n][3] += in[24+i][n][0];
+                out[1][n][3] += in[24+i][n][1];
+                out[0][n][4] += in[28+i][n][0];
+                out[1][n][4] += in[28+i][n][1];
             }
         }
         for (i = 0; i < 59; i++) {
-            memcpy(out[5 + i], in[32 + i], len * sizeof(in[0][0]));
+            for (n = 0; n < len; n++) {
+                out[0][n][i+5] = in[i+32][n][0];
+                out[1][n][i+5] = in[i+32][n][1];
+            }
         }
     } else {
         for (n = 0; n < len; n++) {
             out[0][n][0] = in[0][n][0] + in[1][n][0] + in[2][n][0] +
                            in[3][n][0] + in[4][n][0] + in[5][n][0];
-            out[0][n][1] = in[0][n][1] + in[1][n][1] + in[2][n][1] +
+            out[1][n][0] = in[0][n][1] + in[1][n][1] + in[2][n][1] +
                            in[3][n][1] + in[4][n][1] + in[5][n][1];
-            out[1][n][0] = in[6][n][0] + in[7][n][0];
+            out[0][n][1] = in[6][n][0] + in[7][n][0];
             out[1][n][1] = in[6][n][1] + in[7][n][1];
-            out[2][n][0] = in[8][n][0] + in[9][n][0];
-            out[2][n][1] = in[8][n][1] + in[9][n][1];
+            out[0][n][2] = in[8][n][0] + in[9][n][0];
+            out[1][n][2] = in[8][n][1] + in[9][n][1];
         }
         for (i = 0; i < 61; i++) {
-            memcpy(out[3 + i], in[10 + i], len * sizeof(in[0][0]));
+            for (n = 0; n < len; n++) {
+                out[0][n][i+3] = in[i+10][n][0];
+                out[1][n][i+3] = in[i+10][n][1];
+            }
         }
     }
 }
@@ -1093,21 +1099,8 @@ static void transpose_in(float Ltrans[64][44][2], float L[2][38][64])
     }
 }
 
-static void transpose_out(float in[64][32][2], float out[2][38][64])
-{
-    int i, j;
-    for (i = 0; i < 64; i++) {
-        for (j = 0; j < 32; j++) {
-            out[0][j][i] = in[i][j][0];
-            out[1][j][i] = in[i][j][1];
-        }
-    }
-}
-
 int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float R[2][38][64], int top)
 {
-    float Lout[64][32][2];
-    float Rout[64][32][2];
     float Lbuf[91][32][2];
     float Rbuf[91][32][2];
     const int len = 32;
@@ -1123,11 +1116,8 @@ int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float 
     hybrid_analysis(Lbuf, ps->in_buf, is34, len);
     decorrelation(ps, Rbuf, Lbuf, is34);
     stereo_processing(ps, Lbuf, Rbuf, is34);
-    hybrid_synthesis(Lout, Lbuf, is34, len);
-    hybrid_synthesis(Rout, Rbuf, is34, len);
-
-    transpose_out(Lout, L);
-    transpose_out(Rout, R);
+    hybrid_synthesis(L, Lbuf, is34, len);
+    hybrid_synthesis(R, Rbuf, is34, len);
 
     return 0;
 }
