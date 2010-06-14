@@ -1100,13 +1100,6 @@ static av_cold void ps_init_dec()
     };
     static const float fractional_delay_links[] = { 0.43f, 0.75f, 0.347f };
     const float fractional_delay_gain = 0.39f;
-    static const float icc_invq[] = {
-        1, 0.937,      0.84118,    0.60092,    0.36764,   0,      -0.589,    -1
-    };
-    static const float acos_icc_invq[] = {
-        0, 0.35685527, 0.57133466, 0.92614472, 1.1943263, M_PI/2, 2.2006171, M_PI
-    };
-    int iid, icc;
     for (k = 0; k < NR_ALLPASS_BANDS20; k++) {
         double f_center, theta;
         if (k < FF_ARRAY_ELEMS(f_center_20))
@@ -1138,42 +1131,6 @@ static av_cold void ps_init_dec()
         phi_fract[1][k][1] = sin(theta);
     }
 
-    for (iid = 0; iid < 46; iid++) {
-        float c = iid_par_dequant[iid]; //<Linear Inter-channel Intensity Difference
-        float c1 = (float)M_SQRT2 / sqrtf(1.0f + c*c);
-        float c2 = c * c1;
-        //av_log(NULL, AV_LOG_ERROR, "    {\n");
-        for (icc = 0; icc < 8; icc++) {
-            /*if (PS_BASELINE || ps->icc_mode < 3)*/ {
-                float alpha = 0.5f * acos_icc_invq[icc];
-                float beta  = alpha * (c1 - c2) * (float)M_SQRT1_2;
-                HA[iid][icc][0] = c2 * cosf(beta + alpha);
-                HA[iid][icc][1] = c1 * cosf(beta - alpha);
-                HA[iid][icc][2] = c2 * sinf(beta + alpha);
-                HA[iid][icc][3] = c1 * sinf(beta - alpha);
-                //av_log(NULL, AV_LOG_ERROR, "        { %13.10f, %13.10f, %13.10f, %13.10f  },\n", HA[iid][icc][0], HA[iid][icc][1], HA[iid][icc][2], HA[iid][icc][3]);
-            } /* else */ {
-                float alpha, gamma, mu, rho;
-                float alpha_c, alpha_s, gamma_c, gamma_s;
-                rho = FFMAX(icc_invq[icc], 0.05f);
-                alpha = 0.5f * atan2f(2.0f * c * rho, c*c - 1.0f);
-                mu = c + 1.0f / c;
-                mu = sqrtf(1 + (4 * rho * rho - 4)/(mu * mu));
-                gamma = atanf(sqrtf((1.0f - mu)/(1.0f + mu)));
-                if (alpha < 0) alpha += M_PI/2;
-                alpha_c = cosf(alpha);
-                alpha_s = sinf(alpha);
-                gamma_c = cosf(gamma);
-                gamma_s = sinf(gamma);
-                HB[iid][icc][0] =  M_SQRT2 * alpha_c * gamma_c;
-                HB[iid][icc][1] =  M_SQRT2 * alpha_s * gamma_c;
-                HB[iid][icc][2] = -M_SQRT2 * alpha_s * gamma_s;
-                HB[iid][icc][3] =  M_SQRT2 * alpha_c * gamma_s;
-                //av_log(NULL, AV_LOG_ERROR, "        { %13.10f, %13.10f, %13.10f, %13.10f  },\n", HB[iid][icc][0], HB[iid][icc][1], HB[iid][icc][2], HB[iid][icc][3]);
-            }
-        }
-        //av_log(NULL, AV_LOG_ERROR, "    },\n");
-    }
 #endif
     ps_tableinit();
 }
