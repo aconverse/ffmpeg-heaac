@@ -58,7 +58,7 @@ typedef struct {
     int    is34bands;
     int    is34bands_old;
 
-    float  in_buf[64][44][2];
+    float  in_buf[5][44][2];
     float  delay[PS_MAX_SSB][PS_QMF_TIME_SLOTS + PS_MAX_DELAY][2];
     float  ap_delay[PS_MAX_AP_BANDS][PS_AP_LINKS][PS_QMF_TIME_SLOTS + PS_MAX_AP_DELAY][2];
     float  peak_decay_nrg[34];
