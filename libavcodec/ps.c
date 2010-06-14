@@ -1106,6 +1106,9 @@ int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float 
 
 static av_cold void ps_init_dec()
 {
+    static const float ipdopd_sin[] = { 0, M_SQRT1_2, 1,  M_SQRT1_2,  0, -M_SQRT1_2, -1, -M_SQRT1_2 };
+    static const float ipdopd_cos[] = { 1, M_SQRT1_2, 0, -M_SQRT1_2, -1, -M_SQRT1_2,  0,  M_SQRT1_2 };
+    int pd0, pd1, pd2;
 #if !CONFIG_HARDCODED_TABLES
     int k, m;
     static const int8_t f_center_20[] = {
@@ -1199,9 +1202,6 @@ static av_cold void ps_init_dec()
         //av_log(NULL, AV_LOG_ERROR, "    },\n");
     }
 #endif
-    static const float ipdopd_sin[] = { 0, M_SQRT1_2, 1,  M_SQRT1_2,  0, -M_SQRT1_2, -1, -M_SQRT1_2 };
-    static const float ipdopd_cos[] = { 1, M_SQRT1_2, 0, -M_SQRT1_2, -1, -M_SQRT1_2,  0,  M_SQRT1_2 };
-    int pd0, pd1, pd2;
     for (pd0 = 0; pd0 < 8; pd0++) {
         float pd0_re = ipdopd_cos[pd0];
         float pd0_im = ipdopd_sin[pd0];
