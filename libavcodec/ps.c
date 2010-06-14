@@ -221,12 +221,12 @@ static int ps_extension(GetBitContext *gb, PSContext *ps, int ps_extension_id)
     return get_bits_count(gb) - count;
 }
 
-static void ipdopd_reset(int8_t (*opd_hist)[2], int8_t (*ipd_hist)[2])
+static void ipdopd_reset(int8_t *opd_hist, int8_t *ipd_hist)
 {
     int i;
     for (i = 0; i < PS_MAX_NR_IPDOPD; i++) {
-        opd_hist[i][0] = opd_hist[i][1] = 0;
-        ipd_hist[i][0] = ipd_hist[i][1] = 0;
+        opd_hist[i] = 0;
+        ipd_hist[i] = 0;
     }
 }
 
@@ -904,8 +904,8 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     float (*H12)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H12;
     float (*H21)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H21;
     float (*H22)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H22;
-    int8_t (*opd_hist)[2] = ps->opd_hist;
-    int8_t (*ipd_hist)[2] = ps->ipd_hist;
+    int8_t *opd_hist = ps->opd_hist;
+    int8_t *ipd_hist = ps->ipd_hist;
     int8_t iid_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t icc_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t ipd_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
@@ -979,14 +979,14 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 //is set but the reference decoder appears to run it constantly
                 float h11i, h12i, h21i, h22i;
                 float ipd_adj_re, ipd_adj_im;
-                float opd_re = pd_re_smooth[opd_hist[b][0]][opd_hist[b][1]][opd_mapped[e][b]];
-                float opd_im = pd_im_smooth[opd_hist[b][0]][opd_hist[b][1]][opd_mapped[e][b]];
-                float ipd_re = pd_re_smooth[ipd_hist[b][0]][ipd_hist[b][1]][ipd_mapped[e][b]];
-                float ipd_im = pd_im_smooth[ipd_hist[b][0]][ipd_hist[b][1]][ipd_mapped[e][b]];
-                opd_hist[b][0] = opd_hist[b][1];
-                opd_hist[b][1] = opd_mapped[e][b];
-                ipd_hist[b][0] = ipd_hist[b][1];
-                ipd_hist[b][1] = ipd_mapped[e][b];
+                int opd_idx = opd_hist[b] * 8 + opd_mapped[e][b];
+                int ipd_idx = ipd_hist[b] * 8 + ipd_mapped[e][b];
+                float opd_re = pd_re_smooth[opd_idx];
+                float opd_im = pd_im_smooth[opd_idx];
+                float ipd_re = pd_re_smooth[ipd_idx];
+                float ipd_im = pd_im_smooth[ipd_idx];
+                opd_hist[b] = opd_idx & 0x3F;
+                ipd_hist[b] = ipd_idx & 0x3F;
 
                 ipd_adj_re = opd_re*ipd_re + opd_im*ipd_im;
                 ipd_adj_im = opd_im*ipd_re - opd_re*ipd_im;
@@ -1214,8 +1214,8 @@ static av_cold void ps_init_dec()
                 float re_smooth = 0.25f * pd0_re + 0.5f * pd1_re + pd2_re;
                 float im_smooth = 0.25f * pd0_im + 0.5f * pd1_im + pd2_im;
                 float pd_mag = 1 / sqrt(im_smooth * im_smooth + re_smooth * re_smooth);
-                pd_re_smooth[pd0][pd1][pd2] = re_smooth * pd_mag;
-                pd_im_smooth[pd0][pd1][pd2] = im_smooth * pd_mag;
+                pd_re_smooth[pd0*64+pd1*8+pd2] = re_smooth * pd_mag;
+                pd_im_smooth[pd0*64+pd1*8+pd2] = im_smooth * pd_mag;
             }
         }
     }
