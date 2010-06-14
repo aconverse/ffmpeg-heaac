@@ -33,8 +33,47 @@
 #ifndef M_SQRT1_2
 #define M_SQRT1_2      0.70710678118654752440  /* 1/sqrt(2) */
 #endif
+#ifndef M_PI
+#define M_PI           3.14159265358979323846  /* pi */
+#endif
 static float pd_re_smooth[8*8*8];
 static float pd_im_smooth[8*8*8];
+static float f20_0_8 [ 8][7][2];
+static float f34_0_12[12][7][2];
+static float f34_1_8 [ 8][7][2];
+static float f34_2_4 [ 4][7][2];
+
+static const float g0_Q8[] = {
+    0.00746082949812f, 0.02270420949825f, 0.04546865930473f, 0.07266113929591f,
+    0.09885108575264f, 0.11793710567217f, 0.125f
+};
+
+static const float g0_Q12[] = {
+    0.04081179924692f, 0.03812810994926f, 0.05144908135699f, 0.06399831151592f,
+    0.07428313801106f, 0.08100347892914f, 0.08333333333333f
+};
+
+static const float g1_Q8[] = {
+    0.01565675600122f, 0.03752716391991f, 0.05417891378782f, 0.08417044116767f,
+    0.10307344158036f, 0.12222452249753f, 0.125f
+};
+
+static const float g2_Q4[] = {
+    -0.05908211155639f, -0.04871498374946f, 0.0f,   0.07778723915851f,
+     0.16486303567403f,  0.23279856662996f, 0.25f
+};
+
+static void make_filters_from_proto(float (*filter)[7][2], const float *proto, int bands)
+{
+    int q, n;
+    for (q = 0; q < bands; q++) {
+        for (n = 0; n < 7; n++) {
+            double theta = 2 * M_PI * (q + 0.5) * (n - 6) / bands;
+            filter[q][n][0] = proto[n] *  cos(theta);
+            filter[q][n][1] = proto[n] * -sin(theta);
+        }
+    }
+}
 
 static void ps_tableinit(void)
 {
@@ -58,6 +97,11 @@ static void ps_tableinit(void)
             }
         }
     }
+
+    make_filters_from_proto(f20_0_8,  g0_Q8,   8);
+    make_filters_from_proto(f34_0_12, g0_Q12, 12);
+    make_filters_from_proto(f34_1_8,  g1_Q8,   8);
+    make_filters_from_proto(f34_2_4,  g2_Q4,   4);
 }
 #endif /* CONFIG_HARDCODED_TABLES */
 

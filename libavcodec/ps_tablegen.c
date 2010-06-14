@@ -60,5 +60,17 @@ int main(void)
     write_float_array(pd_im_smooth, 8*8*8);
     printf("};\n");
 
+    printf("static const float f20_0_8[8][7][2] = {\n");
+    write_float_3d_array(f20_0_8, 8, 7, 2);
+    printf("};\n");
+    printf("static const float f34_0_12[12][7][2] = {\n");
+    write_float_3d_array(f34_0_12, 12, 7, 2);
+    printf("};\n");
+    printf("static const float f34_1_8[8][7][2] = {\n");
+    write_float_3d_array(f34_1_8, 8, 7, 2);
+    printf("};\n");
+    printf("static const float f34_2_4[4][7][2] = {\n");
+    write_float_3d_array(f34_2_4, 4, 7, 2);
+    printf("};\n");
     return 0;
 }

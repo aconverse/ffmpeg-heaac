@@ -362,26 +362,6 @@ err:
     return bits_left;
 }
 
-#if !CONFIG_HARDCODED_TABLES
-static void make_filters_from_proto(float (*filter)[7][2], const float *proto, int bands)
-{
-    int q, n;
-    //av_log(NULL, AV_LOG_ERROR, "{\n");
-    for (q = 0; q < bands; q++) {
-        //av_log(NULL, AV_LOG_ERROR, "    {\n        ");
-        for (n = 0; n < 7; n++) {
-            double theta = 2 * M_PI * (q + 0.5) * (n - 6) / bands;
-            filter[q][n][0] = proto[n] *  cos(theta);
-            filter[q][n][1] = proto[n] * -sin(theta);
-            //av_log(NULL, AV_LOG_ERROR, "{ %13.10f, %13.10f  }, ", filter[q][n][0], filter[q][n][1]);
-            //if ((n & 3) == 3) av_log(NULL, AV_LOG_ERROR, "\n        ");
-        }
-        //av_log(NULL, AV_LOG_ERROR, "\n    },\n");
-    }
-    //av_log(NULL, AV_LOG_ERROR, "};\n");
-}
-#endif
-
 /** Split one subband into 2 subsubbands with a symmetric real filter.
  * The filter must have its non-center even coefficients equal to zero. */
 static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7], int len, int reverse)
@@ -1157,11 +1137,6 @@ static av_cold void ps_init_dec()
         phi_fract[1][k][0] = cos(theta);
         phi_fract[1][k][1] = sin(theta);
     }
-
-    make_filters_from_proto(f20_0_8,  g0_Q8,   8);
-    make_filters_from_proto(f34_0_12, g0_Q12, 12);
-    make_filters_from_proto(f34_1_8,  g1_Q8,   8);
-    make_filters_from_proto(f34_2_4,  g2_Q4,   4);
 
     for (iid = 0; iid < 46; iid++) {
         float c = iid_par_dequant[iid]; //<Linear Inter-channel Intensity Difference
