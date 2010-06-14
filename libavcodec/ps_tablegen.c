@@ -25,6 +25,28 @@
 #include "ps_tablegen.h"
 #include "tableprint.h"
 
+void write_float_3d_array (const void *p, int b, int c, int d)
+{
+    int i;
+    for (i = 0; i < b; i++) {
+        printf("{\n");
+        write_float_2d_array(p, c, d);
+        printf("},\n");
+        p += c * d * sizeof(float);
+    }
+}
+
+void write_float_4d_array (const void *p, int a, int b, int c, int d)
+{
+    int i;
+    for (i = 0; i < a; i++) {
+        printf("{\n");
+        write_float_3d_array(p, b, c, d);
+        printf("},\n");
+        p += b * c * d * sizeof(float);
+    }
+}
+
 int main(void)
 {
     ps_tableinit();
