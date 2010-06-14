@@ -462,9 +462,15 @@ static void hybrid4_8_12_cx(float (*in)[2], float (*out)[32][2], const float (*f
     }
 }
 
-static void hybrid_analysis(float out[91][32][2], float in[64][44][2], int is34, int len)
+static void hybrid_analysis(float out[91][32][2], float in[64][44][2], float L[2][38][64], int is34, int len)
 {
-    int i;
+    int i, j;
+    for (i = 0; i < 64; i++) {
+        for (j = 0; j < 38; j++) {
+            in[i][j+6][0] = L[0][j][i];
+            in[i][j+6][1] = L[1][j][i];
+        }
+    }
     if(is34) {
         hybrid4_8_12_cx(in[0], out,    f34_0_12, 12, len);
         hybrid4_8_12_cx(in[1], out+12, f34_1_8,   8, len);
@@ -1088,17 +1094,6 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     }
 }
 
-static void transpose_in(float Ltrans[64][44][2], float L[2][38][64])
-{
-    int i, j;
-    for (i = 0; i < 64; i++) {
-        for (j = 0; j < 38; j++) {
-            Ltrans[i][j+6][0] = L[0][j][i];
-            Ltrans[i][j+6][1] = L[1][j][i];
-        }
-    }
-}
-
 int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float R[2][38][64], int top)
 {
     float Lbuf[91][32][2];
@@ -1111,9 +1106,7 @@ int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float 
     if (top < NR_ALLPASS_BANDS[is34])
         memset(ps->ap_delay + top, 0, (NR_ALLPASS_BANDS[is34] - top)*sizeof(ps->ap_delay[0]));
 
-    transpose_in(ps->in_buf, L);
-
-    hybrid_analysis(Lbuf, ps->in_buf, is34, len);
+    hybrid_analysis(Lbuf, ps->in_buf, L, is34, len);
     decorrelation(ps, Rbuf, Lbuf, is34);
     stereo_processing(ps, Lbuf, Rbuf, is34);
     hybrid_synthesis(L, Lbuf, is34, len);
