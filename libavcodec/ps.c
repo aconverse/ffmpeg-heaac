@@ -1136,7 +1136,6 @@ static av_cold void ps_init_dec()
 {
 #if !CONFIG_HARDCODED_TABLES
     int k, m;
-    //TODO store these as int8 and divide them during initialization
     static const int8_t f_center_20[] = {
         -3, -1, 1, 3, 5, 7, 10, 14, 18, 22,
     };
