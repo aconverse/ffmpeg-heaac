@@ -397,10 +397,10 @@ static void hybrid2_re(float (*in)[2], float (*out)[32][2], const float filter[7
             re_op += filter[j+1] * (in[i+j+1][0] + in[12-j-1+i][0]);
             im_op += filter[j+1] * (in[i+j+1][1] + in[12-j-1+i][1]);
         }
-        out[  reverse][i][0] = re_in + re_op;
-        out[  reverse][i][1] = im_in + im_op;
-        out[1-reverse][i][0] = re_in - re_op;
-        out[1-reverse][i][1] = im_in - im_op;
+        out[ reverse][i][0] = re_in + re_op;
+        out[ reverse][i][1] = im_in + im_op;
+        out[!reverse][i][0] = re_in - re_op;
+        out[!reverse][i][1] = im_in - im_op;
     }
 }
 
