@@ -503,8 +503,9 @@ static void hybrid_synthesis(float out[2][38][64], float in[91][32][2], int is34
 {
     int i, n;
     if(is34) {
-        memset(out, 0, 2*sizeof(out[0]));
         for (n = 0; n < len; n++) {
+            memset(out[0][n], 0, 5*sizeof(out[0][n][0]));
+            memset(out[1][n], 0, 5*sizeof(out[1][n][0]));
             for(i = 0; i < 12; i++) {
                 out[0][n][0] += in[   i][n][0];
                 out[1][n][0] += in[   i][n][1];
