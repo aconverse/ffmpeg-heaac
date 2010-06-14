@@ -221,14 +221,12 @@ static int ps_extension(GetBitContext *gb, PSContext *ps, int ps_extension_id)
     return get_bits_count(gb) - count;
 }
 
-static void ipdopd_reset(float (*opd_smooth)[2][2], float (*ipd_smooth)[2][2])
+static void ipdopd_reset(int8_t (*opd_hist)[2], int8_t (*ipd_hist)[2])
 {
     int i;
     for (i = 0; i < PS_MAX_NR_IPDOPD; i++) {
-        opd_smooth[i][0][0] = opd_smooth[i][1][0] = 1;
-        ipd_smooth[i][0][0] = ipd_smooth[i][1][0] = 1;
-        opd_smooth[i][0][1] = opd_smooth[i][1][1] = 0;
-        ipd_smooth[i][0][1] = ipd_smooth[i][1][1] = 0;
+        opd_hist[i][0] = opd_hist[i][1] = 0;
+        ipd_hist[i][0] = ipd_hist[i][1] = 0;
     }
 }
 
@@ -906,8 +904,8 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     float (*H12)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H12;
     float (*H21)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H21;
     float (*H22)[PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC] = ps->H22;
-    float (*opd_smooth)[2][2] = ps->opd_smooth;
-    float (*ipd_smooth)[2][2] = ps->ipd_smooth;
+    int8_t (*opd_hist)[2] = ps->opd_hist;
+    int8_t (*ipd_hist)[2] = ps->ipd_hist;
     int8_t iid_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t icc_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
     int8_t ipd_mapped_buf[PS_MAX_NUM_ENV][PS_MAX_NR_IIDICC];
@@ -918,8 +916,6 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
     int8_t (*opd_mapped)[PS_MAX_NR_IIDICC] = opd_mapped_buf;
     const int8_t *k_to_i = is34 ? k_to_i_34 : k_to_i_20;
     const float (*H_LUT)[8][4] = (PS_BASELINE || ps->icc_mode < 3) ? HA : HB;
-    static const float ipdopd_sin[] = { 0, M_SQRT1_2, 1,  M_SQRT1_2,  0, -M_SQRT1_2, -1, -M_SQRT1_2 };
-    static const float ipdopd_cos[] = { 1, M_SQRT1_2, 0, -M_SQRT1_2, -1, -M_SQRT1_2,  0,  M_SQRT1_2 };
 
     //Remapping
     for (b = 0; b < PS_MAX_NR_IIDICC; b++) {
@@ -948,7 +944,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
             map_val_20_to_34(H21[1][0]);
             map_val_20_to_34(H22[0][0]);
             map_val_20_to_34(H22[1][0]);
-            ipdopd_reset(ps->ipd_smooth, ps->opd_smooth);
+            ipdopd_reset(ipd_hist, opd_hist);
         }
     } else {
         remap20(&iid_mapped, ps->iid_par, ps->nr_iid_par, ps->num_env, 1);
@@ -966,7 +962,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
             map_val_34_to_20(H21[1][0]);
             map_val_34_to_20(H22[0][0]);
             map_val_34_to_20(H22[1][0]);
-            ipdopd_reset(ps->ipd_smooth, ps->opd_smooth);
+            ipdopd_reset(ipd_hist, opd_hist);
         }
     }
 
@@ -982,29 +978,16 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 //The spec say says to only run this smoother when enable_ipdopd
                 //is set but the reference decoder appears to run it constantly
                 float h11i, h12i, h21i, h22i;
-                float opd_mag, ipd_mag, ipd_adj_re, ipd_adj_im;
-                float opd_re = ipdopd_cos[opd_mapped[e][b]];
-                float opd_im = ipdopd_sin[opd_mapped[e][b]];
-                float ipd_re = ipdopd_cos[ipd_mapped[e][b]];
-                float ipd_im = ipdopd_sin[ipd_mapped[e][b]];
-                float opd_im_smooth = 0.25f * opd_smooth[b][0][1] + 0.5f * opd_smooth[b][1][1] + opd_im;
-                float opd_re_smooth = 0.25f * opd_smooth[b][0][0] + 0.5f * opd_smooth[b][1][0] + opd_re;
-                float ipd_im_smooth = 0.25f * ipd_smooth[b][0][1] + 0.5f * ipd_smooth[b][1][1] + ipd_im;
-                float ipd_re_smooth = 0.25f * ipd_smooth[b][0][0] + 0.5f * ipd_smooth[b][1][0] + ipd_re;
-                opd_smooth[b][0][0] = opd_smooth[b][1][0];
-                opd_smooth[b][0][1] = opd_smooth[b][1][1];
-                opd_smooth[b][1][0] = opd_re;
-                opd_smooth[b][1][1] = opd_im;
-                ipd_smooth[b][0][0] = ipd_smooth[b][1][0];
-                ipd_smooth[b][0][1] = ipd_smooth[b][1][1];
-                ipd_smooth[b][1][0] = ipd_re;
-                ipd_smooth[b][1][1] = ipd_im;
-                opd_mag = 1 / sqrt(opd_im_smooth * opd_im_smooth + opd_re_smooth * opd_re_smooth);
-                ipd_mag = 1 / sqrt(ipd_im_smooth * ipd_im_smooth + ipd_re_smooth * ipd_re_smooth);
-                opd_re = opd_re_smooth * opd_mag;
-                opd_im = opd_im_smooth * opd_mag;
-                ipd_re = ipd_re_smooth * ipd_mag;
-                ipd_im = ipd_im_smooth * ipd_mag;
+                float ipd_adj_re, ipd_adj_im;
+                float opd_re = pd_re_smooth[opd_hist[b][0]][opd_hist[b][1]][opd_mapped[e][b]];
+                float opd_im = pd_im_smooth[opd_hist[b][0]][opd_hist[b][1]][opd_mapped[e][b]];
+                float ipd_re = pd_re_smooth[ipd_hist[b][0]][ipd_hist[b][1]][ipd_mapped[e][b]];
+                float ipd_im = pd_im_smooth[ipd_hist[b][0]][ipd_hist[b][1]][ipd_mapped[e][b]];
+                opd_hist[b][0] = opd_hist[b][1];
+                opd_hist[b][1] = opd_mapped[e][b];
+                ipd_hist[b][0] = ipd_hist[b][1];
+                ipd_hist[b][1] = ipd_mapped[e][b];
+
                 ipd_adj_re = opd_re*ipd_re + opd_im*ipd_im;
                 ipd_adj_im = opd_im*ipd_re - opd_re*ipd_im;
                 h11i = h11 * opd_im;
@@ -1216,6 +1199,26 @@ static av_cold void ps_init_dec()
         //av_log(NULL, AV_LOG_ERROR, "    },\n");
     }
 #endif
+    static const float ipdopd_sin[] = { 0, M_SQRT1_2, 1,  M_SQRT1_2,  0, -M_SQRT1_2, -1, -M_SQRT1_2 };
+    static const float ipdopd_cos[] = { 1, M_SQRT1_2, 0, -M_SQRT1_2, -1, -M_SQRT1_2,  0,  M_SQRT1_2 };
+    int pd0, pd1, pd2;
+    for (pd0 = 0; pd0 < 8; pd0++) {
+        float pd0_re = ipdopd_cos[pd0];
+        float pd0_im = ipdopd_sin[pd0];
+        for (pd1 = 0; pd1 < 8; pd1++) {
+            float pd1_re = ipdopd_cos[pd1];
+            float pd1_im = ipdopd_sin[pd1];
+            for (pd2 = 0; pd2 < 8; pd2++) {
+                float pd2_re = ipdopd_cos[pd2];
+                float pd2_im = ipdopd_sin[pd2];
+                float re_smooth = 0.25f * pd0_re + 0.5f * pd1_re + pd2_re;
+                float im_smooth = 0.25f * pd0_im + 0.5f * pd1_im + pd2_im;
+                float pd_mag = 1 / sqrt(im_smooth * im_smooth + re_smooth * re_smooth);
+                pd_re_smooth[pd0][pd1][pd2] = re_smooth * pd_mag;
+                pd_im_smooth[pd0][pd1][pd2] = im_smooth * pd_mag;
+            }
+        }
+    }
 }
 
 #define PS_INIT_VLC_STATIC(num, size) \
@@ -1261,5 +1264,5 @@ av_cold void ff_ps_init(void) {
 
 av_cold void ff_ps_ctx_init(PSContext *ps)
 {
-    ipdopd_reset(ps->ipd_smooth, ps->opd_smooth);
+    ipdopd_reset(ps->ipd_hist, ps->opd_hist);
 }

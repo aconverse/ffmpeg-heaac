@@ -68,8 +68,8 @@ typedef struct {
     float  H12[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC];
     float  H21[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC];
     float  H22[2][PS_MAX_NUM_ENV+1][PS_MAX_NR_IIDICC];
-    float  opd_smooth[PS_MAX_NR_IIDICC][2][2];
-    float  ipd_smooth[PS_MAX_NR_IIDICC][2][2];
+    int8_t opd_hist[PS_MAX_NR_IIDICC][2];
+    int8_t ipd_hist[PS_MAX_NR_IIDICC][2];
 } PSContext;
 
 void ff_ps_init(void);
