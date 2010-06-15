@@ -273,9 +273,7 @@ int ff_rtsp_next_attr_and_value(const char **p, char *attr, int attr_size,
 static void sdp_parse_fmtp(AVStream *st, const char *p)
 {
     char attr[256];
-    /* Vorbis setup headers can be up to 12KB and are sent base64
-     * encoded, giving a 12KB * (4/3) = 16KB FMTP line. */
-    char value[16384];
+    char value[4096];
     int i;
     RTSPStream *rtsp_st = st->priv_data;
     AVCodecContext *codec = st->codec;
@@ -541,7 +539,8 @@ static int sdp_parse(AVFormatContext *s, const char *content)
      * "rulebooks" describing their properties. Therefore, the SDP line
      * buffer is large.
      *
-     * The Vorbis FMTP line can be up to 16KB - see sdp_parse_fmtp. */
+     * The Vorbis FMTP line can be up to 16KB - see xiph_parse_sdp_line
+     * in rtpdec_xiph.c. */
     char buf[16384], *q;
     SDPParseState sdp_parse_state, *s1 = &sdp_parse_state;
 
@@ -1618,13 +1617,13 @@ redirect:
         ff_http_set_chunked_transfer_encoding(rtsp_hd_out, 0);
 
     } else {
-    /* open the tcp connexion */
-    ff_url_join(tcpname, sizeof(tcpname), "tcp", NULL, host, port, NULL);
-    if (url_open(&rtsp_hd, tcpname, URL_RDWR) < 0) {
-        err = AVERROR(EIO);
-        goto fail;
-    }
-    rtsp_hd_out = rtsp_hd;
+        /* open the tcp connection */
+        ff_url_join(tcpname, sizeof(tcpname), "tcp", NULL, host, port, NULL);
+        if (url_open(&rtsp_hd, tcpname, URL_RDWR) < 0) {
+            err = AVERROR(EIO);
+            goto fail;
+        }
+        rtsp_hd_out = rtsp_hd;
     }
     rt->rtsp_hd = rtsp_hd;
     rt->rtsp_hd_out = rtsp_hd_out;
