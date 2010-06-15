@@ -1040,13 +1040,7 @@ static void stereo_processing(PSContext *ps, float (*l)[32][2], float (*r)[32][2
                 h12i += h12i_step;
                 h21i += h21i_step;
                 h22i += h22i_step;
-#if 0
-            h11r = 0;
-            h12r = 1;
-            h21r = 1;
-            h22r = 0;
-            h11i = h12i = h21i = h22i = 0;
-#endif
+
                 l[k][n][0] = h11r*l_re + h21r*r_re - h11i*l_im - h21i*r_im;
                 l[k][n][1] = h11r*l_im + h21r*r_im + h11i*l_re + h21i*r_re;
                 r[k][n][0] = h12r*l_re + h22r*r_re - h12i*l_im - h22i*r_im;
