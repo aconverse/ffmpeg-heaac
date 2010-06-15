@@ -539,7 +539,7 @@ static const int   DECAY_CUTOFF[]      = { 10, 32 };
 /// Number of all-pass filer bands
 static const int   NR_ALLPASS_BANDS[]  = { 30, 50 };
 /// First stereo band using the short one sample delay
-static const int   SHORT_DELAY_BAND[]  = { 42, 63 };
+static const int   SHORT_DELAY_BAND[]  = { 42, 62 };
 
 /** Table 8.46 */
 static void map_idx_10_to_20(int8_t *par_mapped, const int8_t *par, int full)
