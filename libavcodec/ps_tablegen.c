@@ -80,5 +80,12 @@ int main(void)
     write_float_3d_array(f34_2_4, 4, 7, 2);
     printf("};\n");
 
+    printf("static const float Q_fract_allpass[2][50][3][2] = {\n");
+    write_float_4d_array(Q_fract_allpass, 2, 50, 3, 2);
+    printf("};\n");
+    printf("static const float phi_fract[2][50][2] = {\n");
+    write_float_3d_array(phi_fract, 2, 50, 2);
+    printf("};\n");
+
     return 0;
 }

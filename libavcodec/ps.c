@@ -536,8 +536,6 @@ static const int   NR_PAR_BANDS[]      = { 20, 34 };
 static const int   NR_BANDS[]          = { 71, 91 };
 /// Start frequency band for the all-pass filter decay slope
 static const int   DECAY_CUTOFF[]      = { 10, 32 };
-#define NR_ALLPASS_BANDS20 30
-#define NR_ALLPASS_BANDS34 50
 /// Number of all-pass filer bands
 static const int   NR_ALLPASS_BANDS[]  = { 30, 50 };
 /// First stereo band using the short one sample delay
@@ -1085,56 +1083,6 @@ int ff_ps_apply(AVCodecContext *avctx, PSContext *ps, float L[2][38][64], float 
     return 0;
 }
 
-static av_cold void ps_init_dec()
-{
-#if !CONFIG_HARDCODED_TABLES
-    int k, m;
-    static const int8_t f_center_20[] = {
-        -3, -1, 1, 3, 5, 7, 10, 14, 18, 22,
-    };
-    static const int8_t f_center_34[] = {
-         2,  6, 10, 14, 18, 22, 26, 30,
-        34,-10, -6, -2, 51, 57, 15, 21,
-        27, 33, 39, 45, 54, 66, 78, 42,
-       102, 66, 78, 90,102,114,126, 90,
-    };
-    static const float fractional_delay_links[] = { 0.43f, 0.75f, 0.347f };
-    const float fractional_delay_gain = 0.39f;
-    for (k = 0; k < NR_ALLPASS_BANDS20; k++) {
-        double f_center, theta;
-        if (k < FF_ARRAY_ELEMS(f_center_20))
-            f_center = f_center_20[k] * 0.125;
-        else
-            f_center = k - 6.5f;
-        for (m = 0; m < PS_AP_LINKS; m++) {
-            theta = -M_PI * fractional_delay_links[m] * f_center;
-            Q_fract_allpass[0][k][m][0] = cos(theta);
-            Q_fract_allpass[0][k][m][1] = sin(theta);
-        }
-        theta = -M_PI*fractional_delay_gain*f_center;
-        phi_fract[0][k][0] = cos(theta);
-        phi_fract[0][k][1] = sin(theta);
-    }
-    for (k = 0; k < NR_ALLPASS_BANDS34; k++) {
-        double f_center, theta;
-        if (k < FF_ARRAY_ELEMS(f_center_34))
-            f_center = f_center_34[k] / 24.;
-        else
-            f_center = k - 26.5f;
-        for (m = 0; m < PS_AP_LINKS; m++) {
-            theta = -M_PI * fractional_delay_links[m] * f_center;
-            Q_fract_allpass[1][k][m][0] = cos(theta);
-            Q_fract_allpass[1][k][m][1] = sin(theta);
-        }
-        theta = -M_PI*fractional_delay_gain*f_center;
-        phi_fract[1][k][0] = cos(theta);
-        phi_fract[1][k][1] = sin(theta);
-    }
-
-#endif
-    ps_tableinit();
-}
-
 #define PS_INIT_VLC_STATIC(num, size) \
     INIT_VLC_STATIC(&vlc_ps[num], 9, ps_tmp[num].table_size / ps_tmp[num].elem_size,    \
                     ps_tmp[num].ps_bits, 1, 1,                                          \
@@ -1173,7 +1121,7 @@ av_cold void ff_ps_init(void) {
     PS_INIT_VLC_STATIC(8,  512);
     PS_INIT_VLC_STATIC(9,  512);
 
-    ps_init_dec();
+    ps_tableinit();
 }
 
 av_cold void ff_ps_ctx_init(PSContext *ps)

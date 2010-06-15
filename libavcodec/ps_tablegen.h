@@ -40,6 +40,9 @@
 #ifndef M_SQRT2
 #define M_SQRT2        1.41421356237309504880  /* sqrt(2) */
 #endif
+#define NR_ALLPASS_BANDS20 30
+#define NR_ALLPASS_BANDS34 50
+#define PS_AP_LINKS 3
 static float pd_re_smooth[8*8*8];
 static float pd_im_smooth[8*8*8];
 static float HA[46][8][4];
@@ -48,6 +51,8 @@ static float f20_0_8 [ 8][7][2];
 static float f34_0_12[12][7][2];
 static float f34_1_8 [ 8][7][2];
 static float f34_2_4 [ 4][7][2];
+static float Q_fract_allpass[2][50][3][2];
+static float phi_fract[2][50][2];
 
 static const float g0_Q8[] = {
     0.00746082949812f, 0.02270420949825f, 0.04546865930473f, 0.07266113929591f,
@@ -111,6 +116,19 @@ static void ps_tableinit(void)
     };
     int iid, icc;
 
+    int k, m;
+    static const int8_t f_center_20[] = {
+        -3, -1, 1, 3, 5, 7, 10, 14, 18, 22,
+    };
+    static const int8_t f_center_34[] = {
+         2,  6, 10, 14, 18, 22, 26, 30,
+        34,-10, -6, -2, 51, 57, 15, 21,
+        27, 33, 39, 45, 54, 66, 78, 42,
+       102, 66, 78, 90,102,114,126, 90,
+    };
+    static const float fractional_delay_links[] = { 0.43f, 0.75f, 0.347f };
+    const float fractional_delay_gain = 0.39f;
+
     for (pd0 = 0; pd0 < 8; pd0++) {
         float pd0_re = ipdopd_cos[pd0];
         float pd0_im = ipdopd_sin[pd0];
@@ -160,6 +178,37 @@ static void ps_tableinit(void)
                 HB[iid][icc][3] =  M_SQRT2 * alpha_c * gamma_s;
             }
         }
+    }
+
+    for (k = 0; k < NR_ALLPASS_BANDS20; k++) {
+        double f_center, theta;
+        if (k < FF_ARRAY_ELEMS(f_center_20))
+            f_center = f_center_20[k] * 0.125;
+        else
+            f_center = k - 6.5f;
+        for (m = 0; m < PS_AP_LINKS; m++) {
+            theta = -M_PI * fractional_delay_links[m] * f_center;
+            Q_fract_allpass[0][k][m][0] = cos(theta);
+            Q_fract_allpass[0][k][m][1] = sin(theta);
+        }
+        theta = -M_PI*fractional_delay_gain*f_center;
+        phi_fract[0][k][0] = cos(theta);
+        phi_fract[0][k][1] = sin(theta);
+    }
+    for (k = 0; k < NR_ALLPASS_BANDS34; k++) {
+        double f_center, theta;
+        if (k < FF_ARRAY_ELEMS(f_center_34))
+            f_center = f_center_34[k] / 24.;
+        else
+            f_center = k - 26.5f;
+        for (m = 0; m < PS_AP_LINKS; m++) {
+            theta = -M_PI * fractional_delay_links[m] * f_center;
+            Q_fract_allpass[1][k][m][0] = cos(theta);
+            Q_fract_allpass[1][k][m][1] = sin(theta);
+        }
+        theta = -M_PI*fractional_delay_gain*f_center;
+        phi_fract[1][k][0] = cos(theta);
+        phi_fract[1][k][1] = sin(theta);
     }
 
     make_filters_from_proto(f20_0_8,  g0_Q8,   8);
