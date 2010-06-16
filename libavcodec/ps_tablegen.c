@@ -28,22 +28,24 @@
 void write_float_3d_array (const void *p, int b, int c, int d)
 {
     int i;
+    const float *f = p;
     for (i = 0; i < b; i++) {
         printf("{\n");
-        write_float_2d_array(p, c, d);
+        write_float_2d_array(f, c, d);
         printf("},\n");
-        p += c * d * sizeof(float);
+        f += c * d;
     }
 }
 
 void write_float_4d_array (const void *p, int a, int b, int c, int d)
 {
     int i;
+    const float *f = p;
     for (i = 0; i < a; i++) {
         printf("{\n");
-        write_float_3d_array(p, b, c, d);
+        write_float_3d_array(f, b, c, d);
         printf("},\n");
-        p += b * c * d * sizeof(float);
+        f += b * c * d;
     }
 }
 

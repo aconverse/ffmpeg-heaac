@@ -473,9 +473,8 @@ static int decode_audio_specific_config(AACContext *ac, void *data,
         av_log(ac->avctx, AV_LOG_ERROR, "invalid sampling rate index %d\n", ac->m4ac.sampling_index);
         return -1;
     }
-    if (ac->m4ac.sbr == 1 && ac->m4ac.ps) {
+    if (ac->m4ac.sbr == 1 && ac->m4ac.ps == -1)
         ac->m4ac.ps = 1;
-    }
 
     skip_bits_long(&gb, i);
 
