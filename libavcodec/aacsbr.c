@@ -1012,8 +1012,7 @@ static unsigned int read_sbr_data(AACContext *ac, SpectralBandReplication *sbr,
             read_sbr_extension(ac, sbr, gb, get_bits(gb, 2), &num_bits_left); // bs_extension_id
         }
         if (num_bits_left < 0) {
-            av_log(ac->avctx, AV_LOG_ERROR, "num_bits_left %d\n", num_bits_left);
-            abort();
+            av_log(ac->avctx, AV_LOG_ERROR, "SBR Extension over read.\n");
         }
         if (num_bits_left > 0)
             skip_bits(gb, num_bits_left);
